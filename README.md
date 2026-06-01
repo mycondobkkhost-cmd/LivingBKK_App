@@ -11,7 +11,9 @@
 | 1 | [docs/phase-1-architecture.md](docs/phase-1-architecture.md) | Architecture & Roadmap |
 | 2 | [docs/phase-2-wireframes.md](docs/phase-2-wireframes.md) | Wireframes & UX Flows |
 | 3 | [docs/phase-3-database.md](docs/phase-3-database.md) | Database, RLS, Edge Functions |
+| 4 | [docs/phase-4-frontend.md](docs/phase-4-frontend.md) | Flutter app + FlutterFlow guide |
 | — | [docs/business-rules.md](docs/business-rules.md) | กฎธุรกิจรวม |
+| — | [docs/flutterflow-setup.md](docs/flutterflow-setup.md) | FlutterFlow integration |
 
 ## Stack (แนะนำ)
 
@@ -38,6 +40,18 @@ supabase db reset   # migrations + seed.sql
 
 ดูรายละเอียด: [docs/phase-3-database.md](docs/phase-3-database.md)
 
+## Mobile app (Phase 4)
+
+```bash
+cd mobile
+flutter create . --project-name livingbkk --org com.livingbkk
+flutter pub get
+# แก้ค่าใน assets/env แล้ว
+flutter run
+```
+
+ดู [mobile/README.md](mobile/README.md)
+
 ## ขั้นถัดไป
 
-- **Phase 4:** FlutterFlow — Map Home, Board, Lead Bot ตาม wireframes
+- **Phase 4.2:** Google Maps, Auth, Leads insert, Push notifications

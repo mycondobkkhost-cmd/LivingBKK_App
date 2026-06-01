@@ -6,6 +6,11 @@
 .supabase/
 node_modules/
 .dart_tool/
+.pub-cache/
+.pub/
 build/
+mobile/ios/Pods/
+mobile/android/.gradle/
+mobile/.flutter-plugins-dependencies
 .idea/
 .vscode/
