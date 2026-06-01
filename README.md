@@ -58,4 +58,5 @@ flutter run
 1. ตั้งค่า Supabase → [docs/SETUP.md](docs/SETUP.md)  
 2. แก้ `mobile/assets/env` แล้ว `flutter run`  
 3. **Phase 4.3:** Maps key + `flutter create` → ดู [mobile/docs/MAPS_SETUP.md](mobile/docs/MAPS_SETUP.md)  
-4. **Phase 4.4:** FCM push notifications
+4. **Phase 4.4:** Admin, moderation, Realtime — [docs/phase-4-4-admin-realtime.md](docs/phase-4-4-admin-realtime.md)  
+5. **Phase 4.5:** FCM (optional) — [mobile/docs/FCM_SETUP.md](mobile/docs/FCM_SETUP.md)

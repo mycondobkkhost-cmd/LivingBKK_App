@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../features/board/demand_board_page.dart';
@@ -5,6 +7,8 @@ import '../features/contact/contact_tab_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/search/map_home_page.dart';
 import '../features/work/work_page.dart';
+import '../services/auth_service.dart';
+import '../services/realtime_service.dart';
 import '../state/user_role_controller.dart';
 
 class MainShell extends StatefulWidget {
@@ -18,6 +22,39 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+  final _realtime = RealtimeService();
+  StreamSubscription<String>? _notifSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _setupRealtime();
+    _syncRoleFromServer();
+  }
+
+  Future<void> _syncRoleFromServer() async {
+    final role = await AuthService().fetchProfileRole();
+    if (role != null && mounted) {
+      widget.roleController.setRole(role);
+    }
+  }
+
+  void _setupRealtime() {
+    _realtime.subscribeToMyLeads();
+    _notifSub = _realtime.messages.listen((msg) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg), duration: const Duration(seconds: 4)),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _notifSub?.cancel();
+    _realtime.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {

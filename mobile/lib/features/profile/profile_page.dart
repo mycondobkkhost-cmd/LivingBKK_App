@@ -67,6 +67,7 @@ class ProfilePage extends StatelessWidget {
                   ButtonSegment(value: 'seeker', label: Text('Seeker')),
                   ButtonSegment(value: 'owner', label: Text('Owner')),
                   ButtonSegment(value: 'agent', label: Text('Agent')),
+                  ButtonSegment(value: 'admin', label: Text('Admin')),
                 ],
                 selected: {roleController.role},
                 onSelectionChanged: (v) async {
@@ -91,6 +92,24 @@ class ProfilePage extends StatelessWidget {
                   : () => context.push('/login'),
               icon: const Icon(Icons.add_home_work_outlined),
               label: const Text('ลงประกาศทรัพย์'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: auth.isSignedIn
+                  ? () => context.push('/listings/mine')
+                  : () => context.push('/login'),
+              icon: const Icon(Icons.list_alt),
+              label: const Text('ประกาศของฉัน · ยืนยันว่าง'),
+            ),
+          ],
+          if (roleController.role == 'admin') ...[
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: auth.isSignedIn
+                  ? () => context.push('/admin')
+                  : () => context.push('/login'),
+              icon: const Icon(Icons.admin_panel_settings),
+              label: const Text('ศูนย์ Admin'),
             ),
           ],
           const SizedBox(height: 24),

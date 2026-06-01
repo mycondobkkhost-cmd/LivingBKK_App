@@ -123,4 +123,6 @@ git push
 - [ ] `mobile/assets/env` ใส่ keys
 - [ ] Flutter รันได้
 - [ ] สมัคร user ในแอป → ส่ง Lead ทดสอบ
-- [ ] (ทีหลัง) Google Maps API key
+- [ ] Google Maps API key + [MAPS_SETUP.md](../mobile/docs/MAPS_SETUP.md)
+- [ ] ตั้ง `profiles.role = admin` สำหรับศูนย์ Admin
+- [ ] `supabase db push` รวม migration Realtime

@@ -81,7 +81,23 @@ class LeadRepository {
     final payload = lead.toJson(uid);
     if (listingId != null) payload['listing_id'] = listingId;
 
-    await SupabaseService.client!.from('leads').insert(payload);
+    final inserted = await SupabaseService.client!
+        .from('leads')
+        .insert(payload)
+        .select('id')
+        .single();
+
+    final leadId = inserted['id'] as String?;
+    if (leadId != null) {
+      try {
+        await SupabaseService.client!.functions.invoke(
+          'route-lead-notification',
+          body: {'lead_id': leadId},
+        );
+      } catch (_) {
+        // Edge function optional until deployed
+      }
+    }
   }
 
   Future<List<Map<String, dynamic>>> myLeads() async {

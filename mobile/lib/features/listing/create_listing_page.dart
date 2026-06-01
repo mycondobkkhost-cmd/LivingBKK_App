@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../services/listing_create_repository.dart';
+import '../../services/moderation_service.dart';
 import '../../services/storage_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -16,6 +17,7 @@ class CreateListingPage extends StatefulWidget {
 class _CreateListingPageState extends State<CreateListingPage> {
   final _createRepo = ListingCreateRepository();
   final _storage = StorageService();
+  final _moderation = ModerationService();
 
   final _title = TextEditingController();
   final _district = TextEditingController();
@@ -72,6 +74,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
       }
 
       if (publish) {
+        final text = '${_title.text} ${_desc.text}';
+        final mod = await _moderation.checkText(text);
+        if (!mod.allowed) {
+          throw Exception(mod.message ?? 'พบข้อมูลติดต่อหรือลิงก์นอกระบบ — แก้ก่อนเผยแพร่');
+        }
         await _createRepo.publish(id);
       }
 

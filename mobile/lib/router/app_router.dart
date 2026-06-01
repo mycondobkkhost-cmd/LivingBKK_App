@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/admin/admin_home_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/board/demand_post_detail_page.dart';
 import '../features/board/submit_offer_page.dart';
 import '../features/listing/create_listing_page.dart';
 import '../features/listing/listing_detail_page.dart';
+import '../features/listing/my_listings_page.dart';
 import '../models/demand_post.dart';
 import '../models/listing_route_extra.dart';
 import '../shell/main_shell.dart';
@@ -30,6 +32,14 @@ class AppRouter {
         GoRoute(
           path: '/listing/create',
           builder: (context, state) => const CreateListingPage(),
+        ),
+        GoRoute(
+          path: '/listings/mine',
+          builder: (context, state) => const MyListingsPage(),
+        ),
+        GoRoute(
+          path: '/admin',
+          builder: (context, state) => const AdminHomePage(),
         ),
         GoRoute(
           path: '/listing/:id',
