@@ -1,0 +1,11 @@
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.local
+.supabase/
+node_modules/
+.dart_tool/
+build/
+.idea/
+.vscode/
