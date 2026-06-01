@@ -43,6 +43,7 @@
 | `submit-demand-offer` | `/functions/v1/submit-demand-offer` | Validate capacity + insert offer |
 | `moderate-listing-text` | `/functions/v1/moderate-listing-text` | Phone/Line/URL scan |
 | `lead-bot-turn` | `/functions/v1/lead-bot-turn` | Qualification step validator |
+| `route-lead-notification` | `/functions/v1/route-lead-notification` | Route lead + FCM placeholder |
 
 ---
 

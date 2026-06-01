@@ -1,0 +1,45 @@
+-- Expose approximate map coordinates on public view (from offset location_public)
+
+CREATE OR REPLACE VIEW public.listings_public
+WITH (security_invoker = true)
+AS
+SELECT
+  l.id,
+  l.listing_code,
+  l.listing_type,
+  l.status,
+  l.property_type,
+  l.title,
+  l.description_public,
+  l.price_net,
+  l.co_agent_listing_type,
+  l.investor_category,
+  l.yield_percent,
+  l.pet_allowed,
+  l.smoking_allowed,
+  l.furnished,
+  l.bedrooms,
+  l.bathrooms,
+  l.area_sqm,
+  l.floor_range,
+  l.district,
+  l.subdistrict,
+  l.project_name,
+  l.geo_zone_id,
+  l.max_distance_bts_km,
+  l.location_public,
+  CASE WHEN l.location_public IS NOT NULL
+    THEN ST_Y(l.location_public::geometry)::double precision END AS lat,
+  CASE WHEN l.location_public IS NOT NULL
+    THEN ST_X(l.location_public::geometry)::double precision END AS lng,
+  l.co_agent_eligible,
+  l.co_agent_listing_type AS co_agent_status_display,
+  l.available_from,
+  l.available_again,
+  l.last_bump_at,
+  l.published_at,
+  l.created_at,
+  l.updated_at
+FROM public.listings l
+WHERE l.status = 'published'
+  AND (l.expires_at IS NULL OR l.expires_at > now());

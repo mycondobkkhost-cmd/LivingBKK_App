@@ -19,4 +19,10 @@ class Env {
       supabaseUrl.isNotEmpty &&
       supabaseAnonKey.isNotEmpty &&
       !supabaseUrl.contains('YOUR_PROJECT');
+
+  static String get googleMapsApiKey =>
+      dotenv.env['GOOGLE_MAPS_API_KEY'] ?? '';
+
+  static bool get hasMapsKey =>
+      googleMapsApiKey.isNotEmpty && !googleMapsApiKey.contains('YOUR_');
 }

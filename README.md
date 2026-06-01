@@ -14,6 +14,7 @@
 | 4 | [docs/phase-4-frontend.md](docs/phase-4-frontend.md) | Flutter app + FlutterFlow guide |
 | — | [docs/business-rules.md](docs/business-rules.md) | กฎธุรกิจรวม |
 | — | [docs/flutterflow-setup.md](docs/flutterflow-setup.md) | FlutterFlow integration |
+| — | [docs/SETUP.md](docs/SETUP.md) | คู่มือตั้งค่าทั้งระบบ |
 
 ## Stack (แนะนำ)
 
@@ -54,4 +55,7 @@ flutter run
 
 ## ขั้นถัดไป
 
-- **Phase 4.2:** Google Maps, Auth, Leads insert, Push notifications
+1. ตั้งค่า Supabase → [docs/SETUP.md](docs/SETUP.md)  
+2. แก้ `mobile/assets/env` แล้ว `flutter run`  
+3. **Phase 4.3:** Maps key + `flutter create` → ดู [mobile/docs/MAPS_SETUP.md](mobile/docs/MAPS_SETUP.md)  
+4. **Phase 4.4:** FCM push notifications

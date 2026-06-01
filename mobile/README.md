@@ -60,11 +60,17 @@ lib/
 | Listing detail + Lead bot sheet | ✅ |
 | Work / Profile tabs | ✅ skeleton |
 
-## Phase 4.2 (next)
+## Phase 4.2 (included)
 
-- Google Maps Flutter plugin
-- Auth (Supabase email/OTP)
-- Full Lead Bot → `leads` table
+- Login / Sign up at `/login`
+- Lead Bot 4 steps → Supabase `leads`
+- Work tab loads your leads, offers, co-agent requests
+- Agent: request co-agent on eligible listings
+
+## Phase 4.3 (next)
+
+- Google Maps Flutter plugin + API key
+- Image upload to Storage
 - Push notifications (FCM)
 
 ## FlutterFlow

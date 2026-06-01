@@ -14,6 +14,8 @@ class ListingPublic {
     this.investorCategory,
     this.coAgentEligible = false,
     this.petAllowed = false,
+    this.lat,
+    this.lng,
   });
 
   final String id;
@@ -30,6 +32,8 @@ class ListingPublic {
   final String? investorCategory;
   final bool coAgentEligible;
   final bool petAllowed;
+  final double? lat;
+  final double? lng;
 
   factory ListingPublic.fromJson(Map<String, dynamic> json) {
     return ListingPublic(
@@ -47,6 +51,8 @@ class ListingPublic {
       investorCategory: json['investor_category'] as String?,
       coAgentEligible: json['co_agent_eligible'] as bool? ?? false,
       petAllowed: json['pet_allowed'] as bool? ?? false,
+      lat: (json['lat'] as num?)?.toDouble(),
+      lng: (json['lng'] as num?)?.toDouble(),
     );
   }
 
@@ -63,6 +69,8 @@ class ListingPublic {
           bedrooms: 1,
           coAgentListingType: 'owner_direct',
           petAllowed: true,
+          lat: 13.7234,
+          lng: 100.5794,
         ),
         const ListingPublic(
           id: 'demo-2',
@@ -77,6 +85,8 @@ class ListingPublic {
           investorCategory: 'with_tenant',
           coAgentEligible: true,
           coAgentListingType: 'co_agent_50_50',
+          lat: 13.7373,
+          lng: 100.5606,
         ),
       ];
 }

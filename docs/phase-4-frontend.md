@@ -1,6 +1,6 @@
 # Phase 4: Frontend
 
-**Status:** 4.1 scaffold complete (Flutter)  
+**Status:** 4.3 (Maps, images, listing create)  
 **Date:** 2026-06-02
 
 ---
@@ -40,14 +40,17 @@ flutter run
 
 ---
 
-## Phase 4.2 backlog
+## Phase 4.2 (current)
 
-- [ ] `google_maps_flutter` + markers from `location_public`
-- [ ] Supabase Auth UI (seeker / owner / agent)
-- [ ] Insert `leads` from Lead Bot wizard
-- [ ] Owner/Agent lead inbox with censored phone view
-- [ ] Co-agent request button → `co_agent_requests`
-- [ ] Image upload → Storage `listing-images`
+- [x] Login / Sign up (`/login`)
+- [x] Lead Bot 4-step wizard → `leads` table
+- [x] Work tab: my leads, inbox (censored), offers, co-agent requests
+- [x] Co-agent request on listing detail (agent + eligible)
+- [x] Profile: sign in/out, sync role to `profiles`
+- [x] `google_maps_flutter` + markers (`lat`/`lng` on view)
+- [x] Image upload → Storage `listing-images`
+- [x] Create listing page (draft / publish)
+- [ ] FCM full setup (firebase_messaging) — stub `NotificationService`
 
 ---
 
@@ -59,4 +62,6 @@ flutter run
 - [x] Agent segmented control
 - [x] Demand board + blind offer form
 - [x] Demo mode without Supabase
-- [ ] Production maps + auth (4.2)
+- [x] Auth + Leads + Work (4.2)
+- [x] Google Maps widget (4.3)
+- [ ] FCM push (4.4)

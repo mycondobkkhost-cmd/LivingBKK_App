@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 import '../../models/listing_public.dart';
 import '../../services/listing_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../models/listing_route_extra.dart';
 import '../contact/lead_bot_sheet.dart';
 import '../../widgets/listing_card.dart';
+import '../../widgets/listings_map.dart';
 import '../../widgets/smart_search_bar.dart';
 
 enum AgentMapMode { all, coAgentEligible, myWork }
@@ -25,6 +27,7 @@ class _MapHomePageState extends State<MapHomePage> {
   bool _loading = true;
   String? _listingType; // rent | sale
   AgentMapMode _agentMode = AgentMapMode.all;
+  String? _selectedListingId;
 
   @override
   void initState() {
@@ -115,31 +118,12 @@ class _MapHomePageState extends State<MapHomePage> {
           Expanded(
             child: Stack(
               children: [
-                Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryLight.withValues(alpha: 0.4),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.map_outlined, size: 64, color: AppTheme.primary.withValues(alpha: 0.6)),
-                        const SizedBox(height: 8),
-                        Text(
-                          'แผนที่ — เชื่อม Google Maps ใน Phase 4.2',
-                          style: TextStyle(color: AppTheme.textSecondary.withValues(alpha: 0.9)),
-                        ),
-                        const SizedBox(height: 12),
-                        OutlinedButton.icon(
-                          onPressed: () {},
-                          icon: const Icon(Icons.my_location),
-                          label: const Text('ใกล้ฉัน'),
-                        ),
-                      ],
-                    ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: ListingsMap(
+                    listings: _listings,
+                    selectedId: _selectedListingId,
+                    onListingTap: (l) => setState(() => _selectedListingId = l.id),
                   ),
                 ),
                 DraggableScrollableSheet(
@@ -202,7 +186,13 @@ class _MapHomePageState extends State<MapHomePage> {
                                       return ListingCard(
                                         listing: item,
                                         showCoAgentStrip: widget.isAgent,
-                                        onTap: () => context.push('/listing/${item.id}', extra: item),
+                                        onTap: () => context.push(
+                                          '/listing/${item.id}',
+                                          extra: ListingRouteExtra(
+                                            listing: item,
+                                            isAgent: widget.isAgent,
+                                          ),
+                                        ),
                                       );
                                     },
                                   ),
