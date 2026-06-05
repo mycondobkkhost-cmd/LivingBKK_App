@@ -1,0 +1,11 @@
+# LivingBKK — deploy เว็บแอป (Netlify / Cloudflare Pages)
+# Manual: ./scripts/build-web.sh แล้วลาก mobile/build/web ไป Netlify Drop
+
+[build]
+  command = "bash scripts/build-web.sh"
+  publish = "mobile/build/web"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

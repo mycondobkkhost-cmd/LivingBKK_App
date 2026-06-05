@@ -44,7 +44,13 @@ supabase functions deploy submit-demand-offer
 supabase functions deploy smart-search-parse
 supabase functions deploy moderate-listing-text
 supabase functions deploy lead-bot-turn
+supabase functions deploy route-lead-notification
+supabase functions deploy notify-appointment
+supabase functions deploy listing-lifecycle-cron
+supabase functions deploy image-dedup-check
 ```
+
+หรือรันครบ: `./scripts/deploy-all.sh`
 
 ### 1.5 คัดลอก API keys
 
@@ -116,9 +122,36 @@ git push
 
 ---
 
+## 6. Seed ทรัพย์ตัวอย่าง (Phase 8)
+
+```bash
+supabase db reset   # รวม seed.sql + seed_listings.sql
+```
+
+Local demo login:
+
+- Email: `demo-owner@livingbkk.local`
+- Password: `demo12345`
+
+ดู [phase-8-seed-and-map-markers.md](phase-8-seed-and-map-markers.md)
+
+---
+
+## 7. Deploy + Seed ครบ (Phase 11)
+
+```bash
+source scripts/dev-path.sh
+./scripts/deploy-all.sh
+./scripts/seed-cloud.sh
+```
+
+Checklist ละเอียด: [PRODUCTION-CHECKLIST.md](PRODUCTION-CHECKLIST.md)
+
+---
+
 ## Checklist
 
-- [ ] Supabase project + `db push`
+- [ ] Supabase project + `db push` (หรือ `deploy-all.sh`)
 - [ ] Edge functions deployed
 - [ ] `mobile/assets/env` ใส่ keys
 - [ ] Flutter รันได้

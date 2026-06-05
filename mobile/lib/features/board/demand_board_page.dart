@@ -1,10 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../navigation/demand_board_navigation.dart';
+import '../../l10n/app_strings.dart';
+import '../../models/demand_board_filter_state.dart';
 import '../../models/demand_post.dart';
+import '../../models/listing_public.dart';
+import '../../services/demand_board_favorites_service.dart';
+import '../../services/demand_mystock_match_service.dart';
 import '../../services/demand_repository.dart';
+import '../../services/my_stock_listing_pool.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/demand_board_filter_apply.dart';
+import '../../utils/demand_search_match.dart';
+import '../../widgets/demand/demand_board_filter_sheet.dart';
+import '../../widgets/demand_inquiry_card.dart';
 
 class DemandBoardPage extends StatefulWidget {
   const DemandBoardPage({super.key});
@@ -15,43 +25,285 @@ class DemandBoardPage extends StatefulWidget {
 
 class _DemandBoardPageState extends State<DemandBoardPage> {
   final _repo = DemandRepository();
+  final _locationController = TextEditingController();
   List<DemandPost> _posts = [];
   bool _loading = true;
   bool _openOnly = true;
 
+  DemandBoardFilterState _filters = DemandBoardFilterState.initial;
+  bool _favoritesOnly = false;
+  List<ListingPublic> _myStock = [];
+  Map<String, int> _myStockScores = {};
+
   @override
   void initState() {
     super.initState();
+    _locationController.addListener(_onLocationQueryChanged);
+    DemandBoardFavoritesService.instance.addListener(_onFavoritesChanged);
     _load();
   }
+
+  @override
+  void dispose() {
+    _locationController.removeListener(_onLocationQueryChanged);
+    DemandBoardFavoritesService.instance.removeListener(_onFavoritesChanged);
+    _locationController.dispose();
+    super.dispose();
+  }
+
+  void _onFavoritesChanged() => setState(() {});
+
+  void _onLocationQueryChanged() => setState(() {});
 
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final posts = await _repo.fetchOpenPosts();
+      final posts = await _repo.fetchPosts();
+      final stock = await MyStockListingPool.instance.load();
+      final scores = DemandMyStockMatchService.instance.scoreMap(posts, stock);
+      if (!mounted) return;
       setState(() {
         _posts = posts;
+        _myStock = stock;
+        _myStockScores = scores;
         _loading = false;
       });
     } catch (e) {
-      setState(() => _loading = false);
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _openFilterSheet() async {
+    final s = AppStrings.of(context);
+    final picked = await DemandBoardFilterSheet.show(
+      context,
+      initial: _filters,
+      myStockCount: _myStock.length,
+    );
+    if (!mounted || picked == null) return;
+    setState(() => _filters = picked);
+  }
+
+  List<DemandPost> get _visible {
+    var list = _openOnly
+        ? _posts.where((p) => p.status == 'open').toList()
+        : _posts.where((p) => p.status != 'open').toList();
+
+    if (_favoritesOnly) {
+      final fav = DemandBoardFavoritesService.instance;
+      list = list.where((p) => fav.isFavorite(p.id)).toList();
+    }
+
+    final locationQuery = _locationController.text;
+    if (locationQuery.trim().isNotEmpty) {
+      list = list
+          .where((p) => demandPostMatchesSearchQuery(p, locationQuery))
+          .toList();
+    }
+
+    list = applyDemandBoardFilters(
+      posts: list,
+      filters: _filters,
+      myStockScores: _myStockScores,
+    );
+
+    final open = list.where((p) => p.status == 'open').toList();
+    final closed = list.where((p) => p.status != 'open').toList();
+    open.sort((a, b) {
+      if (a.isUrgentRush != b.isUrgentRush) return a.isUrgentRush ? -1 : 1;
+      if (a.isCashCase != b.isCashCase) return a.isCashCase ? -1 : 1;
+      if (_filters.matchMyStock) {
+        final sa = _myStockScores[a.id] ?? 0;
+        final sb = _myStockScores[b.id] ?? 0;
+        if (sa != sb) return sb.compareTo(sa);
+      }
+      return compareDemandPostsByPriceSort(a, b, _filters.priceSort);
+    });
+    closed.sort((a, b) => b.displayTime.compareTo(a.displayTime));
+    return [...open, ...closed];
+  }
+
+  void _clearFilters() {
+    setState(() {
+      _filters = DemandBoardFilterState.initial;
+      _favoritesOnly = false;
+      _locationController.clear();
+    });
+  }
+
+  String _relativeTime(DateTime time, AppStrings s) {
+    final diff = DateTime.now().difference(time);
+    if (diff.inMinutes < 60) {
+      final m = diff.inMinutes.clamp(1, 59);
+      return s.t('$m นาทีที่แล้ว', '$m min ago');
+    }
+    if (diff.inHours < 24) {
+      return s.t('${diff.inHours} ชม.ที่แล้ว', '${diff.inHours}h ago');
+    }
+    if (diff.inDays < 7) {
+      return s.t('${diff.inDays} วันที่แล้ว', '${diff.inDays}d ago');
+    }
+    return DateFormat('d MMM yyyy', 'th').format(time);
+  }
+
+  String _timeLabel(DemandPost p, AppStrings s) {
+    final created = p.createdAt;
+    final updated = p.updatedAt;
+    if (updated != null &&
+        created != null &&
+        updated.difference(created).inMinutes > 2) {
+      return s.updatedAgo(_relativeTime(updated, s));
+    }
+    return s.postedAgo(_relativeTime(p.displayTime, s));
   }
 
   @override
   Widget build(BuildContext context) {
-    final currency = NumberFormat.currency(locale: 'th_TH', symbol: '฿', decimalDigits: 0);
+    final s = AppStrings.of(context);
+    final visible = _visible;
+    final hasLocationQuery = _locationController.text.trim().isNotEmpty;
+    final favCount = DemandBoardFavoritesService.instance.count;
+    final filterActive = _filters.hasActive;
+    final hasActiveFilters =
+        filterActive || _favoritesOnly || hasLocationQuery;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('บอร์ดประกาศ')),
+      backgroundColor: AppTheme.surfaceWarm,
+      appBar: AppBar(
+        title: Text(s.demandBoardTitle),
+        actions: [
+          IconButton(
+            tooltip: s.demandFilterButton,
+            onPressed: _openFilterSheet,
+            icon: Badge(
+              isLabelVisible: filterActive,
+              label: Text('${_filters.activeCount}'),
+              child: const Icon(Icons.tune_rounded),
+            ),
+          ),
+          IconButton(
+            tooltip: s.savedDemandBoardTitle,
+            onPressed: () => DemandBoardNavigation.openSavedBoard(context),
+            icon: Badge(
+              isLabelVisible: favCount > 0,
+              label: Text('$favCount'),
+              child: const Icon(Icons.favorite_border),
+            ),
+          ),
+          if (hasActiveFilters)
+            TextButton(
+              onPressed: _clearFilters,
+              child: Text(s.t('ล้าง', 'Clear')),
+            ),
+        ],
+      ),
       body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: TextField(
+              controller: _locationController,
+              textInputAction: TextInputAction.search,
+              decoration: InputDecoration(
+                hintText: s.demandSearchLocationHint,
+                prefixIcon: const Icon(Icons.search, size: 22),
+                suffixIcon: hasLocationQuery
+                    ? IconButton(
+                        icon: const Icon(Icons.close, size: 20),
+                        onPressed: () => _locationController.clear(),
+                      )
+                    : null,
+                filled: true,
+                fillColor: AppTheme.cardTint,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  borderSide: BorderSide(color: AppTheme.border),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+                  borderSide: BorderSide(color: AppTheme.border),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                isDense: true,
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _FilterChip(
+                    label: filterActive
+                        ? s.demandFilterActive(_filters.activeCount)
+                        : s.demandFilterButton,
+                    active: filterActive,
+                    onTap: _openFilterSheet,
+                    showDropdownIcon: false,
+                    leadingIcon: Icons.tune_rounded,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _FilterChip(
+                  label: _favoritesOnly && favCount > 0
+                      ? s.demandSavedBoardCount(favCount)
+                      : s.demandFilterFavoritesOnly,
+                  active: _favoritesOnly,
+                  onTap: () => setState(() => _favoritesOnly = !_favoritesOnly),
+                  showDropdownIcon: false,
+                  leadingIcon: Icons.favorite_border,
+                ),
+                if (_filters.matchMyStock && _myStockScores.isNotEmpty) ...[
+                  const SizedBox(width: 8),
+                  _FilterChip(
+                    label: s.demandMyStockMatchBadge,
+                    active: true,
+                    onTap: _openFilterSheet,
+                    showDropdownIcon: false,
+                    leadingIcon: Icons.home_work_outlined,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [AppTheme.primaryLight, AppTheme.accentRoseLight],
+              ),
+              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    s.demandBoardHero,
+                    style: TextStyle(
+                      fontSize: 12,
+                      height: 1.3,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.inventory_2_outlined, color: AppTheme.primary, size: 28),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
             child: SegmentedButton<bool>(
-              segments: const [
-                ButtonSegment(value: true, label: Text('เปิดรับข้อเสนอ')),
-                ButtonSegment(value: false, label: Text('ปิดแล้ว')),
+              style: SegmentedButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                textStyle: const TextStyle(fontSize: 12),
+              ),
+              segments: [
+                ButtonSegment(value: true, label: Text(s.demandOfferOpen)),
+                ButtonSegment(value: false, label: Text(s.demandOfferClosed)),
               ],
               selected: {_openOnly},
               onSelectionChanged: (v) => setState(() => _openOnly = v.first),
@@ -60,92 +312,128 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator())
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                    itemCount: _posts.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, i) {
-                      final p = _posts[i];
-                      return Card(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(12),
-                          onTap: () => context.push('/board/${p.id}', extra: p),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.primaryLight,
-                                        borderRadius: BorderRadius.circular(8),
+                : visible.isEmpty
+                    ? Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Text(
+                            _filters.matchMyStock && _myStock.isEmpty
+                                ? s.demandFilterMatchMyStockEmpty
+                                : _favoritesOnly
+                                    ? s.savedDemandBoardEmpty
+                                    : _filters.matchMyStock &&
+                                            visible.isEmpty
+                                        ? s.t(
+                                            'ไม่มีประกาศบอร์ดที่ตรงกับ MyStock ของคุณ',
+                                            'No board posts match your MyStock',
+                                          )
+                                        : hasLocationQuery
+                                    ? s.t(
+                                        'ไม่พบประกาศที่ตรงกับทำเลหรือโครงการนี้',
+                                        'No posts match this area or project',
+                                      )
+                                    : s.t(
+                                        'ยังไม่มีประกาศในหมวดนี้',
+                                        'No posts in this tab',
                                       ),
-                                      child: Text(
-                                        p.transactionType == 'rent' ? 'เช่า' : 'ซื้อ',
-                                        style: const TextStyle(
-                                          color: AppTheme.primary,
-                                          fontWeight: FontWeight.w600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ),
-                                    const Spacer(),
-                                    const Icon(Icons.chevron_right, color: AppTheme.textSecondary),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  p.title,
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                if (p.description != null) ...[
-                                  const SizedBox(height: 6),
-                                  Text(
-                                    p.description!,
-                                    style: const TextStyle(
-                                      color: AppTheme.textSecondary,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                ],
-                                const SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  runSpacing: 4,
-                                  children: [
-                                    if (p.minAreaSqm != null)
-                                      Text('≥ ${p.minAreaSqm!.toInt()} ตร.ม.',
-                                          style: const TextStyle(fontSize: 13)),
-                                    if (p.maxPriceNet != null)
-                                      Text(
-                                        '≤ ${currency.format(p.maxPriceNet)}',
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                    if (p.maxDistanceBtsKm != null)
-                                      Text('BTS ≤ ${p.maxDistanceBtsKm} กม.',
-                                          style: const TextStyle(fontSize: 13)),
-                                  ],
-                                ),
-                                const SizedBox(height: 8),
-                                const Text(
-                                  'โดย LivingBKK · ไม่แสดงจำนวนผู้เสนอ',
-                                  style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
-                                ),
-                              ],
-                            ),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(color: AppTheme.textSecondary),
                           ),
                         ),
-                      );
-                    },
-                  ),
+                      )
+                    : RefreshIndicator(
+                        onRefresh: _load,
+                        child: ListView.separated(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+                          itemCount: visible.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 6),
+                          itemBuilder: (context, i) {
+                            final p = visible[i];
+                            return DemandInquiryCard(
+                              post: p,
+                              timeLabel: _timeLabel(p, s),
+                              myStockMatchScore: _myStockScores[p.id],
+                              onTap: () => DemandBoardNavigation.openPostDetail(
+                                    context,
+                                    post: p,
+                                  ),
+                              onOffer: () => DemandBoardNavigation.openSubmitOffer(
+                                    context,
+                                    post: p,
+                                  ),
+                            );
+                          },
+                        ),
+                      ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+    this.showDropdownIcon = true,
+    this.leadingIcon,
+  });
+
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final bool showDropdownIcon;
+  final IconData? leadingIcon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: active ? AppTheme.primaryLight : AppTheme.cardTint,
+      shape: StadiumBorder(
+        side: BorderSide(color: active ? AppTheme.primary : AppTheme.border),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const StadiumBorder(),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (leadingIcon != null) ...[
+                Icon(
+                  leadingIcon,
+                  size: 14,
+                  color: active ? AppTheme.primary : AppTheme.textSecondary,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    color: active ? AppTheme.primary : AppTheme.textSecondary,
+                  ),
+                ),
+              ),
+              if (showDropdownIcon) ...[
+                const SizedBox(width: 2),
+                Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  size: 16,
+                  color: active ? AppTheme.primary : AppTheme.textSecondary,
+                ),
+              ],
+            ],
+          ),
+        ),
       ),
     );
   }

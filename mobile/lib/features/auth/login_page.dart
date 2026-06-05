@@ -2,23 +2,41 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../config/env.dart';
+import '../../l10n/app_strings.dart';
+import '../../models/app_perspective.dart';
 import '../../services/auth_service.dart';
+import '../../state/locale_controller.dart';
+import '../../state/session_gate.dart';
+import '../../state/user_role_controller.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/li_layout.dart';
+import '../../theme/living_bkk_brand.dart';
+import '../../utils/admin_routing.dart';
+import '../../widgets/language_switch_button.dart';
+import '../../widgets/living_bkk_logo.dart';
+import 'auth_form_widgets.dart';
 
+/// หน้าเข้าสู่ระบบ — บังคับล็อกอิน/สมัคร (อ้างอิง AgentAble)
 class LoginPage extends StatefulWidget {
-  const LoginPage({super.key});
+  const LoginPage({
+    super.key,
+    required this.roleController,
+    required this.localeController,
+  });
+
+  final UserRoleController roleController;
+  final LocaleController localeController;
 
   @override
   State<LoginPage> createState() => _LoginPageState();
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _auth = AuthService();
+  final _auth = AuthService.instance;
   final _email = TextEditingController();
   final _password = TextEditingController();
-  bool _isSignUp = false;
   bool _loading = false;
-  String _role = 'seeker';
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -27,128 +45,331 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _submit() async {
+  Future<void> _afterAuth() async {
+    final role = await _auth.fetchProfileRole();
+    if (role == 'admin') {
+      widget.roleController.setPlatformAdmin(true);
+    } else {
+      widget.roleController.setPlatformAdmin(false);
+    }
+    if (_auth.isTrialSignedIn) {
+      widget.roleController.setRole(_auth.trialRole ?? 'seeker');
+    } else {
+      widget.roleController.setPerspective(AppPerspective.customer);
+    }
+    await SessionGate.instance?.markAuthenticated();
+    if (!mounted) return;
+    if (role == 'admin') {
+      context.go(adminHomePath());
+      return;
+    }
+    context.go('/');
+  }
+
+  Future<void> _enterTrial() async {
+    final s = AppStrings.of(context);
     setState(() => _loading = true);
     try {
-      if (_isSignUp) {
-        await _auth.signUp(
-          email: _email.text.trim(),
-          password: _password.text,
-          role: _role,
-        );
-      } else {
-        await _auth.signIn(
-          email: _email.text.trim(),
-          password: _password.text,
-        );
-      }
+      await _auth.signInAsTrial();
+      await _afterAuth();
       if (!mounted) return;
-      context.go('/');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.trialEntered), duration: const Duration(seconds: 3)),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
+        SnackBar(content: Text(AuthService.friendlyMessage(e))),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    if (!Env.isConfigured) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('เข้าสู่ระบบ')),
-        body: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.cloud_off, size: 64, color: AppTheme.textSecondary),
-              const SizedBox(height: 16),
-              const Text(
-                'โหมด Demo — ยังไม่ตั้งค่า Supabase',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'แก้ไฟล์ mobile/assets/env แล้วรันแอปใหม่\nหรือดู docs/SETUP.md',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textSecondary),
-              ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: () => context.go('/'),
-                child: const Text('ใช้งาน Demo ต่อ'),
-              ),
-            ],
-          ),
+  Future<void> _submit() async {
+    if (_password.text.isEmpty && Env.allowPasswordlessLogin) {
+      await _enterTrial();
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await _auth.signIn(
+        email: _email.text.trim(),
+        password: _password.text,
+      );
+      await _afterAuth();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AuthService.friendlyMessage(e)),
+          duration: const Duration(seconds: 6),
         ),
       );
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _oauth(Future<void> Function() action) async {
+    if (!Env.isConfigured) {
+      _showSnack(AppStrings.of(context).oauthNotConfigured);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await action();
+    } catch (e) {
+      if (mounted) _showSnack(AuthService.friendlyMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _forgotPassword() async {
+    final s = AppStrings.of(context);
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      _showSnack(s.resetPasswordNeedEmail);
+      return;
+    }
+    if (!Env.isConfigured) {
+      _showSnack(s.configureSupabaseFirst);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      await _auth.resetPassword(email);
+      if (mounted) _showSnack(s.resetPasswordSent);
+    } catch (e) {
+      if (mounted) _showSnack(AuthService.friendlyMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(_isSignUp ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          const Text(
-            'LivingBKK',
-            style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppTheme.primary),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'กรุงเทพฯ + ปริมณฑล · เช่า ซื้อ ขาย',
-            style: TextStyle(color: AppTheme.textSecondary),
-          ),
-          const SizedBox(height: 32),
-          TextField(
-            controller: _email,
-            decoration: const InputDecoration(labelText: 'อีเมล'),
-            keyboardType: TextInputType.emailAddress,
-            autocorrect: false,
-          ),
-          const SizedBox(height: 12),
-          TextField(
-            controller: _password,
-            decoration: const InputDecoration(labelText: 'รหัสผ่าน'),
-            obscureText: true,
-          ),
-          if (_isSignUp) ...[
-            const SizedBox(height: 16),
-            const Text('บทบาทเริ่มต้น', style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'seeker', label: Text('Seeker')),
-                ButtonSegment(value: 'owner', label: Text('Owner')),
-                ButtonSegment(value: 'agent', label: Text('Agent')),
-              ],
-              selected: {_role},
-              onSelectionChanged: (v) => setState(() => _role = v.first),
+      body: AuthSplashBackdrop(
+        child: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: LiLayout.pagePadding),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: LanguageSwitchButton(
+                              controller: widget.localeController,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          Center(
+                            child: Column(
+                              children: [
+                                ListenableBuilder(
+                                  listenable: widget.localeController,
+                                  builder: (context, _) => LivingBkkLogo(
+                                    size: LivingBkkLogoSize.md,
+                                    showTagline: false,
+                                    onGradient: true,
+                                    isEnglish: widget.localeController.isEnglish,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                const LoginSloganBlock(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 28),
+                          AuthCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Text(
+                                  s.authWelcome,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                if (!Env.isConfigured && !Env.allowPasswordlessLogin)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 16),
+                                    child: Text(
+                                      s.configureSupabaseFirst,
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                  )
+                                else ...[
+                                  AuthFormField(
+                                    controller: _email,
+                                    label: s.authEmailOrUsername,
+                                    hint: s.authEmailOrUsername,
+                                    keyboardType: TextInputType.emailAddress,
+                                  ),
+                                  const SizedBox(height: 14),
+                                  AuthFormField(
+                                    controller: _password,
+                                    label: s.authPassword,
+                                    hint: s.authPassword,
+                                    obscure: _obscurePassword,
+                                    suffix: IconButton(
+                                      icon: Icon(
+                                        _obscurePassword
+                                            ? Icons.visibility_off_outlined
+                                            : Icons.visibility_outlined,
+                                        size: 20,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                      onPressed: () => setState(
+                                        () => _obscurePassword = !_obscurePassword,
+                                      ),
+                                    ),
+                                  ),
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: TextButton(
+                                      onPressed: _loading ? null : _forgotPassword,
+                                      child: Text(
+                                        s.forgotPassword,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: AppTheme.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  SizedBox(
+                                    height: 48,
+                                    child: FilledButton(
+                                      onPressed: _loading ? null : _submit,
+                                      style: authPrimaryButtonStyle(),
+                                      child: _loading
+                                          ? const SizedBox(
+                                              height: 22,
+                                              width: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Text(
+                                              s.signInTitle,
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                  if (Env.allowPasswordlessLogin) ...[
+                                    const SizedBox(height: 10),
+                                    SizedBox(
+                                      height: 46,
+                                      child: OutlinedButton(
+                                        onPressed: _loading ? null : _enterTrial,
+                                        style: AppTheme.pillOutlined,
+                                        child: Text(
+                                          s.authQuickEntry,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    s.authOrLoginWith,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppTheme.textSecondary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      AuthSocialButton(
+                                        color: const Color(0xFF1877F2),
+                                        icon: Icons.facebook,
+                                        iconColor: Colors.white,
+                                        onTap: _loading
+                                            ? null
+                                            : () => _oauth(_auth.signInWithFacebook),
+                                      ),
+                                      const SizedBox(width: 16),
+                                      AuthSocialButton(
+                                        color: Colors.white,
+                                        border: AppTheme.border,
+                                        child: const GoogleLogoIcon(size: 24),
+                                        onTap: _loading
+                                            ? null
+                                            : () => _oauth(_auth.signInWithGoogle),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                const SizedBox(height: 20),
+                                Wrap(
+                                  alignment: WrapAlignment.center,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  children: [
+                                    Text(
+                                      s.authNoAccountYet,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppTheme.textSecondary,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () => context.push('/signup'),
+                                      child: Text(
+                                        s.authSignUpFree,
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                          color: LivingBkkBrand.loginAccentPurple,
+                                          decoration: TextDecoration.underline,
+                                          decorationColor: LivingBkkBrand.loginAccentPurple,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
+                    ),
+                  ),
+                );
+              },
             ),
-          ],
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: _loading ? null : _submit,
-            child: _loading
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Text(_isSignUp ? 'สมัคร' : 'เข้าสู่ระบบ'),
-          ),
-          TextButton(
-            onPressed: () => setState(() => _isSignUp = !_isSignUp),
-            child: Text(_isSignUp ? 'มีบัญชีแล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัคร'),
-          ),
-          TextButton(
-            onPressed: () => context.go('/'),
-            child: const Text('ข้าม (ดู Demo)'),
-          ),
-        ],
+        ),
       ),
     );
   }

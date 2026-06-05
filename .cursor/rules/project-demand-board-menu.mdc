@@ -1,0 +1,27 @@
+---
+description: ตั้งค่าเมนูบอร์ดหาทรัพย์ PROPPITER — แก้ config/navigation ไม่กระจาย route
+globs: mobile/lib/config/demand_board_menu_config.dart,mobile/lib/navigation/demand_board_navigation.dart,mobile/lib/widgets/demand/**,mobile/lib/features/board/**,docs/demand-board-menu.md
+alwaysApply: false
+---
+
+# เมนูบอร์ดหาทรัพย์
+
+เซสชันนี้โฟกัส **จุดตั้งค่ากลาง** สำหรับแท็บบอร์ด ความต้องการลูกค้า และปุ่มเสนอทรัพย์
+
+## แก้ที่เดียว
+
+- Config: `mobile/lib/config/demand_board_menu_config.dart`
+- นำทาง: `mobile/lib/navigation/demand_board_navigation.dart`
+- เอกสาร: `docs/demand-board-menu.md`
+
+ห้าม hardcode `/requirements/*` หรือ `/board/*` ใน widget ใหม่ — ใช้ config + navigation
+
+## คู่กับเมนูลงประกาศ
+
+- `docs/post-listing-menu.md` / `PostListingMenuConfig` — ฝั่งเจ้าของลงประกาศ
+- บอร์ดหาทรัพย์ — ฝั่งลูกค้าบอกความต้องการ + เจ้าของ/เอเจนท์เสนอทรัพย์
+
+## กฎธุรกิจ
+
+- ทุกมุมมองเห็นฟีดบอร์ด (`business-rules.md` §6)
+- Blind offers — ผู้ใช้ไม่เห็นข้อเสนอของกัน

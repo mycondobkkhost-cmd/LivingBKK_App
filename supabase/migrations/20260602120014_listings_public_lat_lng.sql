@@ -1,5 +1,7 @@
 -- Expose approximate map coordinates on public view (from offset location_public)
 
+DROP VIEW IF EXISTS public.listings_public CASCADE;
+
 CREATE OR REPLACE VIEW public.listings_public
 WITH (security_invoker = true)
 AS

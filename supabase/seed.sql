@@ -1,6 +1,8 @@
 -- LivingBKK seed data (run after migrations)
 -- Usage: supabase db reset  OR  psql -f supabase/seed.sql
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Commission tiers (example ladder)
 INSERT INTO public.commission_tiers (name, min_months, max_months, platform_percent, agent_percent, owner_percent, sort_order)
 VALUES
@@ -36,3 +38,84 @@ VALUES
 ON CONFLICT (slug) DO UPDATE SET
   aliases = EXCLUDED.aliases,
   center = EXCLUDED.center;
+
+-- Demo owner for local testing (password: demo12345)
+-- Email: demo-owner@livingbkk.local
+INSERT INTO auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  '11111111-1111-1111-1111-111111111111',
+  'authenticated',
+  'authenticated',
+  'demo-owner@livingbkk.local',
+  crypt('demo12345', gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"role":"owner","display_name":"LivingBKK Demo Owner"}',
+  now(),
+  now()
+)
+ON CONFLICT (id) DO NOTHING;
+
+-- Profile row (trigger may exist; ensure role)
+INSERT INTO public.profiles (id, role, display_name)
+VALUES (
+  '11111111-1111-1111-1111-111111111111',
+  'owner',
+  'LivingBKK Demo Owner'
+)
+ON CONFLICT (id) DO UPDATE SET
+  role = EXCLUDED.role,
+  display_name = EXCLUDED.display_name;
+
+-- Demo admin (password: demo12345)
+-- Email: demo-admin@livingbkk.local
+INSERT INTO auth.users (
+  instance_id,
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+VALUES (
+  '00000000-0000-0000-0000-000000000000',
+  '22222222-2222-2222-2222-222222222222',
+  'authenticated',
+  'authenticated',
+  'demo-admin@livingbkk.local',
+  crypt('demo12345', gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}',
+  '{"role":"admin","display_name":"LivingBKK Demo Admin"}',
+  now(),
+  now()
+)
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO public.profiles (id, role, display_name)
+VALUES (
+  '22222222-2222-2222-2222-222222222222',
+  'admin',
+  'LivingBKK Demo Admin'
+)
+ON CONFLICT (id) DO UPDATE SET
+  role = 'admin',
+  display_name = EXCLUDED.display_name;

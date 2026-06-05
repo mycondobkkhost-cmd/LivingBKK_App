@@ -1,6 +1,6 @@
 # Phase 4: Frontend
 
-**Status:** 4.3 (Maps, images, listing create)  
+**Status:** 4.4 complete — see [phase-5-lead-econtract.md](phase-5-lead-econtract.md) for S5  
 **Date:** 2026-06-02
 
 ---

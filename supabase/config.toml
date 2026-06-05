@@ -17,7 +17,7 @@ major_version = 15
 
 [db.seed]
 enabled = true
-sql_paths = ["./seed.sql"]
+sql_paths = ["./seed.sql", "./seed_listings.sql"]
 
 [db.pooler]
 enabled = false

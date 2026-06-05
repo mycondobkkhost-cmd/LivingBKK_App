@@ -2,9 +2,12 @@
 .env
 .env.local
 .env.*.local
+ใส่รหัส-database-ตรงนี้.env
 *.local
 .supabase/
 node_modules/
+.venv/
+**/.venv/
 .dart_tool/
 .pub-cache/
 .pub/

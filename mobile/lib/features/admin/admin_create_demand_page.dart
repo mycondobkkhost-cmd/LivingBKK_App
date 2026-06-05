@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../l10n/app_strings.dart';
 import '../../services/admin_repository.dart';
+import '../../widgets/demand/requirement_urgent_rush_toggle.dart';
 
 class AdminCreateDemandPage extends StatefulWidget {
   const AdminCreateDemandPage({super.key, required this.onCreated});
@@ -19,6 +21,7 @@ class _AdminCreateDemandPageState extends State<AdminCreateDemandPage> {
   final _minArea = TextEditingController();
   final _btsKm = TextEditingController(text: '1.5');
   String _type = 'rent';
+  bool _urgentRush = false;
   bool _busy = false;
 
   @override
@@ -42,11 +45,12 @@ class _AdminCreateDemandPageState extends State<AdminCreateDemandPage> {
         maxPriceNet: double.tryParse(_maxPrice.text),
         minAreaSqm: double.tryParse(_minArea.text),
         maxDistanceBtsKm: double.tryParse(_btsKm.text),
+        urgentRush: _urgentRush,
       );
       widget.onCreated();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('สร้างประกาศบอร์ดแล้ว')),
+        SnackBar(content: Text(context.s.adminBoardCreated)),
       );
       _title.clear();
       _desc.clear();
@@ -60,45 +64,55 @@ class _AdminCreateDemandPageState extends State<AdminCreateDemandPage> {
 
   @override
   Widget build(BuildContext context) {
+    final s = context.s;
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
-        const Text(
-          'บอร์ดประกาศจาก LivingBKK\n(ผู้ใช้จะไม่เห็นข้อเสนอของกัน)',
+        Text(
+          s.adminCreateBoardIntro,
           style: TextStyle(fontSize: 13),
         ),
         const SizedBox(height: 16),
-        TextField(controller: _title, decoration: const InputDecoration(labelText: 'หัวข้อ *')),
+        TextField(
+          controller: _title,
+          decoration: InputDecoration(labelText: '${s.offerTitleField} *'),
+        ),
         TextField(
           controller: _desc,
-          decoration: const InputDecoration(
-            labelText: 'รายละเอียด',
-            hintText: 'หาคอนโดย่านทองหล่อ BTS ≤1.5km ...',
+          decoration: InputDecoration(
+            labelText: s.offerDetailsField,
+            hintText: s.adminCreateBoardHint,
           ),
           maxLines: 4,
         ),
         TextField(
           controller: _maxPrice,
-          decoration: const InputDecoration(labelText: 'งบสูงสุด (บาท)'),
+          decoration: InputDecoration(labelText: s.adminMaxPriceLabel),
           keyboardType: TextInputType.number,
         ),
         TextField(
           controller: _minArea,
-          decoration: const InputDecoration(labelText: 'ตร.ม. ขั้นต่ำ'),
+          decoration: InputDecoration(labelText: s.adminMinAreaLabel),
           keyboardType: TextInputType.number,
         ),
         TextField(
           controller: _btsKm,
-          decoration: const InputDecoration(labelText: 'ห่าง BTS (กม.)'),
+          decoration: InputDecoration(labelText: s.adminBtsDistanceLabel),
           keyboardType: TextInputType.number,
         ),
         DropdownButtonFormField<String>(
           value: _type,
-          items: const [
-            DropdownMenuItem(value: 'rent', child: Text('เช่า')),
-            DropdownMenuItem(value: 'sale', child: Text('ขาย')),
+          items: [
+            DropdownMenuItem(value: 'rent', child: Text(s.rent)),
+            DropdownMenuItem(value: 'sale', child: Text(s.sale)),
           ],
           onChanged: (v) => setState(() => _type = v!),
+        ),
+        const SizedBox(height: 12),
+        RequirementUrgentRushToggle(
+          value: _urgentRush,
+          onChanged: (v) => setState(() => _urgentRush = v),
         ),
         const SizedBox(height: 16),
         FilledButton(
@@ -109,7 +123,7 @@ class _AdminCreateDemandPageState extends State<AdminCreateDemandPage> {
                   height: 22,
                   child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                 )
-              : const Text('เผยแพร่บอร์ด'),
+              : Text(s.adminPublishBoard),
         ),
       ],
     );

@@ -1,5 +1,6 @@
-import 'dart:io';
+import 'dart:convert';
 
+import 'package:crypto/crypto.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'supabase_service.dart';
@@ -25,9 +26,9 @@ class StorageService {
 
     for (var i = 0; i < files.length; i++) {
       final file = files[i];
-      final ext = file.path.split('.').last;
+      final ext = _extension(file);
       final path = '$uid/$listingId/${DateTime.now().millisecondsSinceEpoch}_$i.$ext';
-      final bytes = await File(file.path).readAsBytes();
+      final bytes = await file.readAsBytes();
 
       await SupabaseService.client!.storage
           .from('listing-images')
@@ -39,14 +40,69 @@ class StorageService {
 
       urls.add(publicUrl);
 
+      final hash = _perceptualHash(bytes);
+
       await SupabaseService.client!.from('listing_images').insert({
         'listing_id': listingId,
         'storage_path': path,
         'public_url': publicUrl,
         'sort_order': i,
+        'perceptual_hash': hash,
+        'moderation_status': 'pending',
       });
+
+      try {
+        await SupabaseService.client!.functions.invoke(
+          'image-dedup-check',
+          body: {'listing_id': listingId, 'perceptual_hash': hash},
+        );
+      } catch (_) {}
     }
 
     return urls;
+  }
+
+  String _perceptualHash(List<int> bytes) {
+    final digest = sha256.convert(bytes);
+    return base64Encode(digest.bytes.take(16).toList());
+  }
+
+  Future<void> uploadDemandOfferImages({
+    required String offerId,
+    required List<XFile> files,
+  }) async {
+    if (!SupabaseService.isReady) {
+      throw Exception('ต้องล็อกอินและตั้งค่า Supabase');
+    }
+
+    final uid = SupabaseService.client!.auth.currentUser!.id;
+
+    for (var i = 0; i < files.length; i++) {
+      final file = files[i];
+      final ext = _extension(file);
+      final path = '$uid/$offerId/${DateTime.now().millisecondsSinceEpoch}_$i.$ext';
+      final bytes = await file.readAsBytes();
+
+      await SupabaseService.client!.storage
+          .from('demand-offers')
+          .uploadBinary(path, bytes);
+
+      final publicUrl = SupabaseService.client!.storage
+          .from('demand-offers')
+          .getPublicUrl(path);
+
+      await SupabaseService.client!.from('demand_offer_images').insert({
+        'demand_offer_id': offerId,
+        'storage_path': path,
+        'public_url': publicUrl,
+        'sort_order': i,
+      });
+    }
+  }
+
+  String _extension(XFile file) {
+    final parts = file.name.split('.');
+    if (parts.length > 1) return parts.last.toLowerCase();
+    return 'jpg';
   }
 }

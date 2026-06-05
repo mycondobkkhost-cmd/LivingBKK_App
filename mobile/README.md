@@ -1,6 +1,6 @@
 # LivingBKK Mobile (Flutter)
 
-Phase 4 frontend — Map-first UI, Demand Board, Supabase integration.
+LivingBKK — Map-first property platform · Bangkok metro · Rent · Buy · Sell.
 
 ## Prerequisites
 

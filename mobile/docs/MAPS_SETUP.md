@@ -3,7 +3,10 @@
 ## 1. API Key
 
 1. https://console.cloud.google.com  
-2. Enable **Maps SDK for Android** and **Maps SDK for iOS**  
+2. Enable APIs:
+   - **Maps JavaScript API** (จำเป็นสำหรับ Chrome/Web)
+   - **Maps SDK for Android** and **Maps SDK for iOS**
+   - **Places API** (ค้นหาโครงการจาก Google ในช่องค้นหา)
 3. Create API key → restrict by app bundle id if needed  
 
 4. Add to `mobile/assets/env`:
@@ -44,11 +47,21 @@ Also add to `ios/Runner/Info.plist`:
 
 Ensure platform iOS 14+ in `ios/Podfile`.
 
-## 3. Run
+## 3. Web (Chrome) — สำคัญ
+
+แก้ `mobile/web/index.html` บรรทัด Google Maps script:
+
+```html
+<script src="https://maps.googleapis.com/maps/api/js?key=AIza...คีย์เดียวกับ env"></script>
+```
+
+คีย์ใน `assets/env` อย่างเดียว **ไม่พอ** สำหรับ Flutter Web
+
+## 4. Run
 
 ```bash
 flutter pub get
-flutter run
+flutter run -d chrome
 ```
 
-Without key → fallback UI แต่ยังใช้「ใกล้ฉัน」ได้ (เลื่อนกล้องเมื่อมี Maps)
+Without key → fallback UI (ข้อความแนะนำใส่คีย์) · แผนที่จริงใน ค้นหา / รายละเอียดทรัพย์ / Admin นัดชม

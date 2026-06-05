@@ -1,0 +1,54 @@
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../config/demand_board_menu_config.dart';
+import '../models/demand_post.dart';
+import '../shell/main_shell_scope.dart';
+
+/// นำทางเมนูบอร์ดหาทรัพย์ — ใช้แทน `context.push('/requirements/...')` ตรงๆ
+abstract final class DemandBoardNavigation {
+  static void openBoardTab(BuildContext context) {
+    MainShellScope.maybeOf(context)?.selectTab(DemandBoardMenuConfig.boardTabIndex);
+  }
+
+  static void openCreateRequirement(BuildContext context) {
+    context.push(DemandBoardMenuConfig.createRequirementRoute);
+  }
+
+  static void openMyRequirements(BuildContext context) {
+    context.push(DemandBoardMenuConfig.myRequirementsRoute);
+  }
+
+  static void openSavedBoard(BuildContext context) {
+    context.push(DemandBoardMenuConfig.savedBoardRoute);
+  }
+
+  static void openPostDetail(
+    BuildContext context, {
+    required DemandPost post,
+  }) {
+    context.push(
+      DemandBoardMenuConfig.boardDetailRoute(post.id),
+      extra: post,
+    );
+  }
+
+  static void openSubmitOffer(
+    BuildContext context, {
+    required DemandPost post,
+  }) {
+    context.push(
+      DemandBoardMenuConfig.boardOfferRoute(post.id),
+      extra: post,
+    );
+  }
+
+  static void onProfileEntry(BuildContext context, DemandBoardMenuEntry entry) {
+    if (entry.opensBoardTab) {
+      openBoardTab(context);
+      return;
+    }
+    final route = entry.route;
+    if (route != null) context.push(route);
+  }
+}

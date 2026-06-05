@@ -1,0 +1,74 @@
+/// รหัสทรัพย์ + หมายเลขธุรกรรม (อังกฤษ + ตัวเลข)
+///
+/// ทรัพย์: `RENT-CD-2026-000042` (ประเภทธุรกรรม · ประเภททรัพย์ · ปี · ลำดับ)
+/// แชท:   `CHAT-2026-000001`
+/// Lead:  `LEAD-2026-000001`
+/// นัด:   `APPT-2026-000001`
+abstract final class ReferenceCodes {
+  static String propertyPrefix(String propertyType) {
+    switch (propertyType) {
+      case 'house':
+        return 'HS';
+      case 'townhouse':
+        return 'TH';
+      case 'apartment':
+        return 'AP';
+      case 'other':
+        return 'OT';
+      case 'condo':
+      default:
+        return 'CD';
+    }
+  }
+
+  static String listingTypePrefix(String listingType) =>
+      listingType == 'sale' ? 'SALE' : 'RENT';
+
+  /// สร้างรหัสทรัพย์ตามหมวด (ใช้ demo / preview — production ใช้ trigger ใน Supabase)
+  static String listingCode({
+    required String listingType,
+    required String propertyType,
+    required int sequence,
+    int? year,
+  }) {
+    final y = year ?? DateTime.now().year;
+    return '${listingTypePrefix(listingType)}-${propertyPrefix(propertyType)}-$y-'
+        '${sequence.toString().padLeft(6, '0')}';
+  }
+
+  static String transactionRef(String kind, int sequence, {int? year}) {
+    final y = year ?? DateTime.now().year;
+    final prefix = switch (kind) {
+      'chat' => 'CHAT',
+      'lead' => 'LEAD',
+      'appt' => 'APPT',
+      _ => 'TXN',
+    };
+    return '$prefix-$y-${sequence.toString().padLeft(6, '0')}';
+  }
+
+  /// อ้างอิงแชท demo ที่ stable จาก seed string
+  static String demoChatRef(String seed, {int offset = 0}) {
+    final n = (seed.hashCode.abs() + offset) % 999999 + 1;
+    return transactionRef('chat', n);
+  }
+
+  static String demoLeadRef(String seed) {
+    final n = seed.hashCode.abs() % 999999 + 1;
+    return transactionRef('lead', n);
+  }
+
+  static String demoApptRef(String seed) {
+    final n = seed.hashCode.abs() % 999999 + 1;
+    return transactionRef('appt', n);
+  }
+
+  /// รหัสพิเศษ (discovery / staff) — ไม่ใช่ทรัพย์จริง
+  static bool isSpecialListingCode(String code) {
+    final upper = code.toUpperCase();
+    return upper == 'DISCOVERY' ||
+        upper.startsWith('SUPPORT') ||
+        upper.startsWith('REQ-') ||
+        upper.startsWith('DEMAND-');
+  }
+}

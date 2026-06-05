@@ -9,7 +9,7 @@ class CoAgentRepository {
       throw Exception('ต้องล็อกอินและตั้งค่า Supabase');
     }
     final uid = SupabaseService.client!.auth.currentUser?.id;
-    if (uid == null) throw Exception('กรุณาล็อกอินก่อนขอโคเอเจ้นท์');
+    if (uid == null) throw Exception('กรุณาล็อกอินก่อนขอโคนายหน้า');
 
     await SupabaseService.client!.from('co_agent_requests').insert({
       'listing_id': listingId,

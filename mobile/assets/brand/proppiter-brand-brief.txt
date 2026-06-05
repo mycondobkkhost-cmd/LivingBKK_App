@@ -1,0 +1,76 @@
+# PROPPITER — Brand brief (from mockups 2026-06)
+# LivingBKK → PROPPITER rebrand | PropTech startup
+
+## Brand name
+PROPPITER (all caps in UI; concept: Property + Piter)
+
+## Tagline — Thai (official separator: •)
+โพสต์ฟรี • ปิดดีลไว • ไม่ต้องหาลูกค้าเอง
+
+## Tagline — English
+Post for free • Close deals faster • No chasing clients yourself
+
+## Typography
+- Wordmark EN: geometric sans bold (Prompt SemiBold/Bold or equivalent)
+- Tagline TH/EN: Prompt Regular/Medium
+- Note: "PROP" solid navy; "PITER" pink/gradient accent on light backgrounds
+
+## Colors — extracted from latest mockups (light theme)
+# Source: horizontal + stacked lockups (sampled RGB from PNG)
+
+navy_wordmark     = #18104B   # "PROP" + tagline on white
+pink_accent       = #DB3D76   # "PITER" solid on light lockups
+purple_primary    = #583AD6   # icon gradient start / primary UI
+purple_mid        = #7B5CE8   # gradient mid (between sampled stops)
+pink_gradient_end = #E03E7A   # icon gradient end
+background_light  = #F7F8FB   # app shell (near mockup white #FFFFFF panels)
+background_white  = #FFFFFF
+
+## Logo mark gradient (light UI & icons)
+gradient_start = #5634E3
+gradient_mid   = #9B6DFF
+gradient_end   = #DB3D76
+gradient_stops = 0.0, 0.55, 1.0
+
+## Legacy mapping (LivingBKK → PROPPITER)
+# Old primary #6C5DD3 → use purple_primary #583AD6
+# Old accent  #FF5B8A → use pink_accent #DB3D76
+# Old navy    #12122B → use navy_wordmark #18104B (slightly warmer)
+
+## Dark theme — recommended (inverted for readability, same concept)
+# Backgrounds
+dark_bg           = #0E0C18   # app / splash base
+dark_surface      = #16142A   # cards, sheets
+dark_surface_elev = #221E3C   # elevated chips, inputs
+dark_border       = #2E2948
+
+# Logo / wordmark on dark (export lockup-dark.png with these rules)
+dark_prop_text    = #F5F3FF   # "PROP" — off-white, not pure #FFF
+dark_piter_text   = #FF6B9D   # "PITER" — lighter pink for contrast on navy
+dark_tagline_text = #B8B2D4   # tagline — muted lavender-gray
+dark_icon_gradient_start = #6E4AE8
+dark_icon_gradient_mid   = #A88BFF
+dark_icon_gradient_end   = #FF7AAB
+
+# UI accents on dark (buttons, links)
+dark_primary      = #7B5CE8
+dark_primary_hover= #6E4AE8
+dark_accent       = #FF6B9D
+
+## Asset filenames (replace LivingBKK set in this folder)
+logo-mark.png
+app-icon-gradient.png          # 1024×1024
+favicon-256.png                # 256×256
+logo-lockup-light.png
+logo-lockup-dark.png           # use dark_* colors above
+logo-lockup-compact-light.png
+logo-lockup-compact-dark.png
+logo-lockup.png                # = light
+logo-stacked-vertical.png
+proppiter-brand-guide.png
+
+## Export notes for designer
+- Tagline must use bullet • (U+2022), not |
+- lockup-light: navy PROP + pink PITER + navy tagline on transparent or white
+- lockup-dark: dark_prop / dark_piter / dark_tagline on transparent over #0E0C18 preview
+- compact variants: no tagline

@@ -1,7 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 
-const CAPACITIES = ["owner_direct_100", "co_agent_50_50", "listing_agent"] as const;
+const CAPACITIES = [
+  "owner_direct_100",
+  "co_agent_50_50",
+  "referrer_15",
+  "listing_agent",
+] as const;
+
+const TRANSACTION_TYPES = ["rent", "sale"] as const;
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -19,9 +26,16 @@ Deno.serve(async (req) => {
       demand_post_id,
       offerer_capacity,
       offer_type,
+      transaction_type,
       title,
       description,
       price_net,
+      price_max_net,
+      transfer_terms,
+      commission_scheme,
+      commission_note,
+      contact_name,
+      contact_phone,
       area_sqm,
       bedrooms,
       external_url,
@@ -39,8 +53,22 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Invalid offerer_capacity" }, 400);
     }
 
-    if (offer_type === "external_link" && !external_url) {
-      return jsonResponse({ error: "external_url required for link offers" }, 400);
+    if (transaction_type && !TRANSACTION_TYPES.includes(transaction_type)) {
+      return jsonResponse({ error: "Invalid transaction_type" }, 400);
+    }
+
+    if (transaction_type === "sale" && !transfer_terms) {
+      return jsonResponse({ error: "transfer_terms required for sale offers" }, 400);
+    }
+
+    const needsCommission =
+      offerer_capacity === "owner_direct_100" ||
+      offerer_capacity === "co_agent_50_50";
+    if (needsCommission && !commission_scheme) {
+      return jsonResponse({ error: "commission_scheme required" }, 400);
+    }
+    if (commission_scheme === "custom" && !commission_note) {
+      return jsonResponse({ error: "commission_note required for custom" }, 400);
     }
 
     const supabase = createClient(
@@ -62,7 +90,7 @@ Deno.serve(async (req) => {
 
     const { data: post } = await supabase
       .from("demand_posts")
-      .select("id, status")
+      .select("id, status, post_code, title")
       .eq("id", demand_post_id)
       .single();
 
@@ -78,12 +106,19 @@ Deno.serve(async (req) => {
         offerer_capacity,
         offerer_app_role: profile?.role ?? "seeker",
         offer_type,
+        transaction_type: transaction_type ?? null,
         title,
         description,
         price_net,
+        price_max_net,
+        transfer_terms: transfer_terms ?? null,
+        commission_scheme: commission_scheme ?? null,
+        commission_note: commission_note ?? null,
+        contact_name: contact_name ?? null,
+        contact_phone: contact_phone ?? null,
         area_sqm,
         bedrooms,
-        external_url,
+        external_url: external_url || null,
         external_note,
       })
       .select("id, status, created_at")
@@ -93,7 +128,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: insertError.message }, 400);
     }
 
-    return jsonResponse({ success: true, offer });
+    return jsonResponse({
+      success: true,
+      offer,
+      demand_post_code: post.post_code,
+      demand_post_title: post.title,
+    });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
   }

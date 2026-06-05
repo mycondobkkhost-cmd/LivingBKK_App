@@ -13,7 +13,7 @@
 | พื้นที่ | กรุงเทพฯ + ปริมณฑล |
 | ไม่ทำ | Booking รายวัน |
 | โมเดล | ตัวกลาง 100% — ไม่เปิดเบอร์/Line โดยตรง |
-| รายได้ | Success Fee + Property Management (~20k/ปี) |
+| รายได้ | Success Fee เท่านั้น (โพสต์ประกาศฟรี) |
 | Roles | Owner, Agent, Admin, Seeker |
 
 ---
@@ -200,9 +200,9 @@ Admin creates demand_post
 | **S5** | E-Contract | Commission tiers, accept gate |
 | **S6** | Co-Agent | Eligible filter, requests |
 | **S7** | Demand Board | Posts, blind offers, capacity dropdown |
-| **S8** | Moderation | Text AI, image dedup, lifecycle |
+| **S8** ✅ | Moderation | Text AI, image dedup, lifecycle — [phase-11-production-complete.md](phase-11-production-complete.md) |
 | **S9** | Admin + Make | Dashboard, Sheets sync |
-| **S10** | PM Package | 20k/yr subscription |
+| ~~**S10**~~ | ~~PM Package~~ | ยกเลิก — โพสต์ฟรีทุกคน |
 
 ---
 
@@ -242,7 +242,7 @@ LivingBKK_App/
 - [x] Bounded contexts & roles  
 - [x] Co-agent eligible rules  
 - [x] Demand board + blind offers + capacity dropdown  
-- [x] Roadmap S0–S10  
+- [x] Roadmap S0–S9 (โพสต์ฟรี — ไม่มีแพ็ก subscription)  
 - [ ] Supabase project created (Phase 3)  
 
 **Next:** Phase 3 — Database migrations + RLS
