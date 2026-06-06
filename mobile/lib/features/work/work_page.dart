@@ -6,6 +6,8 @@ import '../../config/env.dart';
 import '../../services/co_agent_repository.dart';
 import '../../services/work_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class WorkPage extends StatefulWidget {
   const WorkPage({
@@ -65,19 +67,28 @@ class _WorkPageState extends State<WorkPage> {
   @override
   Widget build(BuildContext context) {
     final s = context.s;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(s.appointmentsTitle),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
-        ],
-      ),
+    return ConsumerPageShell(
+      title: s.appointmentsTitle,
+      onBack: () => context.pop(),
+      actions: [
+        ConsumerHeaderIconButton(
+          icon: Icons.refresh_rounded,
+          onTap: _load,
+        ),
+      ],
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: PageSafeInsets.padLTRB(
+                  context,
+                  left: 16,
+                  top: 16,
+                  right: 16,
+                  bottom: 16,
+                  addHomeIndicator: false,
+                ),
                 children: [
                   if (!Env.isConfigured)
                     Card(
@@ -87,6 +98,8 @@ class _WorkPageState extends State<WorkPage> {
                       ),
                     ),
                   if (widget.canManageLeads) ...[
+                    _leadSummaryCard(s),
+                    const SizedBox(height: 12),
                     _sectionTitle(s.workLeadInbox),
                     if (_inbox.isEmpty)
                       _empty(s.workNoLeadsInbox)
@@ -116,6 +129,47 @@ class _WorkPageState extends State<WorkPage> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _leadSummaryCard(AppStrings s) {
+    var accepted = 0;
+    var pending = 0;
+    for (final row in _inbox) {
+      final st = row['status']?.toString() ?? '';
+      if (st == 'accepted') {
+        accepted++;
+      } else if (st == 'new' || st == 'routed') {
+        pending++;
+      }
+    }
+    return Card(
+      color: AppTheme.primaryLight.withOpacity(0.4),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(Icons.insights_outlined, color: AppTheme.primary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    s.workLeadSummaryTitle,
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    s.workLeadSummaryLine(_inbox.length, accepted, pending),
+                    style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

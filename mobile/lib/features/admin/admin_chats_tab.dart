@@ -7,6 +7,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/admin_chat_ops.dart';
 import '../../models/chat_room.dart';
 import '../../services/chat_service.dart';
+import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
 
 /// กล่องแชทรอทีมงาน — รับงาน / งานของฉัน / ปิดแล้ว
@@ -35,18 +36,32 @@ class AdminChatsTab extends StatefulWidget {
 class _AdminChatsTabState extends State<AdminChatsTab>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
+  int _prevUnclaimed = 0;
 
   @override
   void initState() {
     super.initState();
     _tabs = TabController(length: 3, vsync: this);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ChatService.instance.refreshAdminInbox();
+    ChatService.instance.addListener(_onInboxChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ChatService.instance.refreshAdminInbox();
+      _onInboxChanged();
     });
+  }
+
+  void _onInboxChanged() {
+    if (!mounted) return;
+    final unclaimed =
+        ChatService.instance.listAdminInbox(bucket: AdminInboxBucket.unclaimed);
+    if (unclaimed.length > _prevUnclaimed && unclaimed.isNotEmpty) {
+      _tabs.animateTo(0);
+    }
+    _prevUnclaimed = unclaimed.length;
   }
 
   @override
   void dispose() {
+    ChatService.instance.removeListener(_onInboxChanged);
     _tabs.dispose();
     super.dispose();
   }
@@ -67,6 +82,9 @@ class _AdminChatsTabState extends State<AdminChatsTab>
     if (room.category == 'demand_offer') {
       return s.adminInboxDemandOffer;
     }
+    if (room.category == 'customer_requirement' || room.isCustomerRequirement) {
+      return s.adminInboxRequirement;
+    }
     if (room.category == 'escalation' ||
         room.messages.any((m) => m.requiresAdmin)) {
       return s.adminInboxNeedsStaff;
@@ -76,6 +94,9 @@ class _AdminChatsTabState extends State<AdminChatsTab>
 
   Color _inboxColor(ChatRoom room) {
     if (room.category == 'booking_interest') return const Color(0xFFDC2626);
+    if (room.isCustomerRequirement) return AppTheme.accentDeep;
+    if (room.isDiscovery) return AppTheme.primary;
+    if (room.isDemandOffer) return AppTheme.accentMid;
     if (room.viewingSubmitted) return AppTheme.accentDeep;
     if (room.isStaffSupport) return AppTheme.accentMid;
     return AppTheme.primary;
@@ -103,16 +124,12 @@ class _AdminChatsTabState extends State<AdminChatsTab>
             if (!widget.compact)
               Card(
                 margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-                color: AppTheme.accentDeepLight,
                 child: Padding(
                   padding: const EdgeInsets.all(14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Text(
-                        s.adminInboxIntro,
-                        style: TextStyle(fontSize: 13, height: 1.45),
-                      ),
+                      Text(s.adminInboxIntro, style: AdminTheme.hint),
                       const SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.end,
@@ -134,7 +151,35 @@ class _AdminChatsTabState extends State<AdminChatsTab>
                   ),
                 ),
               )
-            else
+            else ...[
+              if (unclaimed.isNotEmpty)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: AppTheme.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppTheme.error.withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications_active_outlined,
+                          size: 18, color: AppTheme.error),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s.adminInboxTabUnclaimed(unclaimed.length),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.error,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
                 child: Row(
@@ -142,7 +187,7 @@ class _AdminChatsTabState extends State<AdminChatsTab>
                     Expanded(
                       child: Text(
                         s.adminConsoleInboxHint,
-                        style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+                        style: AdminTheme.caption,
                       ),
                     ),
                     IconButton(
@@ -151,6 +196,34 @@ class _AdminChatsTabState extends State<AdminChatsTab>
                       onPressed: () => context.push('/admin/faq'),
                     ),
                   ],
+                ),
+              ),
+            ],
+            if (unclaimed.isEmpty && mine.isNotEmpty)
+              Material(
+                color: AppTheme.accentMidLight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      Icon(Icons.info_outline, size: 16, color: AppTheme.accentMid),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          s.adminInboxCheckMine(mine.length),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppTheme.accentMid,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () => _tabs.animateTo(1),
+                        child: Text(s.adminInboxTabMine(mine.length)),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             TabBar(

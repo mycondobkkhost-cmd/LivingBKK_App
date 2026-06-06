@@ -19,6 +19,7 @@ class SmartSearchBar extends StatefulWidget {
     required this.filters,
     required this.onFiltersChanged,
     this.style = SearchBarStyle.standard,
+    this.dense = false,
     this.onMapSearch,
     this.onOpenFilters,
     this.onOpenProject,
@@ -27,6 +28,7 @@ class SmartSearchBar extends StatefulWidget {
   final SearchFilters filters;
   final void Function(SearchFilters filters) onFiltersChanged;
   final SearchBarStyle style;
+  final bool dense;
   final VoidCallback? onMapSearch;
   final VoidCallback? onOpenFilters;
   final void Function(String projectName, {String? projectSlug})? onOpenProject;
@@ -364,8 +366,14 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
 
   Widget _buildAirbnbSearchBox(BuildContext context, AppStrings s) {
     final p = context.palette;
+    final dense = widget.dense;
+    final fontSize = dense ? 14.0 : 15.0;
+    final iconSize = dense ? 20.0 : 22.0;
+    final vPad = dense ? 0.0 : 14.0;
     return Container(
-      decoration: LiLayout.searchBarDecorationFor(p),
+      decoration: dense
+          ? null
+          : LiLayout.searchBarDecorationFor(p),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -373,9 +381,11 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
             child: TextField(
               controller: _controller,
               focusNode: _focus,
+              textAlignVertical: TextAlignVertical.center,
               style: TextStyle(
-                fontSize: 15,
+                fontSize: fontSize,
                 fontWeight: FontWeight.w500,
+                height: 1.2,
                 color: p.textPrimary,
               ),
               onChanged: _onChanged,
@@ -394,15 +404,24 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
                 });
               },
               decoration: InputDecoration(
+                isDense: dense,
                 hintText: s.searchHintProjects,
                 hintStyle: TextStyle(
-                  fontSize: 15,
+                  fontSize: fontSize,
+                  height: 1.2,
                   color: p.textSecondary.withOpacity(0.85),
                   fontWeight: FontWeight.w400,
                 ),
                 filled: false,
-                prefixIcon: Icon(Icons.search, color: p.primary, size: 22),
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                prefixIcon: Icon(Icons.search, color: p.primary, size: iconSize),
+                prefixIconConstraints: BoxConstraints(
+                  minWidth: dense ? 40 : 48,
+                  minHeight: dense ? 40 : 48,
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  vertical: vPad,
+                  horizontal: dense ? 0 : 12,
+                ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -434,10 +453,15 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
             ),
           ),
           if (widget.onMapSearch != null) ...[
-            Container(width: 1, height: 28, color: p.divider),
+            Container(width: 1, height: dense ? 22 : 28, color: p.divider),
             IconButton(
+              visualDensity: VisualDensity.compact,
+              padding: dense ? EdgeInsets.zero : null,
+              constraints: dense
+                  ? const BoxConstraints(minWidth: 40, minHeight: 40)
+                  : null,
               tooltip: s.mapSearchShort,
-              icon: Icon(Icons.map_outlined, color: p.primary, size: 22),
+              icon: Icon(Icons.map_outlined, color: p.primary, size: iconSize),
               onPressed: widget.onMapSearch,
             ),
           ],

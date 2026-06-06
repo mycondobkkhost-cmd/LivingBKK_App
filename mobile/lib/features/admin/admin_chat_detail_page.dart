@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_strings.dart';
+import '../../widgets/admin_mobile_layout.dart';
 import 'admin_chat_panel.dart';
 
 /// หน้าแชทแอดมิน (มือถือ) — บน Web ส่งไป console อัตโนมัติ
@@ -32,14 +33,17 @@ class _AdminChatDetailPageState extends State<AdminChatDetailPage> {
     final s = context.s;
 
     if (kIsWeb) {
-      return Scaffold(
-        appBar: AppBar(title: Text(s.adminConsoleTitle)),
+      return AdminMobileLayout.scaffold(
+        context: context,
+        appBar: AdminMobileLayout.appBar(context: context, title: Text(s.adminConsoleTitle)),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.adminChatTitle)),
+    return AdminMobileLayout.scaffold(
+      context: context,
+      appBar: AdminMobileLayout.appBar(context: context, title: Text(s.adminChatTitle)),
+      safeBottom: false,
       body: AdminChatPanel(roomId: widget.roomId),
     );
   }

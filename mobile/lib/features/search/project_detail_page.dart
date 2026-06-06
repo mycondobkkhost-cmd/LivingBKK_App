@@ -16,6 +16,8 @@ import '../../utils/listing_browse_sorter.dart';
 import '../../utils/listing_navigation.dart';
 import '../../widgets/listing_card.dart';
 import '../../widgets/listings_map.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 enum _ProjectTx { all, rent, sale }
 
@@ -110,17 +112,22 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     final title = p?.displayBilingual ?? widget.projectSlug;
     final visible = _visible;
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: () => context.pop()),
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
+    return ConsumerPageShell(
+      title: title,
+      onBack: () => context.pop(),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.all(LiLayout.pagePadding),
+                padding: PageSafeInsets.padLTRB(
+                  context,
+                  left: LiLayout.pagePadding,
+                  top: LiLayout.pagePadding,
+                  right: LiLayout.pagePadding,
+                  bottom: LiLayout.pagePadding,
+                  addHomeIndicator: false,
+                ),
                 children: [
                   if (p != null) ...[
                     if (p.bts != null)

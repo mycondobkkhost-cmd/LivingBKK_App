@@ -1,4 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireAdmin } from "../_shared/admin_auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { matchProject } from "../_shared/li_parser.ts";
@@ -6,13 +5,12 @@ import {
   parseProjectFromUrl,
   slugifyProjectName,
 } from "../_shared/project_parser.ts";
-
-function serviceDb() {
-  return createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-}
+import { createServiceClient } from "../_shared/supabase_env.ts";
+import {
+  formatBtsField,
+  mergeNearbyTransitLabels,
+  transitAliases,
+} from "../_shared/transit_proximity.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -32,7 +30,15 @@ Deno.serve(async (req) => {
     }
 
     const parsed = await parseProjectFromUrl(sourceUrl);
-    const db = serviceDb();
+    const nearbyTransit = mergeNearbyTransitLabels({
+      lat: parsed.lat,
+      lng: parsed.lng,
+      descriptionTh: parsed.descriptionTh,
+      existing: parsed.btsStation,
+    });
+    const btsStation = formatBtsField(nearbyTransit) ?? parsed.btsStation;
+    const aliases = [...parsed.aliases, ...transitAliases(nearbyTransit)];
+    const db = createServiceClient();
 
     if (!upsert) {
       return jsonResponse({ parsed, matched: null });
@@ -47,11 +53,12 @@ Deno.serve(async (req) => {
       name_th: parsed.nameTh,
       name_en: parsed.nameEn,
       district: parsed.district,
-      bts_station: parsed.btsStation,
+      bts_station: btsStation,
+      nearby_transit: nearbyTransit,
       property_type: parsed.propertyType,
       lat: parsed.lat,
       lng: parsed.lng,
-      aliases: parsed.aliases,
+      aliases: aliases,
       year_built: parsed.yearBuilt,
       facilities: parsed.facilities,
       description_th: parsed.descriptionTh,
@@ -96,6 +103,14 @@ Deno.serve(async (req) => {
       updated: Boolean(existing?.id),
     });
   } catch (e) {
-    return jsonResponse({ error: String(e) }, 422);
+    const msg = String(e);
+    if (msg.includes("edge_config_missing")) {
+      return jsonResponse({
+        error: "edge_secrets_missing",
+        detail: msg,
+        hint: "รัน ./scripts/set-edge-secrets.sh",
+      }, 500);
+    }
+    return jsonResponse({ error: msg }, 422);
   }
 });

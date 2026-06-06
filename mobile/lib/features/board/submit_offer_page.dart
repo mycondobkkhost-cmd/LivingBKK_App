@@ -8,6 +8,9 @@ import 'package:intl/intl.dart';
 import '../../config/env.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/demand_post.dart';
+import '../../services/lead_repository.dart';
+import '../../services/demand_offer_duplicate_service.dart';
+import '../../utils/phone_suffix_util.dart';
 import '../../models/offer_commission_scheme.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
@@ -15,7 +18,11 @@ import '../../services/demand_repository.dart';
 import '../../services/storage_service.dart';
 import '../../shell/main_shell_scope.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/demand/demand_offer_warning_banner.dart';
 import '../contact/property_chat_page.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class SubmitOfferPage extends StatefulWidget {
   const SubmitOfferPage({super.key, required this.post});
@@ -36,11 +43,16 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
   String _transactionType = 'sale';
   String? _transferTerms;
   bool _submitting = false;
+  bool _checkingDuplicate = false;
+  bool _duplicateFound = false;
   List<XFile> _images = [];
+
+  bool get _needsCustomerLast4 => widget.post.requiresCustomerPhoneLast4;
 
   final _nameCtrl = TextEditingController();
   final _contactNameCtrl = TextEditingController();
   final _contactPhoneCtrl = TextEditingController();
+  final _customerLast4Ctrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _askingCtrl = TextEditingController();
   final _maxCtrl = TextEditingController();
@@ -88,6 +100,7 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
     _nameCtrl.dispose();
     _contactNameCtrl.dispose();
     _contactPhoneCtrl.dispose();
+    _customerLast4Ctrl.dispose();
     _descCtrl.dispose();
     _askingCtrl.dispose();
     _maxCtrl.dispose();
@@ -113,6 +126,27 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
     );
     if (_commissionScheme == null || !options.contains(_commissionScheme)) {
       _commissionScheme = options.first;
+    }
+  }
+
+  Future<void> _checkCustomerLast4Duplicate() async {
+    if (!_needsCustomerLast4) return;
+    final raw = _customerLast4Ctrl.text.trim();
+    if (!PhoneSuffixUtil.isValidLast4Input(raw)) {
+      setState(() => _duplicateFound = false);
+      return;
+    }
+    setState(() => _checkingDuplicate = true);
+    try {
+      final result = await DemandOfferDuplicateService.instance
+          .checkCustomerPhoneLast4(
+        raw,
+        excludeDemandPostId: widget.post.id,
+      );
+      if (!mounted) return;
+      setState(() => _duplicateFound = result.duplicate);
+    } finally {
+      if (mounted) setState(() => _checkingDuplicate = false);
     }
   }
 
@@ -160,6 +194,10 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
       s.offerContactNameField.replaceAll(' *', ''): _contactNameCtrl.text.trim(),
       s.offerContactPhoneField.replaceAll(' *', ''): _contactPhoneCtrl.text.trim(),
     };
+    if (_needsCustomerLast4) {
+      summary[s.offerCustomerPhoneLast4Label.replaceAll(' *', '')] =
+          '****${PhoneSuffixUtil.normalize(_customerLast4Ctrl.text.trim())}';
+    }
     final commission = _commissionLabel(s);
     if (commission != null) {
       summary[s.offerCommissionLabel.replaceAll(' *', '')] = commission;
@@ -209,6 +247,23 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
         SnackBar(content: Text(s.offerValidationContactPhone)),
       );
       return false;
+    }
+
+    if (_needsCustomerLast4) {
+      final last4 = PhoneSuffixUtil.normalize(_customerLast4Ctrl.text.trim());
+      if (last4.length != 4) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.offerCustomerPhoneLast4Invalid)),
+        );
+        return false;
+      }
+      final expected = widget.post.customerPhoneLast4;
+      if (expected != null && last4 != expected) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.offerCustomerPhoneLast4Mismatch)),
+        );
+        return false;
+      }
     }
 
     final asking = double.tryParse(_askingCtrl.text.trim());
@@ -280,6 +335,8 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
                       height: 1.4,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  const DemandOfferWarningBanner(compact: true),
                   const SizedBox(height: 12),
                   for (final e in summary.entries)
                     Padding(
@@ -368,10 +425,19 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
         commissionNote: commissionNote,
         contactName: _contactNameCtrl.text.trim(),
         contactPhone: _contactPhoneCtrl.text.trim(),
+        customerPhoneLast4: _needsCustomerLast4
+            ? PhoneSuffixUtil.normalize(_customerLast4Ctrl.text.trim())
+            : null,
         externalUrl: _urlCtrl.text.trim().isEmpty ? null : _urlCtrl.text.trim(),
         demandPostCode: widget.post.postCode,
         demandPostTitle: widget.post.title,
       );
+
+      if (_needsCustomerLast4) {
+        LeadRepository().recordPhoneSuffix(
+          PhoneSuffixUtil.normalize(_customerLast4Ctrl.text.trim()),
+        );
+      }
 
       if (_images.isNotEmpty && result.offerId.isNotEmpty) {
         try {
@@ -469,11 +535,21 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    return Scaffold(
-      appBar: AppBar(title: Text(s.submitOfferTitle)),
+    return ConsumerPageShell(
+      title: s.submitOfferTitle,
+      onBack: () => Navigator.of(context).maybePop(),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: PageSafeInsets.padLTRB(
+          context,
+          left: LiLayout.pagePadding,
+          top: LiLayout.pagePadding,
+          right: LiLayout.pagePadding,
+          bottom: 20,
+          addHomeIndicator: false,
+        ),
         children: [
+          const DemandOfferWarningBanner(),
+          const SizedBox(height: 20),
           Text(
             s.offerAsLabel,
             style: TextStyle(fontWeight: FontWeight.w600),
@@ -498,6 +574,52 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
             s.offerPrivateNote,
             style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
           ),
+          if (_needsCustomerLast4) ...[
+            const SizedBox(height: 20),
+            Text(
+              s.offerCustomerPhoneLast4Label,
+              style: TextStyle(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              s.offerCustomerPhoneLast4Hint,
+              style: TextStyle(fontSize: 12, color: AppTheme.textSecondary, height: 1.35),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _customerLast4Ctrl,
+              decoration: InputDecoration(
+                hintText: '••••',
+                prefixIcon: const Icon(Icons.pin_outlined),
+                counterText: '',
+                suffixIcon: _checkingDuplicate
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      )
+                    : null,
+              ),
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              onChanged: (_) => _checkCustomerLast4Duplicate(),
+            ),
+            if (_duplicateFound)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(
+                  s.offerCustomerPhoneLast4Duplicate,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppTheme.warning,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+          ],
           _commissionSection(s),
           const SizedBox(height: 24),
           Text(
@@ -548,7 +670,11 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
           const SizedBox(height: 12),
           TextField(
             controller: _descCtrl,
-            decoration: InputDecoration(labelText: s.offerDetailsField),
+            decoration: InputDecoration(
+              labelText: s.offerDetailsField,
+              hintText: s.offerDetailsVacancyHint,
+              alignLabelWithHint: true,
+            ),
             maxLines: 4,
             textCapitalization: TextCapitalization.sentences,
           ),

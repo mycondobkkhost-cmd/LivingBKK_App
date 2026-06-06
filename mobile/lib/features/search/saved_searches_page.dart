@@ -4,6 +4,9 @@ import '../../l10n/app_strings.dart';
 import '../../services/saved_search_service.dart';
 import '../../state/search_session_controller.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class SavedSearchesPage extends StatefulWidget {
   const SavedSearchesPage({
@@ -45,19 +48,24 @@ class _SavedSearchesPageState extends State<SavedSearchesPage> {
       listenable: SavedSearchService.instance,
       builder: (context, _) {
         final items = SavedSearchService.instance.items;
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(s.savedSearchTitle),
-            actions: [
-              TextButton.icon(
-                onPressed: _saveCurrent,
-                icon: const Icon(Icons.add_alert_outlined, size: 18),
-                label: Text(s.savedSearchSaveCurrent),
-              ),
-            ],
-          ),
+        return ConsumerPageShell(
+          title: s.savedSearchTitle,
+          onBack: () => Navigator.of(context).maybePop(),
+          actions: [
+            ConsumerHeaderTextButton(
+              label: s.savedSearchSaveCurrent,
+              onTap: _saveCurrent,
+            ),
+          ],
           body: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: PageSafeInsets.padLTRB(
+              context,
+              left: LiLayout.pagePadding,
+              top: LiLayout.pagePadding,
+              right: LiLayout.pagePadding,
+              bottom: 16,
+              addHomeIndicator: false,
+            ),
             children: [
               Card(
                 color: AppTheme.accentDeepLight,

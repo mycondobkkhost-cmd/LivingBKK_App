@@ -23,12 +23,15 @@ import '../../theme/app_theme.dart';
 import '../../theme/li_layout.dart';
 import '../../utils/localized_content.dart';
 import '../../utils/listing_navigation.dart';
+import '../../features/notifications/notification_center_sheet.dart';
+import '../../services/notification_center_repository.dart';
 import '../../widgets/home/home_browse_layout.dart';
 import '../../widgets/li_home_header.dart';
 import '../../widgets/listing_card.dart';
 import '../../widgets/listings_map.dart';
 import '../../widgets/search_filter_sheet.dart';
 import '../../widgets/smart_search_bar.dart';
+import '../../widgets/app_mobile_scaffold.dart';
 
 class MapHomePage extends StatefulWidget {
   const MapHomePage({
@@ -78,6 +81,13 @@ class _MapHomePageState extends State<MapHomePage> {
     SavedSearchService.instance.load();
     _loadUserLocation();
     _load();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      NotificationCenterRepository.instance.refresh(
+        role: widget.roleController,
+        isEnglish: widget.localeController.isEnglish,
+      );
+    });
   }
 
   Future<void> _loadUserLocation() async {
@@ -303,7 +313,8 @@ class _MapHomePageState extends State<MapHomePage> {
     final s = AppStrings.of(context);
     final selected = _selected;
 
-    return Scaffold(
+    return AppMobileScaffold(
+      safeBottomBody: false,
       backgroundColor: AppTheme.backgroundAlt,
       body: Stack(
         children: [
@@ -390,7 +401,12 @@ class _MapHomePageState extends State<MapHomePage> {
                   clipBehavior: Clip.antiAlias,
                   child: ListView(
                     controller: scrollController,
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+                    padding: EdgeInsets.fromLTRB(
+                      12,
+                      8,
+                      12,
+                      16 + MediaQuery.paddingOf(context).bottom,
+                    ),
                     children: [
                       Center(
                         child: Container(
@@ -471,9 +487,10 @@ class _MapHomePageState extends State<MapHomePage> {
       builder: (context, _) {
         final filters = _filters;
 
-        return Scaffold(
+        return AppMobileScaffold(
           backgroundColor: AppTheme.surfaceWarm,
           body: SafeArea(
+            top: false,
             bottom: false,
             child: Stack(
               children: [
@@ -491,7 +508,11 @@ class _MapHomePageState extends State<MapHomePage> {
                     onOpenFilters: _openFilters,
                     onOpenProfile: widget.onOpenProfile,
                     onOpenMapSearch: () => setState(() => _mapView = true),
-                    onOpenNotifications: widget.onOpenProfile,
+                    onOpenNotifications: () => NotificationCenterSheet.show(
+                      context,
+                      roleController: widget.roleController,
+                      localeController: widget.localeController,
+                    ),
                     onTapListing: _openListing,
                     onViewAllSection: _openSectionAll,
                     onOpenProject: _openProjectFromSearch,

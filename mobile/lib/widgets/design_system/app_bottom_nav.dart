@@ -3,23 +3,59 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_strings.dart';
 import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
+import '../profile/profile_avatar.dart';
 
-/// Bottom nav — elevated bar with selected pill (follows light / dark theme)
+/// Bottom nav — Apple standard tab bar (49 pt) + safe area ติดขอบล่าง
+abstract final class AppBottomNavMetrics {
+  /// ความสูงแถบไอคอน + ข้อความ (49 + 34 pt)
+  static const double tabBarHeight = 83;
+  /// Safe area ล่าง (34 + 34 pt)
+  static const double defaultSafeBottom = 68;
+  /// เลื่อนไอคอน+ข้อความขึ้นจากกึ่งกลางแถบ
+  static const double iconLift = 17;
+  static const double iconScale = 1.15;
+  static const double iconSizeSelected = 26.45;
+  static const double iconSizeDefault = 25.3;
+  static const double profileAvatarSize = 27.6;
+  static const double profileAvatarIconSize = 16.1;
+
+  static double safeBottomInset(BuildContext context) {
+    return MediaQuery.viewPaddingOf(context).bottom;
+  }
+
+  /// รวมจากขอบล่างสุด = 83 + safe area (เช่น 151 pt บน iPhone preview)
+  static double totalHeight(BuildContext context) {
+    return tabBarHeight + safeBottomInset(context);
+  }
+}
+
+abstract final class AppBottomNavColors {
+  static const activeOrange = Color(0xFFE85A00);
+  static const activeOrangeDark = Color(0xFFFF7A33);
+  static const inactiveLight = Color(0xFF4B5563);
+  static const inactiveDark = Color(0xFF9CA3AF);
+}
+
 class AppBottomNav extends StatelessWidget {
   const AppBottomNav({
     super.key,
     required this.index,
     required this.onChanged,
+    this.contactBadgeCount = 0,
+    this.profileAvatarUrl,
   });
 
   final int index;
   final ValueChanged<int> onChanged;
+  final int contactBadgeCount;
+  final String? profileAvatarUrl;
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
     final p = context.palette;
     final isLight = Theme.of(context).brightness == Brightness.light;
+    final safeBottom = AppBottomNavMetrics.safeBottomInset(context);
 
     final items = [
       _NavItem(s.navHome, Icons.search_outlined, Icons.search, 0),
@@ -40,34 +76,41 @@ class AppBottomNav extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: p.navShadow,
-            blurRadius: 24,
-            offset: const Offset(0, -8),
+            color: p.navShadow.withOpacity(0.5),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
           ),
-          if (isLight)
-            BoxShadow(
-              color: p.primary.withOpacity(0.06),
-              blurRadius: 12,
-              offset: const Offset(0, -2),
-            ),
         ],
       ),
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
-          child: Row(
-            children: [
-              for (final item in items)
-                _item(
-                  context: context,
-                  palette: p,
-                  isLight: isLight,
-                  item: item,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: AppBottomNavMetrics.tabBarHeight,
+            child: Transform.translate(
+              offset: const Offset(0, -AppBottomNavMetrics.iconLift),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Row(
+                  children: [
+                    for (final item in items)
+                      _item(
+                        context: context,
+                        palette: p,
+                        isLight: isLight,
+                        item: item,
+                        badgeCount: item.index == 3 ? contactBadgeCount : 0,
+                        profileAvatarUrl:
+                            item.index == 4 ? profileAvatarUrl : null,
+                      ),
+                  ],
                 ),
-            ],
+              ),
+            ),
           ),
-        ),
+          // พื้นทึบต่อเนื่องใต้แถบ 49 pt — home indicator อยู่ในโซนนี้
+          SizedBox(height: safeBottom),
+        ],
       ),
     );
   }
@@ -77,63 +120,69 @@ class AppBottomNav extends StatelessWidget {
     required AppPalette palette,
     required bool isLight,
     required _NavItem item,
+    int badgeCount = 0,
+    String? profileAvatarUrl,
   }) {
     final selected = index == item.index;
-    final selectedColor = palette.primary;
-    final unselectedColor = palette.textSecondary.withOpacity(0.72);
+    final selectedColor = isLight
+        ? AppBottomNavColors.activeOrange
+        : AppBottomNavColors.activeOrangeDark;
+    final unselectedColor =
+        isLight ? AppBottomNavColors.inactiveLight : AppBottomNavColors.inactiveDark;
     final color = selected ? selectedColor : unselectedColor;
+    final isProfileTab = item.index == 4;
+    final showProfilePhoto =
+        isProfileTab && profileAvatarUrl != null && profileAvatarUrl.isNotEmpty;
 
     return Expanded(
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           onTap: () => onChanged(item.index),
-          borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-          splashColor: palette.primary.withOpacity(0.12),
-          highlightColor: palette.primary.withOpacity(0.06),
-          child: AnimatedContainer(
-            duration: AppTheme.animNormal,
-            curve: Curves.easeOutCubic,
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            decoration: BoxDecoration(
-              color: selected
-                  ? palette.primaryLight.withOpacity(isLight ? 1 : 0.42)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              border: selected
-                  ? Border.all(
-                      color: palette.primary.withOpacity(isLight ? 0.18 : 0.28),
-                    )
-                  : null,
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedScale(
-                  scale: selected ? 1.05 : 1,
-                  duration: AppTheme.animFast,
-                  child: Icon(
-                    selected ? item.activeIcon : item.icon,
-                    size: selected ? 24 : 22,
-                    color: color,
-                  ),
+          borderRadius: BorderRadius.circular(12),
+          splashColor: selectedColor.withOpacity(0.1),
+          highlightColor: selectedColor.withOpacity(0.05),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.max,
+            children: [
+              Badge(
+                isLabelVisible: badgeCount > 0,
+                label: Text(
+                  badgeCount > 9 ? '9+' : '$badgeCount',
+                  style: const TextStyle(fontSize: 9),
                 ),
-                const SizedBox(height: 3),
-                Text(
-                  item.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    color: color,
-                    height: 1.1,
-                    letterSpacing: selected ? 0.1 : 0,
-                  ),
+                backgroundColor: AppTheme.error,
+                child: showProfilePhoto
+                    ? ProfileAvatar(
+                        imageUrl: profileAvatarUrl,
+                        size: AppBottomNavMetrics.profileAvatarSize,
+                        iconSize: AppBottomNavMetrics.profileAvatarIconSize,
+                        selected: selected,
+                        ringColor: selected ? selectedColor : null,
+                      )
+                    : Icon(
+                        selected ? item.activeIcon : item.icon,
+                        size: selected
+                            ? AppBottomNavMetrics.iconSizeSelected
+                            : AppBottomNavMetrics.iconSizeDefault,
+                        color: color,
+                      ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                  color: color,
+                  height: 1.0,
+                  letterSpacing: selected ? -0.1 : 0,
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

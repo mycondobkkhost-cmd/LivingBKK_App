@@ -2,7 +2,10 @@ import 'package:flutter/foundation.dart';
 
 import '../models/listing_public.dart';
 import '../utils/geo_zone_match.dart';
+import 'analytics_service.dart';
+import 'auth_service.dart';
 import 'local_prefs_service.dart';
+import 'platform_settings_service.dart';
 
 /// บันทึกทรัพย์ที่ผู้ใช้เปิดดู + analytics + ดูล่าสุด
 class ListingActivityService extends ChangeNotifier {
@@ -12,8 +15,11 @@ class ListingActivityService extends ChangeNotifier {
   static const _recentKey = 'recently_viewed_ids';
   static const _analyticsKey = 'listing_analytics_v1';
   static const maxRecent = 20;
+  /// ค่าเริ่มต้นเมื่อยังไม่โหลดตั้งค่าแอดมิน
+  static const int defaultHotViewsPerHourThreshold = 100;
 
   final _viewCounts = <String, int>{};
+  final _hourlyViewTimes = <String, List<int>>{};
   final _zoneScores = <String, int>{};
   final _recentIds = <String>[];
   final _detailViews = <String, int>{};
@@ -22,6 +28,11 @@ class ListingActivityService extends ChangeNotifier {
   bool _loaded = false;
 
   void recordView(ListingPublic listing) {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final hourly = _hourlyViewTimes.putIfAbsent(listing.id, () => []);
+    hourly.add(now);
+    _pruneHourlyViews(listing.id);
+
     _viewCounts[listing.id] = (_viewCounts[listing.id] ?? 0) + 1;
     _detailViews[listing.id] = (_detailViews[listing.id] ?? 0) + 1;
     final zone = listing.geoZoneSlug ?? inferGeoZoneSlug(listing);
@@ -30,18 +41,33 @@ class ListingActivityService extends ChangeNotifier {
     }
     _pushRecent(listing.id);
     _persistAnalytics();
+    AnalyticsService.instance.trackListingView(
+      listingId: listing.id,
+      district: listing.district,
+      listingType: listing.listingType,
+    );
     notifyListeners();
   }
 
-  void recordShare(String listingId) {
+  void recordShare(String listingId, {String? district, String? listingType}) {
     _shareClicks[listingId] = (_shareClicks[listingId] ?? 0) + 1;
     _persistAnalytics();
+    AnalyticsService.instance.trackListingShare(
+      listingId: listingId,
+      district: district,
+      listingType: listingType,
+    );
     notifyListeners();
   }
 
-  void recordChatStart(String listingId) {
+  void recordChatStart(String listingId, {String? district, String? listingType}) {
     _chatStarts[listingId] = (_chatStarts[listingId] ?? 0) + 1;
     _persistAnalytics();
+    AnalyticsService.instance.trackChatStart(
+      listingId: listingId,
+      district: district,
+      listingType: listingType,
+    );
     notifyListeners();
   }
 
@@ -60,6 +86,42 @@ class ListingActivityService extends ChangeNotifier {
 
   int viewCount(String listingId) =>
       _detailViews[listingId] ?? _viewCounts[listingId] ?? 0;
+
+  int viewsInLastHour(String listingId) {
+    _pruneHourlyViews(listingId);
+    return _hourlyViewTimes[listingId]?.length ?? 0;
+  }
+
+  int hotViewsThreshold() {
+    final cfg = PlatformSettingsService.instance.exclusive;
+    return cfg.hotViewsPerHourThreshold.clamp(1, 100000);
+  }
+
+  bool get hotBadgeEnabled =>
+      PlatformSettingsService.instance.exclusive.hotBadgeEnabled;
+
+  /// HOT ตามเกณฑ์แอดมิน — ปิดได้จาก `hot_badge_enabled`
+  bool isHotListing(String listingId, {bool demoEstimate = false}) {
+    if (!hotBadgeEnabled) return false;
+    final threshold = hotViewsThreshold();
+    if (viewsInLastHour(listingId) >= threshold) return true;
+    if (!demoEstimate) return false;
+    return seedHourlyViews(listingId) >= threshold;
+  }
+
+  /// โหมดทดลอง — ใช้ seed แทน analytics จริง
+  static bool get useDemoHotEstimate =>
+      AuthService.instance.trialSimulatesBackend ||
+      !PlatformSettingsService.instance.loaded;
+
+  void _pruneHourlyViews(String listingId) {
+    final list = _hourlyViewTimes[listingId];
+    if (list == null || list.isEmpty) return;
+    final cutoff =
+        DateTime.now().subtract(const Duration(hours: 1)).millisecondsSinceEpoch;
+    list.removeWhere((t) => t < cutoff);
+    if (list.isEmpty) _hourlyViewTimes.remove(listingId);
+  }
 
   int shareCount(String listingId) => _shareClicks[listingId] ?? 0;
 
@@ -103,6 +165,15 @@ class ListingActivityService extends ChangeNotifier {
       h = (h * 31 + c) & 0x7fffffff;
     }
     return 1 + (h % 40);
+  }
+
+  /// จำลองวิว/ชม. สำหรับ demo UI (deterministic จาก listing id)
+  static int seedHourlyViews(String id) {
+    var h = 0;
+    for (final c in id.codeUnits) {
+      h = (h * 31 + c) & 0x7fffffff;
+    }
+    return 60 + (h % 141);
   }
 
   void _pushRecent(String listingId) {

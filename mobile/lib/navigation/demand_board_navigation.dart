@@ -11,8 +11,14 @@ abstract final class DemandBoardNavigation {
     MainShellScope.maybeOf(context)?.selectTab(DemandBoardMenuConfig.boardTabIndex);
   }
 
-  static void openCreateRequirement(BuildContext context) {
-    context.push(DemandBoardMenuConfig.createRequirementRoute);
+  static void openCreateRequirement(
+    BuildContext context, {
+    String? sourceThreadId,
+  }) {
+    context.push(
+      DemandBoardMenuConfig.createRequirementRoute,
+      extra: sourceThreadId,
+    );
   }
 
   static void openMyRequirements(BuildContext context) {

@@ -10,6 +10,8 @@ import '../models/chat_room.dart';
 import '../models/customer_requirement.dart';
 import '../models/listing_public.dart';
 import '../state/locale_controller.dart';
+import 'in_app_notification_hub.dart';
+import '../utils/listing_ids.dart';
 import '../utils/localized_content.dart';
 import '../utils/reference_codes.dart';
 import 'auth_service.dart';
@@ -31,23 +33,94 @@ class ChatService extends ChangeNotifier {
   static const discoveryId = ChatServiceIds.discovery;
   static const staffSupportId = ChatServiceIds.staffSupport;
 
+  bool get _supabaseReady => Env.isConfigured && SupabaseService.isReady;
+
   bool get _backendActive =>
-      Env.isConfigured &&
-      SupabaseService.isReady &&
+      _supabaseReady &&
       !AuthService.instance.trialSimulatesBackend &&
       AuthService.instance.isRealSupabaseSession;
 
-  List<ChatRoom> listRooms() {
-    final list = _rooms.values.toList()
-      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+  /// โหลด inbox แอดมินจาก Supabase — ไม่ผูก trialSimulatesBackend (KPI นับจาก DB อยู่แล้ว)
+  bool get _adminInboxBackendActive =>
+      _supabaseReady &&
+      (AuthService.instance.isRealSupabaseSession ||
+          AuthService.instance.isTrialAdmin);
+
+  final Set<String> _myThreadIds = {};
+  final Map<String, int> _unreadByThread = {};
+  RealtimeChannel? _customerInboxChannel;
+
+  int unreadForThread(String threadId) => _unreadByThread[threadId] ?? 0;
+
+  int get totalUnreadChats =>
+      _unreadByThread.values.fold<int>(0, (sum, n) => sum + n);
+
+  void bumpUnread(String threadId, {int by = 1}) {
+    if (threadId.isEmpty) return;
+    _unreadByThread[threadId] = unreadForThread(threadId) + by;
+    notifyListeners();
+  }
+
+  void markThreadRead(String threadId) {
+    if (_unreadByThread.remove(threadId) != null) {
+      notifyListeners();
+    }
+  }
+
+  List<ChatRoom> listRooms() => listMyRooms();
+
+  /// ห้องแชทของลูกค้า — ไม่ซ้ำ alias, เรียงยังไม่อ่านก่อน แล้วล่าสุดบน
+  List<ChatRoom> listMyRooms() {
+    final seen = <String>{};
+    final list = _rooms.values
+        .where((r) => _myThreadIds.contains(r.id))
+        .where((r) => seen.add(r.id))
+        .toList()
+      ..sort((a, b) {
+        final unreadCmp =
+            unreadForThread(b.id).compareTo(unreadForThread(a.id));
+        if (unreadCmp != 0) return unreadCmp;
+        return b.updatedAt.compareTo(a.updatedAt);
+      });
     return list;
+  }
+
+  Iterable<ChatRoom> _dedupedRooms() sync* {
+    final seen = <String>{};
+    for (final room in _rooms.values) {
+      if (seen.add(room.id)) yield room;
+    }
   }
 
   ChatRoom? roomForListing(String listingId) {
     for (final room in _rooms.values) {
-      if (room.listingId == listingId) return room;
+      if (room.listingId == listingId || room.listingCode == listingId) {
+        return room;
+      }
     }
     return _rooms[listingId];
+  }
+
+  ChatRoom _resolveActiveRoom(ChatRoom room) =>
+      roomById(room.id) ??
+      roomForListing(room.listingId) ??
+      roomForListing(room.listingCode) ??
+      room;
+
+  void _registerRoom(ChatRoom room, {String? aliasKey}) {
+    _rooms[room.id] = room;
+    if (room.isPersisted) {
+      _myThreadIds.add(room.id);
+    }
+    if (aliasKey != null && aliasKey.isNotEmpty) {
+      _rooms[aliasKey] = room;
+    }
+  }
+
+  void clearAllUnread() {
+    if (_unreadByThread.isEmpty) return;
+    _unreadByThread.clear();
+    notifyListeners();
   }
 
   ChatRoom? roomById(String id) => _rooms[id];
@@ -57,8 +130,12 @@ class ChatService extends ChangeNotifier {
     if (!_backendActive) return;
     try {
       final rooms = await _repo.fetchMyThreads();
+      _myThreadIds
+        ..clear()
+        ..addAll(rooms.map((r) => r.id));
       for (final room in rooms) {
         _rooms[room.id] = room;
+        _detectUnreadFromMessages(room);
       }
       notifyListeners();
     } catch (e) {
@@ -66,9 +143,119 @@ class ChatService extends ChangeNotifier {
     }
   }
 
+  /// Realtime — รับข้อความทีมงาน + อัปเดตรายการแชท (ทุกหน้า ไม่เฉพาะแท็บข้อความ)
+  Future<void> ensureCustomerInboxRealtime() async {
+    if (!_backendActive) return;
+    final uid = SupabaseService.client?.auth.currentUser?.id;
+    if (uid == null) return;
+
+    await refreshMyThreads();
+
+    if (_customerInboxChannel != null) return;
+
+    final channel = SupabaseService.client!.channel('customer-inbox-$uid');
+    channel.onPostgresChanges(
+      event: PostgresChangeEvent.insert,
+      schema: 'public',
+      table: 'chat_messages',
+      callback: (payload) {
+        final record = payload.newRecord;
+        if (record.isEmpty) return;
+        _onCustomerChatMessage(Map<String, dynamic>.from(record));
+      },
+    );
+    channel.subscribe();
+    _customerInboxChannel = channel;
+  }
+
+  Future<void> _onCustomerChatMessage(Map<String, dynamic> record) async {
+    final role = record['role']?.toString();
+    if (role != 'admin_notice') return;
+
+    final threadId = record['thread_id']?.toString() ?? '';
+    if (!await _isMyThread(threadId)) return;
+
+    final message = ChatMessage.fromJson(record);
+    final text = message.text.trim();
+    final isAuto = _isAutoStaffAck(text) ||
+        text.startsWith('⚠️') ||
+        _isViewingDetailNotice(text);
+
+    await _mergeIncomingMessage(threadId, message);
+
+    if (isAuto) {
+      notifyListeners();
+      return;
+    }
+
+    bumpUnread(threadId);
+    final preview = text.isNotEmpty
+        ? (text.length > 80 ? '${text.substring(0, 80)}…' : text)
+        : (message.links.isNotEmpty ? message.links.first.label : 'ข้อความใหม่');
+    InAppNotificationHub.instance.show(
+      'ข้อความจากทีม: $preview',
+      threadId: threadId,
+    );
+    notifyListeners();
+  }
+
+  Future<bool> _isMyThread(String threadId) async {
+    if (threadId.isEmpty) return false;
+    if (_myThreadIds.contains(threadId)) return true;
+    final uid = SupabaseService.client?.auth.currentUser?.id;
+    if (uid == null) return false;
+    try {
+      final row = await SupabaseService.client!
+          .from('chat_threads')
+          .select('user_id')
+          .eq('id', threadId)
+          .maybeSingle();
+      if (row?['user_id']?.toString() == uid) {
+        _myThreadIds.add(threadId);
+        return true;
+      }
+    } catch (e) {
+      debugPrint('_isMyThread: $e');
+    }
+    return false;
+  }
+
+  Future<void> _mergeIncomingMessage(String threadId, ChatMessage message) async {
+    var room = roomById(threadId);
+    if (room == null) {
+      final fetched = await _repo.fetchThreadById(threadId);
+      if (fetched != null) {
+        _registerRoom(fetched);
+        room = fetched;
+      } else {
+        await refreshMyThreads();
+        return;
+      }
+    }
+    if (!room.messages.any((m) => m.id == message.id)) {
+      room.messages.add(message);
+      room.updatedAt = message.createdAt;
+    }
+  }
+
+  void _detectUnreadFromMessages(ChatRoom room) {
+    if (_unreadByThread.containsKey(room.id)) return;
+    for (var i = room.messages.length - 1; i >= 0; i--) {
+      final m = room.messages[i];
+      if (m.role == ChatMessageRole.adminNotice &&
+          !_isAutoStaffAck(m.text) &&
+          !m.text.startsWith('⚠️') &&
+          !_isViewingDetailNotice(m.text)) {
+        bumpUnread(room.id);
+        return;
+      }
+      if (m.role == ChatMessageRole.user) return;
+    }
+  }
+
   /// โหลด inbox ทีมงานจาก Supabase
   Future<void> refreshAdminInbox() async {
-    if (!_backendActive) return;
+    if (!_adminInboxBackendActive) return;
     try {
       final pending = await _repo.fetchAdminInbox();
       final resolved = await _repo.fetchAdminResolved();
@@ -83,18 +270,42 @@ class ChatService extends ChangeNotifier {
 
   String? get _myAdminId => SupabaseService.client?.auth.currentUser?.id;
 
+  /// ตรงกับ `_countChatWaiting` ใน AdminRepository
+  bool _matchesAdminWaitingQueue(ChatRoom room) {
+    if (room.adminReplyDone) return false;
+    if (room.viewingSubmitted) return true;
+    if (room.adminEscalated) return true;
+    if (room.status == 'waiting_admin') return true;
+    const cats = {
+      'escalation',
+      'viewing_request',
+      'demand_offer',
+      'discovery',
+      'staff_support',
+      'customer_requirement',
+      'booking_interest',
+    };
+    final cat = room.category;
+    if (cat != null && cats.contains(cat)) return true;
+    return room.messages.any((m) => m.requiresAdmin);
+  }
+
   List<ChatRoom> listAdminInbox({
     AdminInboxBucket bucket = AdminInboxBucket.unclaimed,
     bool includeResolved = false,
   }) {
-    if (!_backendActive) {
+    if (!_adminInboxBackendActive) {
       _memoryEnsureDemoAdminChats();
     }
     final uid = _myAdminId;
-    final list = _rooms.values.where(_isAdminRelevant).where((room) {
+    final list = _dedupedRooms().where((room) {
+      if (!_matchesAdminWaitingQueue(room) && !_isAdminRelevant(room)) {
+        return false;
+      }
       switch (bucket) {
         case AdminInboxBucket.unclaimed:
-          return needsAdminReply(room) && room.isUnclaimed;
+          return room.isUnclaimed &&
+              (_matchesAdminWaitingQueue(room) || needsAdminReply(room));
         case AdminInboxBucket.mine:
           return needsAdminReply(room) && room.isClaimedBy(uid);
         case AdminInboxBucket.resolved:
@@ -108,7 +319,7 @@ class ChatService extends ChangeNotifier {
       });
 
     if (includeResolved && bucket != AdminInboxBucket.resolved) {
-      final closed = _rooms.values
+      final closed = _dedupedRooms()
           .where(_isAdminRelevant)
           .where(isAdminResolved)
           .toList()
@@ -161,8 +372,9 @@ class ChatService extends ChangeNotifier {
   Future<void> claimThread(ChatRoom room) async {
     if (_backendActive && room.isPersisted) {
       final updated = await _repo.claimThread(room.id);
+      final profile = await _repo.fetchAdminDisplayName(updated.assignedAdminId);
       updated.assignedAdminName =
-          AuthService.instance.displayEmail ?? 'ทีมงาน';
+          profile ?? AuthService.instance.displayEmail ?? 'ทีมงาน';
       _rooms[room.id] = updated;
       notifyListeners();
       return;
@@ -205,15 +417,30 @@ class ChatService extends ChangeNotifier {
         room.category == 'demand_offer') {
       return true;
     }
+    if (room.category == 'discovery' || room.isDiscovery) return true;
+    if (room.category == 'customer_requirement' || room.isCustomerRequirement) {
+      return true;
+    }
     if (room.isStaffSupport && room.status == 'waiting_admin') return true;
-    if (room.status == 'waiting_admin' && room.priority == 'high') return true;
-    if (room.status == 'waiting_admin' && room.unclearStreak >= 2) return true;
+    if (room.adminEscalated && !room.adminReplyDone) return true;
+    if (room.status == 'waiting_admin' && !room.adminReplyDone) return true;
+    if (room.category == 'property_faq' &&
+        room.adminEscalated &&
+        !room.adminReplyDone) {
+      return true;
+    }
     return room.messages.any((m) => m.requiresAdmin);
   }
 
   bool needsAdminReply(ChatRoom room) {
-    if (room.messages.isEmpty) return false;
     if (!_isAdminRelevant(room)) return false;
+    if (room.adminReplyDone) return false;
+    // ใช้สถานะ thread เป็นหลัก (inbox preview อาจมีแค่ข้อความ system ล่าสุด)
+    if (room.adminEscalated) return true;
+    if (room.viewingSubmitted) return true;
+    if (room.status == 'waiting_admin') return true;
+    if (room.messages.any((m) => m.requiresAdmin)) return true;
+    if (room.messages.isEmpty) return false;
     for (var i = room.messages.length - 1; i >= 0; i--) {
       final m = room.messages[i];
       if (m.role == ChatMessageRole.user) return true;
@@ -224,19 +451,29 @@ class ChatService extends ChangeNotifier {
         return false;
       }
     }
-    return room.viewingSubmitted && !room.adminReplyDone;
+    return false;
   }
 
-  Future<void> sendAdminReply(ChatRoom room, String text) async {
+  Future<void> sendAdminReply(
+    ChatRoom room,
+    String text, {
+    List<ChatMessageLink> links = const [],
+  }) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty && links.isEmpty) return;
 
     if (isClaimedByOtherAdmin(room)) {
       throw StateError('claimed_by_other');
     }
 
+    final linkPayload = links.map((l) => l.toJson()).toList();
+
     if (_backendActive && room.isPersisted) {
-      await _repo.sendAdminReply(room, trimmed);
+      await _repo.sendAdminReply(
+        room,
+        trimmed.isEmpty ? ' ' : trimmed,
+        links: linkPayload,
+      );
       notifyListeners();
       return;
     }
@@ -245,6 +482,7 @@ class ChatService extends ChangeNotifier {
       id: '${DateTime.now().microsecondsSinceEpoch}-admin',
       role: ChatMessageRole.adminNotice,
       text: trimmed,
+      links: links,
     ));
     room.adminReplyDone = true;
     room.updatedAt = DateTime.now();
@@ -376,15 +614,23 @@ class ChatService extends ChangeNotifier {
 
     if (_backendActive) {
       try {
+        var backendListingId = listingIdForBackend(listingId);
+        backendListingId ??=
+            await _listingRepo.resolveIdByCode(listingCode);
         final room = await _repo.openThread(
           roomKind: 'property',
-          listingId: listingId,
+          listingId: backendListingId,
           listingCode: listingCode,
           listingTitle: listingTitle,
           projectName: projectName,
           allowViewingRequest: allowViewingRequest,
+          welcomeText: _copy.chatPropertyWelcome(
+            listingTitle,
+            allowViewing: allowViewingRequest,
+          ),
         );
-        _rooms[room.id] = room;
+        _registerRoom(room, aliasKey: listingId);
+        _registerRoom(room, aliasKey: listingCode);
         notifyListeners();
         return room;
       } catch (e) {
@@ -402,12 +648,64 @@ class ChatService extends ChangeNotifier {
   }
 
   Future<void> sendUserMessage(ChatRoom room, String text) async {
-    if (_backendActive && room.isPersisted) {
-      await _repo.sendUserMessage(room, text);
+    var active = _resolveActiveRoom(room);
+    await _syncThreadMeta(active);
+    active = _resolveActiveRoom(room);
+    if (_backendActive && !active.isPersisted) {
+      try {
+        final persisted = await _repo.openThread(
+          roomKind: active.roomKind ?? 'property',
+          listingId: listingIdForBackend(active.listingId),
+          listingCode: active.listingCode,
+          listingTitle: active.listingTitle,
+          projectName: active.projectName,
+          allowViewingRequest: active.allowViewingRequest,
+          welcomeText: _copy.chatPropertyWelcome(
+            active.listingTitle,
+            allowViewing: active.allowViewingRequest,
+          ),
+        );
+        _registerRoom(persisted, aliasKey: active.listingId);
+        _registerRoom(persisted, aliasKey: active.listingCode);
+        active = persisted;
+      } catch (e) {
+        debugPrint('sendUserMessage persist: $e');
+      }
+    }
+    if (_backendActive && active.isPersisted) {
+      await _repo.sendUserMessage(active, text);
       notifyListeners();
       return;
     }
-    await _memorySendUserMessage(room, text);
+    await _memorySendUserMessage(active, text);
+  }
+
+  /// ให้แน่ใจว่าห้องแชทถูกบันทึกใน Supabase ก่อนส่งฟอร์มนัดดู
+  Future<ChatRoom> ensurePersistedRoom(ChatRoom room) async {
+    var active = _resolveActiveRoom(room);
+    if (_backendActive && !active.isPersisted) {
+      try {
+        final persisted = await _repo.openThread(
+          threadId: active.id.startsWith('__') ? null : active.id,
+          roomKind: active.roomKind ?? 'property',
+          listingId: listingIdForBackend(active.listingId),
+          listingCode: active.listingCode,
+          listingTitle: active.listingTitle,
+          projectName: active.projectName,
+          allowViewingRequest: active.allowViewingRequest,
+          welcomeText: _copy.chatPropertyWelcome(
+            active.listingTitle,
+            allowViewing: active.allowViewingRequest,
+          ),
+        );
+        _registerRoom(persisted, aliasKey: active.listingId);
+        _registerRoom(persisted, aliasKey: active.listingCode);
+        active = persisted;
+      } catch (e) {
+        debugPrint('ensurePersistedRoom: $e');
+      }
+    }
+    return active;
   }
 
   Future<void> appendViewingSummary(
@@ -415,17 +713,22 @@ class ChatService extends ChangeNotifier {
     Map<String, String> summary, {
     bool duplicatePhoneSuffix = false,
   }) async {
-    if (_backendActive && room.isPersisted) {
-      await _repo.recordViewing(
-        room,
-        summary,
-        duplicatePhoneSuffix: duplicatePhoneSuffix,
-      );
-      notifyListeners();
-      return;
+    final active = await ensurePersistedRoom(room);
+    if (_backendActive && active.isPersisted) {
+      try {
+        await _repo.recordViewing(
+          active,
+          summary,
+          duplicatePhoneSuffix: duplicatePhoneSuffix,
+        );
+        notifyListeners();
+        return;
+      } catch (e) {
+        debugPrint('appendViewingSummary backend: $e');
+      }
     }
     _memoryAppendViewingSummary(
-      room,
+      active,
       summary,
       duplicatePhoneSuffix: duplicatePhoneSuffix,
     );
@@ -529,8 +832,27 @@ class ChatService extends ChangeNotifier {
   Future<ChatRoom> recordRequirement(CustomerRequirement req) async {
     final isEnglish = _copy.isEnglish;
     final summary = req.toChatSummary(isEnglish);
-    final roomId = ChatServiceIds.customerRequirement(req.id);
     final title = req.localizedTitle(isEnglish);
+
+    if (_backendActive &&
+        req.savedToDatabase &&
+        req.id.isNotEmpty &&
+        !req.id.startsWith('req-demo')) {
+      try {
+        final room = await _repo.recordRequirement(
+          requirementId: req.id,
+          summary: summary,
+          title: title,
+        );
+        _rooms[room.id] = room;
+        notifyListeners();
+        return room;
+      } catch (e) {
+        debugPrint('recordRequirement backend fallback: $e');
+      }
+    }
+
+    final roomId = ChatServiceIds.customerRequirement(req.id);
     return _memoryRecordRequirement(
       req,
       summary: summary,
@@ -539,21 +861,92 @@ class ChatService extends ChangeNotifier {
     );
   }
 
+  Future<ChatRoom?> openRequirementChat(CustomerRequirement req) async {
+    if (req.threadId != null && req.threadId!.isNotEmpty) {
+      await loadThreadIfMissing(req.threadId!);
+      return roomById(req.threadId!);
+    }
+    if (!req.savedToDatabase || req.id.startsWith('req-demo')) {
+      return recordRequirement(req);
+    }
+    return recordRequirement(req);
+  }
+
   RealtimeChannel? subscribeToThread(ChatRoom room, VoidCallback onUpdate) {
     if (!_backendActive || !room.isPersisted) return null;
-    return _repo.subscribeThread(room.id, (message) {
-      if (!room.messages.any((m) => m.id == message.id)) {
-        room.messages.add(message);
-        room.updatedAt = message.createdAt;
+    return _repo.subscribeThread(
+      room.id,
+      (message) {
+        if (!room.messages.any((m) => m.id == message.id)) {
+          room.messages.add(message);
+          room.updatedAt = message.createdAt;
+          if (message.role == ChatMessageRole.adminNotice &&
+              !_isAutoStaffAck(message.text) &&
+              !message.text.startsWith('⚠️') &&
+              !_isViewingDetailNotice(message.text)) {
+            bumpUnread(room.id);
+            final preview = message.text.length > 80
+                ? '${message.text.substring(0, 80)}…'
+                : message.text;
+            InAppNotificationHub.instance.show(
+              'ข้อความจากทีม: $preview',
+              threadId: room.id,
+            );
+          }
+          onUpdate();
+          notifyListeners();
+        }
+      },
+      onThreadUpdate: (thread) {
+        _applyThreadMeta(room, thread);
         onUpdate();
         notifyListeners();
-      }
-    });
+      },
+    );
   }
+
+  void _applyThreadMeta(ChatRoom room, Map<String, dynamic> thread) {
+    if (thread.containsKey('assigned_admin_id')) {
+      final aid = thread['assigned_admin_id']?.toString();
+      room.assignedAdminId =
+          aid != null && aid.isNotEmpty ? aid : null;
+    }
+    if (thread['assigned_admin_name'] != null) {
+      room.assignedAdminName = thread['assigned_admin_name']?.toString();
+    }
+    if (thread['admin_reply_done'] != null) {
+      room.adminReplyDone = thread['admin_reply_done'] == true;
+    }
+    if (thread['status'] != null) {
+      room.status = thread['status']?.toString();
+    }
+    if (thread['admin_escalated'] != null) {
+      room.adminEscalated = thread['admin_escalated'] == true;
+    }
+  }
+
+  Future<void> _syncThreadMeta(ChatRoom room) async {
+    if (!_backendActive || !room.isPersisted) return;
+    try {
+      final fresh = await _repo.fetchThreadById(room.id);
+      if (fresh == null) return;
+      room.assignedAdminId = fresh.assignedAdminId;
+      room.assignedAdminName = fresh.assignedAdminName;
+      room.adminReplyDone = fresh.adminReplyDone;
+      room.status = fresh.status;
+      room.adminEscalated = fresh.adminEscalated;
+      room.category = fresh.category;
+    } catch (_) {}
+  }
+
+  bool _isHumanHandoff(ChatRoom room) =>
+      room.assignedAdminId != null &&
+      room.assignedAdminId!.isNotEmpty &&
+      !room.adminReplyDone;
 
   Future<void> loadThreadIfMissing(String threadId) async {
     if (_rooms.containsKey(threadId)) return;
-    if (!_backendActive) return;
+    if (!_adminInboxBackendActive) return;
     final room = await _repo.fetchThreadById(threadId);
     if (room != null) {
       _rooms[threadId] = room;
@@ -675,6 +1068,11 @@ class ChatService extends ChangeNotifier {
     room.adminReplyDone = false;
     room.updatedAt = DateTime.now();
 
+    if (_isHumanHandoff(room)) {
+      notifyListeners();
+      return;
+    }
+
     final codeListing = await _findListingByCode(trimmed);
     if (codeListing != null) {
       room.messages.add(ChatMessage(
@@ -765,18 +1163,19 @@ class ChatService extends ChangeNotifier {
     }
 
     if (room.isPropertyListing) {
-      final faq = _propertyAiReply(trimmed, room);
-      if (!_isGenericFaqFallback(faq)) {
-        room.messages.add(ChatMessage(
-          id: '${DateTime.now().microsecondsSinceEpoch}-ai',
-          role: ChatMessageRole.ai,
-          text: faq,
-        ));
-        room.unclearStreak = 0;
-        room.updatedAt = DateTime.now();
-        notifyListeners();
-        return;
-      }
+      room.adminEscalated = true;
+      room.status = 'waiting_admin';
+      room.unclearStreak = 0;
+      room.messages.add(ChatMessage(
+        id: '${userMsg.id}-escalate',
+        role: ChatMessageRole.system,
+        text:
+            'คำถามนี้ต้องให้เจ้าหน้าที่ตอบโดยตรง — เราแจ้งทีมแล้ว และจะติดต่อกลับในแชทนี้โดยเร็วที่สุด',
+        requiresAdmin: true,
+      ));
+      room.updatedAt = DateTime.now();
+      notifyListeners();
+      return;
     }
 
     if (room.unclearStreak < 1) {
@@ -908,6 +1307,9 @@ class ChatService extends ChangeNotifier {
     room.viewingSubmitted = true;
     room.adminEscalated = true;
     room.adminReplyDone = false;
+    room.category = 'viewing_request';
+    room.status = 'waiting_admin';
+    room.priority = 'high';
     room.updatedAt = DateTime.now();
     notifyListeners();
   }

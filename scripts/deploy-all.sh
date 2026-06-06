@@ -35,11 +35,14 @@ FUNCTIONS=(
   chat-sla-cron
   listing-lifecycle-cron
   image-dedup-check
+  listing-watermark-images
   listing-import-fetch
   listing-import-approve
   listing-import-archive
   project-import-fetch
   project-import-propertyhub
+  analytics-track
+  analytics-rollup-cron
 )
 
 echo ""
@@ -57,6 +60,7 @@ echo "  1) ./scripts/sync-env.sh"
 echo "  2) ./scripts/seed-cloud.sh   # ทรัพย์ตัวอย่างใน cloud"
 echo "  3) Dashboard → Edge → Secrets: FCM_SERVER_KEY, MAKECOM_WEBHOOK_URL (ทางเลือก)"
 echo "  4) Cron: listing-lifecycle-cron รายวัน · chat-sla-cron ทุก 30 นาที"
-echo "  5) Cron (แนะนำ): SELECT public.process_exclusive_auto_bumps(); รายชั่วโมง"
-echo "  6) ดู docs/PRE-PUSH-STATUS.md"
-echo "  5) ./scripts/run-app.sh"
+echo "  5) Cron: analytics-rollup-cron ทุก 1 ชม. (ดู docs/phase-21-analytics-platform.md)"
+echo "  6) Cron (แนะนำ): SELECT public.process_exclusive_auto_bumps(); รายชั่วโมง"
+echo "  7) ดู docs/PRE-PUSH-STATUS.md"
+echo "  8) ./scripts/run-app.sh"

@@ -52,6 +52,13 @@ class DemandPost {
   DemandLeadSource? get leadSource =>
       DemandBoardPostMeta.leadSourceFromExtra(extraCriteria);
 
+  /// เลข 4 ตัวท้ายเบอร์ลูกค้า (โคเอเจนหาให้) — เก็บใน extra_criteria
+  String? get customerPhoneLast4 =>
+      DemandBoardPostMeta.customerPhoneLast4FromExtra(extraCriteria);
+
+  bool get requiresCustomerPhoneLast4 =>
+      leadSource == DemandLeadSource.coAgentSourced;
+
   List<String> get allowedOffererCapacities =>
       DemandBoardPostMeta.allowedOffererCapacities(offerAcceptancePolicy);
 
@@ -217,6 +224,7 @@ class DemandPost {
         extraCriteria: const {
           'accepted_offerer_policy': 'owner_only',
           'lead_source': 'co_agent_sourced',
+          'customer_phone_last4': '7890',
         },
         openUntil: now.add(const Duration(days: 21)),
         createdAt: now.subtract(const Duration(hours: 4)),

@@ -5,12 +5,18 @@ class PlatformExclusiveSettings {
     this.saleBumpHours = 24,
     this.ownerFeedBoost = 45,
     this.agentFeedBoost = 55,
+    this.hotBadgeEnabled = true,
+    this.hotViewsPerHourThreshold = 100,
   });
 
   final int rentBumpHours;
   final int saleBumpHours;
   final int ownerFeedBoost;
   final int agentFeedBoost;
+  /// เปิดป้าย HOT บนการ์ดประกาศแนะนำ
+  final bool hotBadgeEnabled;
+  /// วิวขั้นต่ำใน 1 ชม. สำหรับแสดงป้าย HOT
+  final int hotViewsPerHourThreshold;
 
   static const defaults = PlatformExclusiveSettings();
 
@@ -21,6 +27,8 @@ class PlatformExclusiveSettings {
       saleBumpHours: i('exclusive_sale_bump_hours', 24),
       ownerFeedBoost: i('exclusive_owner_feed_boost', 45),
       agentFeedBoost: i('exclusive_agent_feed_boost', 55),
+      hotBadgeEnabled: json['hot_badge_enabled'] as bool? ?? true,
+      hotViewsPerHourThreshold: i('hot_views_per_hour_threshold', 100),
     );
   }
 
@@ -29,6 +37,8 @@ class PlatformExclusiveSettings {
         'exclusive_sale_bump_hours': saleBumpHours,
         'exclusive_owner_feed_boost': ownerFeedBoost,
         'exclusive_agent_feed_boost': agentFeedBoost,
+        'hot_badge_enabled': hotBadgeEnabled,
+        'hot_views_per_hour_threshold': hotViewsPerHourThreshold,
         'updated_at': DateTime.now().toUtc().toIso8601String(),
       };
 }

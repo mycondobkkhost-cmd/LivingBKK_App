@@ -8,6 +8,9 @@ import '../../services/lead_inbox_repository.dart';
 import '../../theme/app_theme.dart';
 import 'e_contract_sheet.dart';
 import 'lead_unavailable_sheet.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class LeadInboxDetailPage extends StatefulWidget {
   const LeadInboxDetailPage({super.key, required this.leadId});
@@ -147,21 +150,37 @@ class _LeadInboxDetailPageState extends State<LeadInboxDetailPage> {
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return ConsumerPageShell(
+        title: 'Lead',
+        onBack: () => context.pop(),
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     final lead = _lead;
     if (lead == null) {
-      return Scaffold(body: Center(child: Text(s.notFoundLead)));
+      return ConsumerPageShell(
+        title: 'Lead',
+        onBack: () => context.pop(),
+        body: Center(child: Text(s.notFoundLead)),
+      );
     }
 
     final status = lead['status']?.toString() ?? 'new';
     final canAct = status == 'new' || status == 'routed';
     final qual = _qualLabels(s, lead['qualification_json'] as Map<String, dynamic>?);
 
-    return Scaffold(
-      appBar: AppBar(title: Text(lead['listing_code']?.toString() ?? 'Lead')),
+    return ConsumerPageShell(
+      title: lead['listing_code']?.toString() ?? 'Lead',
+      onBack: () => context.pop(),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: PageSafeInsets.padLTRB(
+          context,
+          left: LiLayout.pagePadding,
+          top: LiLayout.pagePadding,
+          right: LiLayout.pagePadding,
+          bottom: 20,
+          addHomeIndicator: false,
+        ),
         children: [
           Card(
             child: Padding(

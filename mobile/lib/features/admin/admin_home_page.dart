@@ -9,10 +9,16 @@ import '../../l10n/app_strings.dart';
 import '../../models/admin_dashboard_overview.dart';
 import '../../services/admin_repository.dart';
 import '../../services/auth_service.dart';
+import '../../services/chat_service.dart';
+import '../../services/in_app_notification_hub.dart';
+import '../../services/realtime_service.dart';
+import '../../services/supabase_service.dart';
+import '../../utils/admin_listing_nav.dart';
 import '../../state/session_gate.dart';
+import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/living_bkk_brand.dart';
 import '../../widgets/admin_dashboard_bar.dart';
+import '../../widgets/admin_mobile_layout.dart';
 import 'admin_appointments_tab.dart';
 import 'admin_chats_tab.dart';
 import 'admin_create_demand_page.dart';
@@ -21,7 +27,9 @@ import 'admin_import_tab.dart';
 import 'admin_moderation_tab.dart';
 import 'admin_inventory_tab.dart';
 import 'admin_projects_tab.dart';
+import 'admin_promos_tab.dart';
 import 'admin_reports_tab.dart';
+import 'admin_watermark_tab.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -40,18 +48,30 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
   Map<String, dynamic>? _stats;
   AdminDashboardOverview _overview = const AdminDashboardOverview();
   Timer? _refreshTimer;
+  final _realtime = RealtimeService();
+  final _notifHub = InAppNotificationHub.instance;
+  StreamSubscription<String>? _notifSub;
 
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 11, vsync: this);
+    _tabs = TabController(length: 13, vsync: this);
     _init();
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refresh());
+    final uid = SupabaseService.client?.auth.currentUser?.id ?? '';
+    _realtime.subscribeToAdminChatOps(enabled: true, adminUserId: uid);
+    _realtime.subscribeToAdminLeads(enabled: true);
+    _notifSub = _realtime.messages.listen((msg) {
+      _notifHub.show(msg, countAsUnread: false);
+      ChatService.instance.refreshAdminInbox();
+    });
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _notifSub?.cancel();
+    _realtime.dispose();
     _tabs.dispose();
     super.dispose();
   }
@@ -84,6 +104,7 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
 
   Future<void> _refresh() async {
     try {
+      await ChatService.instance.refreshAdminInbox();
       final offers = await _admin.allDemandOffers();
       final leads = await _admin.recentLeads();
       final stats = await _admin.leadStats();
@@ -127,11 +148,18 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
     final s = context.s;
 
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return AdminMobileLayout.scaffold(
+        context: context,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     if (!_allowed) {
-      return Scaffold(
-        appBar: AppBar(title: Text(s.adminTitle)),
+      return AdminMobileLayout.scaffold(
+        context: context,
+        appBar: AdminMobileLayout.appBar(
+          context: context,
+          title: Text(s.adminTitle),
+        ),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -144,80 +172,198 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
       );
     }
 
-    return Scaffold(
-      backgroundColor: LivingBkkBrand.adminBg,
-      appBar: AppBar(
-        title: Text(s.adminLivingBkk),
-        bottom: TabBar(
-          controller: _tabs,
-          isScrollable: true,
-          tabs: [
-            Tab(text: s.adminTabDashboard),
-            Tab(text: s.adminTabChat),
-            Tab(text: s.adminTabOffers),
-            Tab(text: s.adminTabLeads),
-            Tab(text: s.adminTabAppointments),
-            Tab(text: s.adminTabReports),
-            Tab(text: s.adminTabModeration),
-            Tab(text: s.adminTabInventory),
-            Tab(text: s.adminTabCreateBoard),
-            Tab(text: s.adminTabImport),
-            Tab(text: s.adminTabProjects),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.storefront_outlined),
-            tooltip: s.adminViewConsumerApp,
-            onPressed: () => context.go('/?preview=1'),
+    final compact = AdminMobileLayout.isCompact(context);
+    final shell = AdminTheme.shellTheme(Theme.of(context));
+    return Theme(
+      data: shell,
+      child: AdminMobileLayout.scaffold(
+        context: context,
+        backgroundColor: AdminTheme.bg,
+        safeBottom: false,
+        appBar: AdminMobileLayout.appBar(
+          context: context,
+          title: Text(
+            s.adminLivingBkk,
+            style: AdminTheme.title.copyWith(fontSize: compact ? 16 : 17),
           ),
-          if (kIsWeb)
-            IconButton(
-              icon: const Icon(Icons.desktop_windows_outlined),
-              tooltip: s.adminOpenConsole,
-              onPressed: () => context.go('/admin/console'),
-            ),
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
-          IconButton(
-            icon: const Icon(Icons.logout),
-            tooltip: s.signOut,
-            onPressed: _signOut,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (Env.trialMode)
-            Container(
-              width: double.infinity,
-              color: AppTheme.accentMidLight,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Text(
-                Env.isConfigured ? s.adminTrialBannerConfigured : s.demoData,
-                style: TextStyle(fontSize: 12, height: 1.35),
-              ),
-            ),
-          AdminDashboardBar(data: _overview, onJump: _jumpTab),
-          Expanded(
-            child: TabBarView(
+          bottom: PreferredSize(
+            preferredSize: Size.fromHeight(compact ? 42 : 48),
+            child: TabBar(
               controller: _tabs,
-              children: [
-                AdminDashboardTab(onOpenTab: _jumpTab),
-                const AdminChatsTab(),
-                _offersTab(s),
-                _leadsTab(s),
-                const AdminAppointmentsTab(),
-                const AdminReportsTab(),
-                const AdminModerationTab(),
-                const AdminInventoryTab(),
-                AdminCreateDemandPage(onCreated: _refresh),
-                const AdminImportTab(),
-                const AdminProjectsTab(),
+              isScrollable: true,
+              tabs: [
+                  Tab(text: s.adminTabDashboard),
+                  Tab(text: s.adminTabChat),
+                  Tab(text: s.adminTabOffers),
+                  Tab(text: s.adminTabLeads),
+                  Tab(text: s.adminTabAppointments),
+                  Tab(text: s.adminTabReports),
+                  Tab(text: s.adminTabModeration),
+                  Tab(text: s.adminTabInventory),
+                  Tab(text: s.adminTabCreateBoard),
+                  Tab(text: s.adminTabImport),
+                  Tab(text: s.adminTabProjects),
+                  Tab(text: s.adminTabPromos),
+                  Tab(text: s.adminTabWatermark),
               ],
             ),
           ),
-        ],
-      ),
+          actions: compact
+              ? [
+                    PopupMenuButton<String>(
+                      tooltip: s.adminMoreActions,
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'consumer':
+                            context.go('/?preview=1');
+                          case 'console':
+                            if (kIsWeb) context.go('/admin/console');
+                          case 'refresh':
+                            _refresh();
+                          case 'logout':
+                            _signOut();
+                        }
+                      },
+                      itemBuilder: (ctx) => [
+                        PopupMenuItem(
+                          value: 'consumer',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.storefront_outlined, size: 20),
+                            title: Text(s.adminViewConsumerApp),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        if (kIsWeb)
+                          PopupMenuItem(
+                            value: 'console',
+                            child: ListTile(
+                              dense: true,
+                              leading: const Icon(Icons.desktop_windows_outlined, size: 20),
+                              title: Text(s.adminOpenConsole),
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                          ),
+                        PopupMenuItem(
+                          value: 'refresh',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.refresh, size: 20),
+                            title: Text(s.adminRefresh),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                        PopupMenuItem(
+                          value: 'logout',
+                          child: ListTile(
+                            dense: true,
+                            leading: const Icon(Icons.logout, size: 20),
+                            title: Text(s.signOut),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ]
+                : [
+                    IconButton(
+                      icon: const Icon(Icons.storefront_outlined),
+                      tooltip: s.adminViewConsumerApp,
+                      onPressed: () => context.go('/?preview=1'),
+                    ),
+                    if (kIsWeb)
+                      IconButton(
+                        icon: const Icon(Icons.desktop_windows_outlined),
+                        tooltip: s.adminOpenConsole,
+                        onPressed: () => context.go('/admin/console'),
+                      ),
+                    IconButton(icon: const Icon(Icons.refresh), onPressed: _refresh),
+                    IconButton(
+                      icon: const Icon(Icons.logout),
+                      tooltip: s.signOut,
+                      onPressed: _signOut,
+                    ),
+                  ],
+        ),
+        body: Column(
+            children: [
+              if (Env.trialMode)
+                Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFFF7ED),
+                    border: Border(bottom: BorderSide(color: AdminTheme.border)),
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: compact ? 8 : 10,
+                  ),
+                  child: Text(
+                    Env.isConfigured ? s.adminTrialBannerConfigured : s.demoData,
+                    style: AdminTheme.hint.copyWith(color: const Color(0xFF9A3412)),
+                  ),
+                ),
+              AdminDashboardBar(
+                data: _overview,
+                onJump: _jumpTab,
+                compact: compact,
+              ),
+              Expanded(
+                child: TabBarView(
+                  controller: _tabs,
+                  children: [
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: AdminDashboardTab(onOpenTab: _jumpTab),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminChatsTab(),
+                    ),
+                    AdminMobileLayout.tabBody(context, child: _offersTab(s)),
+                    AdminMobileLayout.tabBody(context, child: _leadsTab(s)),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminAppointmentsTab(),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminReportsTab(),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminModerationTab(),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminInventoryTab(),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: AdminCreateDemandPage(onCreated: _refresh),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminImportTab(),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminProjectsTab(),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminPromosTab(),
+                    ),
+                    AdminMobileLayout.tabBody(
+                      context,
+                      child: const AdminWatermarkTab(),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
     );
   }
 
@@ -226,16 +372,16 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
       return Center(child: Text(s.adminNoOffers));
     }
     return ListView.builder(
-      padding: const EdgeInsets.all(12),
+      padding: AdminMobileLayout.scrollPadding(context, top: 8, horizontal: 12, fabClearance: 16),
       itemCount: _offers.length,
       itemBuilder: (context, i) {
         final o = _offers[i];
         final post = o['demand_posts'] as Map<String, dynamic>?;
         return Card(
           child: ExpansionTile(
-            title: Text(post?['title']?.toString() ?? 'Demand'),
+            title: Text(post?['title']?.toString() ?? s.adminDemandPostFallback),
             subtitle: Text(
-              '${s.offererCapacityLabel(o['offerer_capacity']?.toString() ?? '')} · ${o['status']} · verify: ${o['capacity_verified']}',
+              '${s.offererCapacityLabel(o['offerer_capacity']?.toString() ?? '')} · ${o['status']} · ${s.adminOfferVerifyLabel}: ${o['capacity_verified']}',
             ),
             children: [
               if (o['external_url'] != null)
@@ -264,6 +410,34 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
                     },
                     child: Text(s.adminReject, style: TextStyle(color: AppTheme.error)),
                   ),
+                  if (o['offer_type']?.toString() == 'in_app')
+                    TextButton(
+                      onPressed: () async {
+                        try {
+                          final res = await _admin.promoteDemandOffer(
+                            o['id'] as String,
+                          );
+                          if (!mounted) return;
+                          final code = res?['listing']?['listing_code'];
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                code != null
+                                    ? '${s.adminPromoteOfferToListing}: $code'
+                                    : s.adminPromoteOfferToListing,
+                              ),
+                            ),
+                          );
+                          _refresh();
+                        } catch (e) {
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('$e')),
+                          );
+                        }
+                      },
+                      child: Text(s.adminPromoteOfferToListing),
+                    ),
                 ],
               ),
             ],
@@ -275,7 +449,7 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
 
   Widget _leadsTab(AppStrings s) {
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: AdminMobileLayout.scrollPadding(context, top: 8, horizontal: 12, fabClearance: 16),
       children: [
         if (_stats != null)
           Card(
@@ -296,18 +470,39 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
           )
         else
           ..._leads.map(
-            (l) => Card(
-              child: ListTile(
-                leading: Icon(Icons.support_agent, color: AppTheme.primary),
-                title: Text(l['listing_code']?.toString() ?? '—'),
-                subtitle: Text(
-                  '${l['seeker_nickname']} · ${l['status']}'
-                  '${_viewingHint(l, s)}',
+            (l) {
+              final code = l['listing_code']?.toString() ?? '—';
+              final listingId = l['listing_id']?.toString();
+              return Card(
+                child: ListTile(
+                  leading: Icon(Icons.support_agent, color: AppTheme.primary),
+                  title: InkWell(
+                    onTap: code != '—'
+                        ? () => openAdminListing(
+                              context,
+                              listingId: listingId,
+                              listingCode: code,
+                            )
+                        : null,
+                    child: Text(
+                      code,
+                      style: TextStyle(
+                        color: code != '—' ? AppTheme.primary : null,
+                        decoration:
+                            code != '—' ? TextDecoration.underline : null,
+                        decorationColor: AppTheme.primary.withOpacity(0.5),
+                      ),
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${l['seeker_nickname']} · ${l['status']}'
+                    '${_viewingHint(l, s)}',
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => _openLead(l['id'] as String),
                 ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _openLead(l['id'] as String),
-              ),
-            ),
+              );
+            },
           ),
       ],
     );

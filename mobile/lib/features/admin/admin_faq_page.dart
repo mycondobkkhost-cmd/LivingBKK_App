@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../l10n/app_strings.dart';
 import '../../services/admin_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/admin_mobile_layout.dart';
 
 /// ตั้งค่า FAQ อัตโนมัติ — ลดงานแอดมิน (แก้ได้โดยไม่ deploy)
 class AdminFaqPage extends StatefulWidget {
@@ -73,8 +74,10 @@ class _AdminFaqPageState extends State<AdminFaqPage> {
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
 
-    return Scaffold(
-      appBar: AppBar(
+    return AdminMobileLayout.scaffold(
+      context: context,
+      appBar: AdminMobileLayout.appBar(
+        context: context,
         title: Text(s.adminFaqTitle),
         actions: [
           IconButton(icon: const Icon(Icons.refresh), onPressed: _load),
@@ -83,7 +86,7 @@ class _AdminFaqPageState extends State<AdminFaqPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(12),
+              padding: AdminMobileLayout.scrollPadding(context, top: 12, horizontal: 12),
               children: [
                 Card(
                   color: AppTheme.primaryLight,

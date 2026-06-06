@@ -7,6 +7,7 @@ import '../../services/listing_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/not_found_scaffold.dart';
 import 'listing_detail_page.dart';
+import '../../widgets/app_mobile_scaffold.dart';
 
 /// เปิดจากลิงก์แชร์ `/listing/:id` — โหลดทรัพย์จาก Supabase หรือ demo
 class ListingDetailRoutePage extends StatefulWidget {
@@ -40,7 +41,8 @@ class _ListingDetailRoutePageState extends State<ListingDetailRoutePage> {
       future: _future,
       builder: (context, snap) {
         if (snap.connectionState != ConnectionState.done) {
-          return Scaffold(
+          return AppMobileScaffold(
+      safeBottomBody: false,
             appBar: AppBar(
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../models/platform_exclusive_settings.dart';
+import '../models/platform_watermark_settings.dart';
 import 'auth_service.dart';
 import 'supabase_service.dart';
 
@@ -10,9 +11,11 @@ class PlatformSettingsService extends ChangeNotifier {
   static final PlatformSettingsService instance = PlatformSettingsService._();
 
   PlatformExclusiveSettings _exclusive = PlatformExclusiveSettings.defaults;
+  PlatformWatermarkSettings _watermark = PlatformWatermarkSettings.defaults;
   bool _loaded = false;
 
   PlatformExclusiveSettings get exclusive => _exclusive;
+  PlatformWatermarkSettings get watermark => _watermark;
   bool get loaded => _loaded;
 
   Future<void> load() async {
@@ -30,9 +33,11 @@ class PlatformSettingsService extends ChangeNotifier {
           .maybeSingle();
       if (row != null) {
         _exclusive = PlatformExclusiveSettings.fromJson(row);
+        _watermark = PlatformWatermarkSettings.fromJson(row);
       }
     } catch (_) {
       _exclusive = PlatformExclusiveSettings.defaults;
+      _watermark = PlatformWatermarkSettings.defaults;
     }
     _loaded = true;
     notifyListeners();
@@ -40,6 +45,11 @@ class PlatformSettingsService extends ChangeNotifier {
 
   void applyExclusive(PlatformExclusiveSettings value) {
     _exclusive = value;
+    notifyListeners();
+  }
+
+  void applyWatermark(PlatformWatermarkSettings value) {
+    _watermark = value;
     notifyListeners();
   }
 }

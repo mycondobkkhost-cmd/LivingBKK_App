@@ -172,7 +172,11 @@ class AppRouter {
         ),
         GoRoute(
           path: DemandBoardMenuConfig.createRequirementRoute,
-          builder: (context, state) => const CreateRequirementPage(),
+          builder: (context, state) {
+            final extra = state.extra;
+            final sourceThreadId = extra is String ? extra : null;
+            return CreateRequirementPage(sourceThreadId: sourceThreadId);
+          },
         ),
         GoRoute(
           path: '/admin',

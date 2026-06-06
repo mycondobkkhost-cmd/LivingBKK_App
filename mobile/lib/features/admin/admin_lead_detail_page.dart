@@ -4,8 +4,9 @@ import 'package:go_router/go_router.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/listing_public.dart';
 import '../../services/admin_repository.dart';
-import '../../services/appointment_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/admin_listing_nav.dart';
+import '../../widgets/admin_mobile_layout.dart';
 import '../../widgets/listings_map.dart';
 import '../../widgets/reference_code_chip.dart';
 
@@ -20,11 +21,11 @@ class AdminLeadDetailPage extends StatefulWidget {
 
 class _AdminLeadDetailPageState extends State<AdminLeadDetailPage> {
   final _admin = AdminRepository();
-  final _appointments = AppointmentRepository();
   bool _loading = true;
   Map<String, dynamic>? _lead;
   Map<String, dynamic>? _listingPoint;
   ListingPublic? _listingForMap;
+  String? _linkedThreadId;
 
   @override
   void initState() {
@@ -36,16 +37,22 @@ class _AdminLeadDetailPageState extends State<AdminLeadDetailPage> {
     setState(() => _loading = true);
     final lead = await _admin.fetchLead(widget.leadId);
     final listingId = lead?['listing_id'] as String?;
-    final point = await _admin.fetchListingMapPoint(listingId);
+    final listingCode = lead?['listing_code']?.toString();
+    final point = await _admin.fetchListingMapPoint(
+      listingId,
+      listingCode: listingCode,
+    );
+    final threadId =
+        lead == null ? null : await _admin.resolveLeadThreadId(lead);
     ListingPublic? listing;
     if (point != null && point['lat'] != null && point['lng'] != null) {
       final fallbackTitle = mounted ? context.s.adminDefaultProperty : 'Property';
       listing = ListingPublic(
-        id: listingId ?? 'map',
-        listingCode: point['listing_code'] as String? ?? '',
-        listingType: 'rent',
+        id: listingId ?? listingCode ?? 'map',
+        listingCode: point['listing_code'] as String? ?? listingCode ?? '',
+        listingType: point['listing_type']?.toString() ?? 'rent',
         title: point['title'] as String? ?? fallbackTitle,
-        priceNet: 0,
+        priceNet: (point['price_net'] as num?)?.toDouble() ?? 0,
         district: point['district'] as String?,
         projectName: point['project_name'] as String?,
         lat: (point['lat'] as num).toDouble(),
@@ -56,133 +63,26 @@ class _AdminLeadDetailPageState extends State<AdminLeadDetailPage> {
       _lead = lead;
       _listingPoint = point;
       _listingForMap = listing;
+      _linkedThreadId = threadId;
       _loading = false;
     });
   }
 
-  Future<void> _schedule() async {
+  Future<void> _openLinkedChat() async {
+    var threadId = _linkedThreadId;
     final lead = _lead;
-    if (lead == null) return;
-    final s = context.s;
-    final timeSlots = s.adminTimeSlots;
-
-    final qual = lead['qualification_json'] as Map<String, dynamic>?;
-    var preferredSlot = qual?['viewing_schedule']?.toString();
-    if (preferredSlot != null && preferredSlot.contains('·')) {
-      preferredSlot = preferredSlot.split('·').last.trim();
+    if (threadId == null && lead != null) {
+      threadId = await _admin.resolveLeadThreadId(lead);
+      if (mounted) setState(() => _linkedThreadId = threadId);
     }
-
-    DateTime? date = DateTime.now().add(const Duration(days: 1));
-    String? slot = timeSlots.contains(preferredSlot) ? preferredSlot : timeSlots[2];
-    final notesCtrl = TextEditingController();
-
-    final ok = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModal) {
-            final sheetS = context.s;
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 16,
-                bottom: MediaQuery.paddingOf(context).bottom + 16,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    sheetS.adminConfirmViewingTitle,
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 12),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final picked = await showDatePicker(
-                        context: context,
-                        initialDate: date ?? DateTime.now(),
-                        firstDate: DateTime.now(),
-                        lastDate: DateTime.now().add(const Duration(days: 90)),
-                      );
-                      if (picked != null) setModal(() => date = picked);
-                    },
-                    icon: const Icon(Icons.calendar_today, size: 18),
-                    label: Text(
-                      date == null
-                          ? sheetS.selectDate
-                          : '${date!.day}/${date!.month}/${date!.year + (sheetS.isEnglish ? 0 : 543)}',
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: slot,
-                    decoration: InputDecoration(
-                      labelText: sheetS.adminTimeSlotLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                    items: timeSlots
-                        .map((t) => DropdownMenuItem(value: t, child: Text(t)))
-                        .toList(),
-                    onChanged: (v) => setModal(() => slot = v),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: notesCtrl,
-                    decoration: InputDecoration(
-                      labelText: sheetS.adminNotesLabel,
-                      border: const OutlineInputBorder(),
-                    ),
-                    maxLines: 2,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton(
-                    onPressed: date != null && slot != null
-                        ? () => Navigator.pop(ctx, true)
-                        : null,
-                    child: Text(sheetS.adminSaveViewing),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    final adminNotes = notesCtrl.text.trim();
-    notesCtrl.dispose();
-    if (ok != true || date == null || slot == null) return;
-
-    try {
-      await _appointments.scheduleFromLead(
-        leadId: widget.leadId,
-        seekerNickname: lead['seeker_nickname']?.toString() ?? s.leadDefaultName,
-        seekerPhone: lead['seeker_phone']?.toString(),
-        listingId: lead['listing_id'] as String?,
-        listingCode: lead['listing_code']?.toString(),
-        scheduledDate: date!,
-        timeSlot: slot!,
-        locationLabel: _listingPoint?['project_name']?.toString() ??
-            _listingPoint?['district']?.toString() ??
-            s.adminApproxZone,
-        lat: (_listingPoint?['lat'] as num?)?.toDouble(),
-        lng: (_listingPoint?['lng'] as num?)?.toDouble(),
-        adminNotes: adminNotes.isEmpty ? null : adminNotes,
-      );
-      if (!mounted) return;
+    if (!mounted) return;
+    if (threadId == null || threadId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.adminViewingSavedSnack)),
+        SnackBar(content: Text(context.s.adminInboxEmptyUnclaimed)),
       );
-      context.pop(true);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-      }
+      return;
     }
+    context.push('/admin/chat/$threadId');
   }
 
   @override
@@ -190,30 +90,130 @@ class _AdminLeadDetailPageState extends State<AdminLeadDetailPage> {
     final s = context.s;
 
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return AdminMobileLayout.scaffold(
+        context: context,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
     final lead = _lead;
     if (lead == null) {
-      return Scaffold(body: Center(child: Text(s.notFoundLead)));
+      return AdminMobileLayout.scaffold(
+        context: context,
+        body: Center(child: Text(s.notFoundLead)),
+      );
     }
 
     final qual = lead['qualification_json'] as Map<String, dynamic>?;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(lead['transaction_ref']?.toString() ?? lead['listing_code']?.toString() ?? 'Lead'),
+    final listingCode = lead['listing_code']?.toString() ?? '—';
+    final project = _listingPoint?['project_name']?.toString();
+    final listingTitle = _listingPoint?['title']?.toString();
+
+    return AdminMobileLayout.scaffold(
+      context: context,
+      appBar: AdminMobileLayout.appBar(
+        context: context,
+        title: Text(lead['transaction_ref']?.toString() ?? listingCode),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: AdminMobileLayout.scrollPadding(context, top: 20, horizontal: 20, fabClearance: 16),
         children: [
           if (lead['transaction_ref'] != null)
             Padding(
-              padding: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.only(bottom: 8),
               child: ReferenceCodeChip(
                 code: lead['transaction_ref'].toString(),
                 label: s.transactionRefLabel,
               ),
             ),
+          Card(
+            color: AppTheme.primaryLight,
+            child: InkWell(
+              onTap: listingCode != '—'
+                  ? () => openAdminListing(
+                        context,
+                        listingId: lead['listing_id']?.toString(),
+                        listingCode: listingCode,
+                      )
+                  : null,
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            s.adminLeadPropertyCard,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                        ),
+                        if (listingCode != '—')
+                          Icon(Icons.open_in_new, size: 16, color: AppTheme.primary),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      project != null && project.isNotEmpty
+                          ? '$project · $listingCode'
+                          : listingCode,
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                    ),
+                  if (listingTitle != null && listingTitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      listingTitle,
+                      style: TextStyle(color: AppTheme.textSecondary),
+                    ),
+                  ],
+                  if (_listingPoint?['price_net'] != null) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      '฿${(_listingPoint!['price_net'] as num).toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.accentDeep,
+                      ),
+                    ),
+                  ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Material(
+            color: AppTheme.accentMidLight,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Row(
+                children: [
+                  Icon(Icons.chat_bubble_outline, color: AppTheme.accentMid, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      s.adminConfirmViewingChatOnly,
+                      style: TextStyle(fontSize: 12, height: 1.35),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: _openLinkedChat,
+            icon: const Icon(Icons.forum_outlined),
+            label: Text(s.adminOpenLinkedChat),
+          ),
+          const SizedBox(height: 16),
           Card(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -255,12 +255,6 @@ class _AdminLeadDetailPageState extends State<AdminLeadDetailPage> {
                     ),
                     child: Text(s.adminNoCoords),
                   ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton.icon(
-            onPressed: _schedule,
-            icon: const Icon(Icons.event_available),
-            label: Text(s.adminCoordinateViewing),
           ),
         ],
       ),

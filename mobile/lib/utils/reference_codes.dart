@@ -24,6 +24,18 @@ abstract final class ReferenceCodes {
   static String listingTypePrefix(String listingType) =>
       listingType == 'sale' ? 'SALE' : 'RENT';
 
+  /// รหัสประกาศ PIR — ตัวอย่าง demo (production ใช้ trigger ใน Supabase)
+  static String pirListingCode({int sequence = 1, DateTime? date}) {
+    final d = date ?? DateTime.now();
+    final dd = '${d.day.toString().padLeft(2, '0')}'
+        '${d.month.toString().padLeft(2, '0')}'
+        '${(d.year % 100).toString().padLeft(2, '0')}';
+    return 'PIR$dd-${sequence.toString().padLeft(4, '0')}';
+  }
+
+  static final RegExp pirListingPattern =
+      RegExp(r'PIR\d{6}-\d{4}', caseSensitive: false);
+
   /// สร้างรหัสทรัพย์ตามหมวด (ใช้ demo / preview — production ใช้ trigger ใน Supabase)
   static String listingCode({
     required String listingType,
@@ -69,6 +81,11 @@ abstract final class ReferenceCodes {
     return upper == 'DISCOVERY' ||
         upper.startsWith('SUPPORT') ||
         upper.startsWith('REQ-') ||
-        upper.startsWith('DEMAND-');
+        upper.startsWith('DEMAND-') ||
+        upper.startsWith('DM-') ||
+        upper.startsWith('OFR');
   }
+
+  static bool isPirListingCode(String code) =>
+      pirListingPattern.hasMatch(code.trim().toUpperCase());
 }

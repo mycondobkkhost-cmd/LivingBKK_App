@@ -4,11 +4,15 @@ import 'package:intl/intl.dart';
 import '../../navigation/demand_board_navigation.dart';
 import '../../l10n/app_strings.dart';
 import '../../widgets/demand/demand_offer_policy_chip.dart';
+import '../../widgets/demand/demand_offer_warning_banner.dart';
 import '../../widgets/demand/demand_post_favorite_button.dart';
 import '../../widgets/demand/demand_urgent_rush_strip.dart';
 import '../../utils/localized_content.dart';
 import '../../models/demand_post.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class DemandPostDetailPage extends StatelessWidget {
   const DemandPostDetailPage({super.key, required this.post});
@@ -20,16 +24,21 @@ class DemandPostDetailPage extends StatelessWidget {
     final s = AppStrings.of(context);
     final currency = NumberFormat.currency(locale: 'th_TH', symbol: '฿', decimalDigits: 0);
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(post.postCode),
-        actions: [
-          DemandPostFavoriteButton(post: post, showSnackBar: true),
-          const SizedBox(width: 8),
-        ],
-      ),
+    return ConsumerPageShell(
+      title: post.postCode,
+      onBack: () => Navigator.of(context).maybePop(),
+      actions: [
+        DemandPostFavoriteButton(post: post, showSnackBar: true),
+      ],
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: PageSafeInsets.padLTRB(
+          context,
+          left: LiLayout.pagePadding,
+          top: LiLayout.pagePadding,
+          right: LiLayout.pagePadding,
+          bottom: 20,
+          addHomeIndicator: false,
+        ),
         children: [
           if (post.isUrgentRush) ...[
             DemandUrgentRushStrip(isRent: post.transactionType == 'rent'),
@@ -104,7 +113,28 @@ class DemandPostDetailPage extends StatelessWidget {
               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
             ),
           ),
-          const SizedBox(height: 24),
+          if (post.requiresCustomerPhoneLast4) ...[
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundAlt,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                s.offerCustomerPhoneLast4Hint,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 16),
+          const DemandOfferWarningBanner(compact: true),
+          const SizedBox(height: 16),
           FilledButton(
             onPressed: () =>
                 DemandBoardNavigation.openSubmitOffer(context, post: post),

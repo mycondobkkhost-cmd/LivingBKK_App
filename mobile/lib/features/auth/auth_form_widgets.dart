@@ -1,7 +1,41 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../theme/app_theme.dart';
 import '../../theme/living_bkk_brand.dart';
+import '../../widgets/proppiter_brand_hero.dart';
+import '../../widgets/app_mobile_scaffold.dart';
+
+/// หัวข้อฟอร์ม auth — สูงพอ อ่านง่าย ไม่เตี้ย
+TextStyle authTitleTextStyle() => GoogleFonts.prompt(
+      fontSize: 24,
+      fontWeight: FontWeight.w700,
+      height: 1.35,
+      letterSpacing: 0.15,
+      color: AppTheme.textPrimary,
+    );
+
+TextStyle authSubtitleTextStyle() => GoogleFonts.prompt(
+      fontSize: 14,
+      fontWeight: FontWeight.w400,
+      height: 1.5,
+      color: AppTheme.textSecondary,
+    );
+
+TextStyle authFormFieldTextStyle() => GoogleFonts.prompt(
+      fontSize: 15,
+      fontWeight: FontWeight.w500,
+      height: 1.4,
+      color: AppTheme.textPrimary,
+    );
+
+TextStyle authBodyTextStyle({Color? color}) => GoogleFonts.prompt(
+      fontSize: 13,
+      fontWeight: FontWeight.w400,
+      height: 1.45,
+      color: color ?? AppTheme.textSecondary,
+    );
 
 /// ช่องกรอกฟอร์ม auth ร่วม (login / signup)
 class AuthFormField extends StatelessWidget {
@@ -31,7 +65,7 @@ class AuthFormField extends StatelessWidget {
       obscureText: obscure,
       keyboardType: keyboardType,
       autocorrect: false,
-      style: TextStyle(color: AppTheme.textPrimary),
+      style: authFormFieldTextStyle(),
       decoration: InputDecoration(
         labelText: label,
         hintText: label == null ? hint : null,
@@ -48,7 +82,7 @@ class AuthFormField extends StatelessWidget {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-          borderSide: const BorderSide(color: LivingBkkBrand.loginAccentPurple, width: 2),
+          borderSide: const BorderSide(color: LivingBkkBrand.homeHeaderBlockColor, width: 2),
         ),
         suffixIcon: suffix,
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -57,138 +91,179 @@ class AuthFormField extends StatelessWidget {
   }
 }
 
-/// สโลแกนหน้าล็อกอิน — หลักใหญ่ + รองบรรทัดเดียว
-class LoginSloganBlock extends StatelessWidget {
-  const LoginSloganBlock({super.key});
+/// Hero ม่วงด้านบน — ธีมเดียวกับ `HomeStickySearchHeader`
+class AuthHeroPanel extends StatelessWidget {
+  const AuthHeroPanel({
+    super.key,
+    this.onBack,
+    this.trailing,
+    this.height = 220,
+    this.brandSize,
+    this.brandAlignment = const Alignment(0, -0.3),
+  });
+
+  final VoidCallback? onBack;
+  final Widget? trailing;
+  final double height;
+  final ProppiterBrandHeroSize? brandSize;
+  /// จัดโลโก้ในโซนม่วง — ค่าติดลบ = ขึ้นจากกึ่งกลาง
+  final Alignment brandAlignment;
 
   @override
   Widget build(BuildContext context) {
-    final locale = Localizations.localeOf(context);
+    // viewPadding = island/notch บน Web preview + iPhone จริง (padding.top อาจเป็น 0)
+    final mq = MediaQuery.of(context);
+    final topInset = mq.viewPadding.top > 0 ? mq.viewPadding.top : mq.padding.top;
+    final headerTop = topInset > 0 ? topInset + 6.0 : 8.0;
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          child: Text(
-            LivingBkkBrand.loginMainSlogan(locale),
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              height: 1.3,
-              letterSpacing: -0.3,
-              color: LivingBkkBrand.loginAccentPurple,
-            ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LivingBkkBrand.homeHeaderBlockGradient,
           ),
-        ),
-        const SizedBox(height: 8),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              LivingBkkBrand.loginSubSloganLine(locale),
-              maxLines: 1,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                height: 1.2,
-                letterSpacing: -0.15,
-                color: LivingBkkBrand.loginSubSloganColor,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Positioned(
+                top: -50,
+                right: -40,
+                child: _authGlowOrb(180, 0.2),
               ),
-            ),
+              Positioned(
+                bottom: -20,
+                left: -30,
+                child: _authGlowOrb(140, 0.12),
+              ),
+              Padding(
+                padding: EdgeInsets.fromLTRB(12, headerTop, 12, 20),
+                child: Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        if (onBack != null)
+                          _AuthIconChip(
+                            icon: Icons.arrow_back_rounded,
+                            onTap: onBack!,
+                          )
+                        else
+                          const SizedBox(width: 40),
+                        const Spacer(),
+                        if (trailing != null) trailing!,
+                      ],
+                    ),
+                    Expanded(
+                      child: Align(
+                        alignment: brandAlignment,
+                        child: ProppiterBrandHero(
+                          size: brandSize ??
+                              (height <= 200
+                                  ? ProppiterBrandHeroSize.compact
+                                  : ProppiterBrandHeroSize.standard),
+                          centered: true,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
 
-/// พื้นหลัง login — โทนม่วงพาสเทลไล่สี (สอดคล้องหน้าแรก)
-class AuthSplashBackdrop extends StatelessWidget {
-  const AuthSplashBackdrop({super.key, required this.child});
+Widget _authGlowOrb(double size, double opacity) {
+  return Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      gradient: RadialGradient(
+        colors: [
+          Colors.white.withOpacity(opacity),
+          Colors.transparent,
+        ],
+      ),
+    ),
+  );
+}
 
-  final Widget child;
+class _AuthIconChip extends StatelessWidget {
+  const _AuthIconChip({required this.icon, required this.onTap});
+
+  final IconData icon;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const DecoratedBox(decoration: BoxDecoration(gradient: LivingBkkBrand.loginSoftGradient)),
-        Positioned(
-          top: -60,
-          right: -40,
-          child: Container(
-            width: 220,
-            height: 220,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  LivingBkkBrand.loginAccentPurpleSoft.withOpacity(0.35),
-                  LivingBkkBrand.magenta.withOpacity(0.08),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
+    return Material(
+      color: Colors.white.withOpacity(0.16),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(icon, color: Colors.white, size: 22),
         ),
-        Positioned(
-          bottom: -30,
-          left: -20,
-          child: Container(
-            width: 180,
-            height: 180,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  LivingBkkBrand.purple.withOpacity(0.18),
-                  Colors.transparent,
-                ],
-              ),
-            ),
-          ),
-        ),
-        child,
-      ],
+      ),
     );
   }
 }
 
-/// พื้นหลัง auth รอง
-class AuthPastelBackdrop extends StatelessWidget {
-  const AuthPastelBackdrop({super.key, required this.child});
+/// โครงหน้า auth — hero ม่วง + ฟอร์มพื้นเทาอ่อน (เหมือนหน้าแรก)
+class AuthScreenShell extends StatelessWidget {
+  const AuthScreenShell({
+    super.key,
+    this.onBack,
+    this.trailing,
+    required this.form,
+    this.heroHeight = 220,
+    this.heroBrandSize,
+    this.heroBrandAlignment = const Alignment(0, -0.3),
+    this.formOverlap = -20,
+  });
 
-  final Widget child;
+  final VoidCallback? onBack;
+  final Widget? trailing;
+  final Widget form;
+  final double heroHeight;
+  final ProppiterBrandHeroSize? heroBrandSize;
+  final Alignment heroBrandAlignment;
+  final double formOverlap;
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const DecoratedBox(decoration: BoxDecoration(gradient: LivingBkkBrand.loginSoftGradient)),
-        Positioned(
-          top: -40,
-          right: -30,
-          child: Container(
-            width: 180,
-            height: 180,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: RadialGradient(
-                colors: [
-                  LivingBkkBrand.loginAccentPurpleSoft.withOpacity(0.28),
-                  Colors.transparent,
-                ],
+    return AppMobileScaffold(
+      backgroundColor: LivingBkkBrand.pageBackground,
+      body: Column(
+        children: [
+          AuthHeroPanel(
+            onBack: onBack,
+            trailing: trailing,
+            height: heroHeight,
+            brandSize: heroBrandSize,
+            brandAlignment: heroBrandAlignment,
+          ),
+          Expanded(
+            child: Transform.translate(
+              offset: Offset(0, formOverlap),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                child: form,
               ),
             ),
           ),
-        ),
-        child,
-      ],
+        ],
+      ),
     );
   }
 }
@@ -203,14 +278,14 @@ class AuthCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       decoration: BoxDecoration(
-        color: AppTheme.cardTint,
-        borderRadius: BorderRadius.circular(AppTheme.radiusXl),
-        border: Border.all(color: AppTheme.border.withOpacity(0.7)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppTheme.border.withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: LivingBkkBrand.loginAccentPurple.withOpacity(0.14),
-            blurRadius: 28,
-            offset: const Offset(0, 10),
+            color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.12),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -314,14 +389,15 @@ class _GoogleLogoPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// ปุ่มหลัก login — โทนม่วง
+/// ปุ่มหลัก auth — โทนม่วง header หน้าแรก
 ButtonStyle authPrimaryButtonStyle() {
   return FilledButton.styleFrom(
-    backgroundColor: LivingBkkBrand.loginAccentPurple,
+    backgroundColor: LivingBkkBrand.homeHeaderBlockColor,
     foregroundColor: Colors.white,
-    disabledBackgroundColor: LivingBkkBrand.loginAccentPurple.withOpacity(0.45),
+    disabledBackgroundColor: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.45),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusPill)),
     elevation: 0,
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+    textStyle: GoogleFonts.prompt(fontWeight: FontWeight.w700, fontSize: 16),
   );
 }

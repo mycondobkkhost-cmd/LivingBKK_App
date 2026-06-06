@@ -331,6 +331,17 @@ class AppStrings {
         'กรอกให้ละเอียดที่สุด — ทีมงานจะช่วยหาทรัพย์ที่ตรงเงื่อนไขและติดต่อกลับ',
         'Fill in as much detail as you can — our team will find matches and follow up',
       );
+  String get requirementSeriousUseTitle =>
+      t('ข้อควรทราบก่อนส่งความต้องการ', 'Please read before submitting');
+  String get requirementSeriousUseBody => t(
+        'PROPPITER ช่วยหาทรัพย์ให้คุณโดยไม่คิดค่าบริการ แต่เบื้องหลังทีมงานต้องลงทุนเวลาและทรัพยากรจริงในการคัดหาและประสานงาน '
+        'กรุณาส่งเฉพาะเมื่อคุณมีความต้องการหาทรัพย์จริง และให้ข้อมูลตรงตามความเป็นจริง '
+        'หากส่งแบบเล่นๆ ไม่มีความต้องการจริง ให้ข้อมูลคลาดเคลื่อน หรือปิดบังเงื่อนไขสำคัญในภายหลัง '
+        'เราขอสงวนสิทธิ์ในการระงับการใช้บริการนี้หรือบัญชีของคุณตามนโยบายของแพลตฟอร์ม',
+        'PROPPITER finds properties for you at no charge, but our team invests real time and resources to search and coordinate. '
+        'Please submit only if you genuinely need a property and provide accurate information. '
+        'Casual or playful use, misleading details, or withholding important conditions later may result in suspension of this service or your account under our policies.',
+      );
   String get requirementUrgentRushTitle =>
       t('หาแบบด่วนที่สุด', 'Fastest match needed');
   String get requirementUrgentRushSubtitle => t(
@@ -680,6 +691,11 @@ class AppStrings {
       t('ทรัพย์นี้มีแค่ฉัน (Exclusive)', 'Only I have this listing');
   String get listingExclusiveBadge =>
       t('Exclusive', 'Exclusive');
+  String get listingOnlyHereRibbon =>
+      t('เฉพาะที่นี่', 'Only Here');
+  String get listingExclusiveRibbon =>
+      t('EXCLUSIVE', 'EXCLUSIVE');
+  String get listingHotLabel => 'HOT';
   String get adminExclusiveSettingsTitle =>
       t('ตั้งค่า Exclusive & ดันฟีด', 'Exclusive & feed boost settings');
   String get adminExclusiveSettingsHint => t(
@@ -698,6 +714,20 @@ class AppStrings {
       t('บันทึกตั้งค่า Exclusive แล้ว', 'Exclusive settings saved');
   String get adminExclusiveSettingsInvalid =>
       t('กรอกตัวเลขให้ครบ', 'Enter valid numbers');
+  String get adminHotBadgeSectionTitle =>
+      t('ป้าย HOT บนการ์ด', 'HOT badge on cards');
+  String get adminHotBadgeSectionHint => t(
+        'แสดงป้าย HOT เมื่อประกาศมีผู้ดูเกินเกณฑ์ใน 1 ชั่วโมง',
+        'Show HOT when listing views in the last hour exceed the threshold',
+      );
+  String get adminHotBadgeEnabled =>
+      t('เปิดป้าย HOT', 'Enable HOT badge');
+  String get adminHotBadgeEnabledHint => t(
+        'ปิดเพื่อซ่อนป้าย HOT ทั้งระบบ',
+        'Turn off to hide HOT badges app-wide',
+      );
+  String get adminHotBadgeThreshold =>
+      t('เกณฑ์วิว/ชม. (ขั้นต่ำ)', 'Views per hour (min)');
 
   // Viewing access (create listing)
   String get viewingAccessSectionTitle =>
@@ -813,6 +843,40 @@ class AppStrings {
       t('เลือกวันที่จะพร้อม', 'Select when the property will be ready');
   String get occupancyRentRequired =>
       t('ระบุค่าเช่าปัจจุบัน', 'Enter current monthly rent');
+  String get petPolicySectionTitle =>
+      t('นโยบายเลี้ยงสัตว์', 'Pet policy');
+  String get petPolicySectionHint => t(
+        'ช่วยลูกค้าที่มีสัตว์เลี้ยงตัดสินใจได้เร็วขึ้น',
+        'Helps pet owners decide faster',
+      );
+  String get petPolicyNotAllowed =>
+      t('ไม่อนุญาตเลี้ยงสัตว์', 'No pets allowed');
+  String get petPolicyAllowed => t('เลี้ยงสัตว์ได้', 'Pets allowed');
+  String get petPolicyTypesQuestion =>
+      t('อนุญาตสัตว์ประเภทใด', 'Which pets are allowed');
+  String get petPolicyDogs => t('สุนัข', 'Dogs');
+  String get petPolicyCats => t('แมว', 'Cats');
+  String get petPolicyMaxWeightLabel =>
+      t('น้ำหนักไม่เกิน (กก./ตัว)', 'Max weight (kg per pet)');
+  String get petPolicyMaxCountLabel =>
+      t('จำนวนสูงสุด', 'Maximum number of pets');
+  String get petPolicyOptionalHint =>
+      t('ไม่บังคับ', 'Optional');
+  String get petPolicyOptionalNote => t(
+        'เว้นว่าง = ไม่ระบุจำกัดในระบบ (ทีมอาจสอบถามเพิ่ม)',
+        'Leave blank = no limit shown (team may follow up)',
+      );
+  String petPolicyMaxWeight(String kg) =>
+      t('ไม่เกิน $kg กก./ตัว', 'Up to $kg kg each');
+  String petPolicyMaxCount(int n) => t('ไม่เกิน $n ตัว', 'Up to $n pets');
+  String get petPolicyWeightUnlimited =>
+      t('ไม่ระบุจำกัดน้ำหนัก', 'No weight limit specified');
+  String get petPolicyCountUnlimited =>
+      t('ไม่ระบุจำกัดจำนวน', 'No count limit specified');
+  String get petPolicyTypeRequired => t(
+        'เลือกอย่างน้อย สุนัข หรือ แมว',
+        'Select at least dogs or cats',
+      );
   String get createListingPromoPreviewTitle => t('ตัวอย่างบนประกาศ', 'Listing preview');
   String get createListingOpenMapLink => t('เปิดแผนที่', 'Open map');
   String get createListingEditMapLink => t('แก้ลิงก์แผนที่', 'Edit map link');
@@ -872,6 +936,41 @@ class AppStrings {
   String get homeQuickManageBody => t(
         'แก้ไข อัปเดต ปักหมุด — ควบคุมประกาศได้ครบ',
         'Edit, refresh & pin — full control',
+      );
+  String get homeHeaderWelcome =>
+      t('ยินดีต้อนรับสู่ PROPPITER', 'Welcome to PROPPITER');
+  String get homeHeaderSlogan => t(
+        'ประกาศฟรี ปิดไว ไม่ต้องหาลูกค้าเอง',
+        'Free listings · close fast · we bring the buyers',
+      );
+  String get homeAreaPill =>
+      t('กรุงเทพฯและปริมณฑล', 'Bangkok & metro area');
+  String get homeHeroCta => t('ค้นหาทรัพย์เลย', 'Search properties');
+  String get homeServiceMapTitle => t('ค้นหาแผนที่', 'Map search');
+  String get homeQuickServiceMapLine1 => t('ค้นหา', 'Search');
+  String get homeQuickServiceMapLine2 => t('ใกล้ฉัน', 'Near me');
+  String get homeQuickServiceMatchLine1 => t('ช่วยหา', 'We find');
+  String get homeQuickServiceMatchLine2 => t('ให้ฟรี', 'For free');
+  String get homeQuickServiceBoardLine1 => t('ประกาศ', 'Post');
+  String get homeQuickServiceBoardLine2 => t('หาซื้อ/หาเช่า', 'Buy or rent');
+  String get homeServiceMapSubtitle =>
+      t('ดูทรัพย์รอบคุณบนแผนที่', 'Browse listings on the map');
+  String get homeServiceMapPromo => t('แม่นยำ', 'Verified');
+  String get homeServiceFreePromo => t('ฟรี', 'Free');
+  String get homeServiceSavedSubtitle =>
+      t('ทรัพย์ที่บันทึกไว้', 'Your saved listings');
+  String get notifMarkAllRead => t('อ่านทั้งหมด', 'Mark all read');
+  String get notifEmpty =>
+      t('ยังไม่มีการแจ้งเตือน', 'No notifications yet');
+  String get notifFilterAll => t('ทั้งหมด', 'All');
+  String get notifFilterChat => t('แชท', 'Chat');
+  String get notifFilterAppointment => t('นัด', 'Appointments');
+  String get notifFilterListing => t('ประกาศ', 'Listings');
+  String get notifFilterSystem => t('ระบบ', 'System');
+  String get promoContactTeam => t('ติดต่อทีมงาน', 'Contact our team');
+  String get promoContactTeamHint => t(
+        'ไปที่แท็บข้อความ — ทีมงานจะตอบกลับโดยเร็ว',
+        'Open Messages tab — our team will reply shortly',
       );
   String get homeBadgeNew => t('ใหม่', 'New');
   String get homeTabPopularAreas => t('ทำเลยอดฮิต', 'Hot areas');
@@ -970,6 +1069,7 @@ class AppStrings {
   String get cancel => t('ยกเลิก', 'Cancel');
   String get save => t('บันทึก', 'Save');
   String get edit => t('แก้ไข', 'Edit');
+  String get delete => t('ลบ', 'Delete');
   String get back => t('กลับ', 'Back');
   String get clear => t('ล้าง', 'Clear');
   String get apply => t('ใช้ตัวกรอง', 'Apply filters');
@@ -985,12 +1085,18 @@ class AppStrings {
   // ── Errors / not found ──
   String get notFoundListing => t('ไม่พบทรัพย์', 'Listing not found');
   String get notFoundSection => t('ไม่พบรายการ', 'Section not found');
-  String get notFoundLead => t('ไม่พบ Lead', 'Lead not found');
+  String get notFoundLead => t('ไม่พบเคสลูกค้า', 'Lead not found');
   String get notFoundChat => t('ไม่พบแชท', 'Chat not found');
   String get notFoundPost => t('ไม่พบประกาศ', 'Post not found');
 
   // ── Listing card meta ──
   String bedsShort(int n) => t('$n นอน', '$n bed');
+  String get studioCardLabel => t('สตูดิโอ', 'Studio');
+  String bedroomCardLabel(int n) =>
+      n == 0 ? studioCardLabel : t('$n ห้องนอน', '$n bed');
+  String bathroomCardLabel(int n) => t('$n ห้องน้ำ', '$n bath');
+  String areaCardLabel(num sqm) =>
+      t('${sqm.round()} ตร.ม.', '${sqm.round()} sqm');
   String sqmShort(int n) => t('$n ตร.ม.', '$n sqm');
   String get perMonth => t('/เดือน', '/mo');
   String get listingTypeRent => t('เช่า', 'Rent');
@@ -1090,6 +1196,12 @@ class AppStrings {
         'กรุณากรอกอีเมลและรหัสผ่าน',
         'Email and password are required',
       );
+  String get profileAvatarUpdated =>
+      t('อัปเดตรูปโปรไฟล์แล้ว', 'Profile photo updated');
+  String get profileAvatarNeedLogin => t(
+        'ล็อกอินก่อนอัปโหลดรูปโปรไฟล์',
+        'Sign in to upload a profile photo',
+      );
   String get signUpAvatarLaterHint => t(
         'รูปโปรไฟล์จะอัปโหลดได้ที่หน้าโปรไฟล์ภายหลัง',
         'You can upload your profile photo later in Profile',
@@ -1181,18 +1293,18 @@ class AppStrings {
         'Switch on home header — 「You are」\n'
         'Broker = co-broker listings only · Owner = can post',
       );
-  String get adminCenter => t('ศูนย์ Admin (ทีมงาน)', 'Admin center (team)');
+  String get adminCenter => t('ศูนย์หลังบ้าน (ทีมงาน)', 'Admin center (team)');
   String get checkingRole => t('กำลังตรวจสอบสิทธิ์…', 'Checking permissions…');
   String get adminHintDemo =>
-      t('โหมด Demo — ทดสอบแชท/Lead/รายงานได้ทันที', 'Demo — test chat/leads/reports');
+      t('โหมดทดลอง — ทดสอบแชท เคสลูกค้า และรายงานได้ทันที', 'Demo — test chat/leads/reports');
   String get adminHintTrial => t(
-        'โหมดทดลอง — เปิดศูนย์ Admin ด้วยข้อมูลตัวอย่าง',
+        'โหมดทดลอง — เปิดศูนย์หลังบ้านด้วยข้อมูลตัวอย่าง',
         'Trial — open Admin with sample data',
       );
   String get adminHintReal =>
-      t('บัญชีแอดมิน — จัดการแชท Lead และรายงาน', 'Admin — manage chat, leads & reports');
+      t('บัญชีผู้ดูแล — จัดการแชท เคสลูกค้า และรายงาน', 'Admin — manage chat, leads & reports');
   String get adminHintNeedLogin => t(
-        'ล็อกอินด้วยบัญชี admin ใน Supabase เพื่อใช้งานจริง',
+        'ล็อกอินด้วยบัญชีผู้ดูแลในระบบเพื่อใช้งานจริง',
         'Log in with Supabase admin account for production',
       );
   String get postListingProperty => t('ลงประกาศทรัพย์', 'Post listing');
@@ -1200,7 +1312,7 @@ class AppStrings {
       t('ประกาศของฉัน · ยืนยันว่าง', 'My listings · mark available');
   String get notifications => t('การแจ้งเตือน', 'Notifications');
   String get notificationsRealtimeFcm => t(
-        'Realtime + FCM เปิดแล้ว (Lead/นัดชม)',
+        'แจ้งเตือนทันทีเปิดแล้ว (เคสลูกค้า/นัดชม)',
         'Realtime + FCM enabled (leads/viewings)',
       );
   String get notificationsPartial => t(
@@ -1208,7 +1320,7 @@ class AppStrings {
         'In-app: Realtime · Push: set FIREBASE_* per mobile/docs/FCM_SETUP.md',
       );
   String get notificationsDemo =>
-      t('โหมด Demo — SnackBar เมื่อมี Lead (จำลอง)', 'Demo — SnackBar on lead (simulated)');
+      t('โหมดทดลอง — แจ้งเตือนเมื่อมีเคสใหม่ (จำลอง)', 'Demo — SnackBar on lead (simulated)');
   String get useOnMobile => t('ใช้บนมือถือจริง', 'Use on mobile device');
   String get pwaHint => t(
         'iPhone: Safari → แชร์ → เพิ่มไปที่หน้าจอโฮม\n'
@@ -1500,6 +1612,45 @@ class AppStrings {
   String get createListingFacilitiesTitle => t('ส่วนกลาง', 'Common facilities');
   String get adminListingsPendingReview => t('ประกาศรอตรวจ', 'Listings pending review');
   String get adminApproveListing => t('อนุมัติเผยแพร่', 'Approve & publish');
+  String get adminPublishedWithWatermark => t(
+        'เผยแพร่แล้ว — ระบบฝังลายน้ำ PROPPITER ในรูปแล้ว',
+        'Published — PROPPITER watermark burned into photos',
+      );
+  String get adminTabWatermark => t('ลายน้ำ', 'Watermark');
+  String get adminWatermarkTitle => t('ตั้งค่าลายน้ำรูปประกาศ', 'Listing photo watermark');
+  String get adminWatermarkHint => t(
+        'อัปโหลด PNG โปร่งใส (โลโก้เล็ก) — ใช้หลังอนุมัติเผยแพร่ มุมล่างขวา กึ่งโปร่งแสง',
+        'Upload transparent PNG — applied on publish, bottom-right, semi-transparent',
+      );
+  String get adminWatermarkPreview => t('ตัวอย่างบนรูป', 'Preview on photo');
+  String get adminWatermarkUsingCustom => t('ใช้รูปที่อัปโหลดแล้ว', 'Using uploaded image');
+  String get adminWatermarkUsingDefault => t('ใช้โลโก้เริ่มต้นในระบบ', 'Using built-in default logo');
+  String get adminWatermarkUpload => t('อัปโหลดรูปลายน้ำ', 'Upload watermark image');
+  String get adminWatermarkUploaded => t('อัปโหลดลายน้ำแล้ว', 'Watermark uploaded');
+  String get adminWatermarkUseDefault => t('กลับไปใช้โลโก้เริ่มต้น', 'Use default logo');
+  String get adminWatermarkTuning => t('ปรับความเบา/ขนาด', 'Opacity & size');
+  String get adminWatermarkEnabled => t('เปิดใช้ลายน้ำ', 'Watermark enabled');
+  String get adminWatermarkEnabledHint => t(
+        'ปิดชั่วคราวได้ — รูปใหม่ที่เผยแพร่จะไม่ฝังลายน้ำ',
+        'Turn off to skip watermarking new publishes',
+      );
+  String adminWatermarkOpacityLabel(int v) =>
+      t('ความเข้ม (โปร่งแสง) · $v', 'Opacity · $v');
+  String adminWatermarkSizeLabel(int pct) =>
+      t('ขนาด · $pct% ของความกว้างรูป', 'Size · $pct% of image width');
+  String get adminWatermarkSaveTuning => t('บันทึกการปรับ', 'Save settings');
+  String get adminWatermarkSaved => t('บันทึกการตั้งค่าแล้ว', 'Settings saved');
+  String get adminWatermarkNote => t(
+        'รูปที่ฝังลายน้ำไปแล้วจะไม่เปลี่ยนอัตโนมัติ — เปลี่ยนรูปลายน้ำแล้วมีผลกับประกาศที่เผยแพร่ใหม่เท่านั้น',
+        'Already watermarked photos stay as-is — changes apply to new publishes only',
+      );
+  String get adminWatermarkClearTitle => t('ลบรูปลายน้ำที่อัปโหลด?', 'Remove uploaded watermark?');
+  String get adminWatermarkClearBody => t(
+        'จะกลับไปใช้โลโก้เริ่มต้นในระบบ',
+        'Will revert to the built-in default logo',
+      );
+  String get adminWatermarkClearConfirm => t('ลบ', 'Remove');
+  String get adminWatermarkCleared => t('กลับไปใช้โลโก้เริ่มต้นแล้ว', 'Reverted to default logo');
   String get adminRejectListing => t('ส่งกลับแก้ไข', 'Send back to draft');
 
   // ── Saved listings ──
@@ -1594,13 +1745,13 @@ class AppStrings {
   String get submitViewingRequest => t('ส่งคำขอนัดดู', 'Submit viewing request');
 
   // ── Admin ──
-  String get adminTitle => t('Admin', 'Admin');
-  String get adminLivingBkk => t('PROPPITER Admin', 'PROPPITER Admin');
+  String get adminTitle => t('หลังบ้าน', 'Admin');
+  String get adminLivingBkk => t('PROPPITER หลังบ้าน', 'PROPPITER Admin');
   String get adminLink => t('ลิงก์', 'Link');
   String get adminDetails => t('รายละเอียด', 'Details');
   String get adminConfirmRole => t('ยืนยันสิทธิ์', 'Confirm role');
   String get adminStatsMakecom =>
-      t('สถิติวันล่าสุด (สำหรับ Make.com)', 'Latest stats (for Make.com)');
+      t('สถิติวันล่าสุด (ส่งต่อระบบอัตโนมัติ)', 'Latest stats (for Make.com)');
   String get adminChatTitle => t('แชท', 'Chat');
   String get adminReplyCustomer => t('ตอบแชทลูกค้า', 'Reply to customer');
   String get adminCloseCase => t('ปิดเคส', 'Close case');
@@ -1608,24 +1759,71 @@ class AppStrings {
   String get adminSaveViewing => t('บันทึกนัดชม', 'Save viewing appointment');
   String get adminViewingMap => t('แผนที่โซนนัดชม', 'Viewing zone map');
   String get adminNoCoords => t('ไม่มีพิกัดทรัพย์', 'No property coordinates');
+  String get adminListingNotFound =>
+      t('ไม่พบทรัพย์ในระบบ', 'Listing not found');
+  String get adminOpenListing => t('เปิดหน้าทรัพย์', 'Open listing');
+  String get adminConfirmViewingInChat =>
+      t('ยืนยันนัดดู', 'Confirm viewing');
+  String get adminSeniorOwnerCallBtn =>
+      t('ขอแอดมินโทรเจ้าของ', 'Senior call owner');
+  String get adminSeniorOwnerCallTitle =>
+      t('ขอแอดมินระดับสูงโทรเจ้าของ', 'Request senior admin to call owner');
+  String get adminSeniorOwnerCallHint => t(
+        'ระบุประเด็นที่ต้องคุยกับเจ้าของก่อนยืนยันนัด',
+        'What should be discussed with the owner before confirming',
+      );
+  String get adminSeniorOwnerCallSubmit =>
+      t('ส่งคำขอ', 'Submit request');
+  String get adminSeniorOwnerCallSent => t(
+        'ส่งคำขอให้แอดมินระดับสูงแล้ว',
+        'Senior admin request sent',
+      );
+  String get adminSendOwnerProfileBtn =>
+      t('ส่งโปรไฟล์ให้เจ้าของ', 'Send profile to owner');
+  String get adminSendOwnerProfileTitle =>
+      t('ส่งโปรไฟล์ลูกค้าให้เจ้าของ', 'Send customer profile to owner');
+  String get adminSendOwnerProfileBody => t(
+        'ระบบจะตัดเบอร์โทรและ Line ID ออกก่อนส่ง — เจ้าของจะเห็นในแชทและกล่องงาน',
+        'Phone and Line ID will be removed before sending. The owner will see this in chat and work inbox.',
+      );
+  String get adminSendOwnerProfileConfirm =>
+      t('ส่งเลย', 'Send now');
+  String get adminSendOwnerProfileDone => t(
+        'ส่งโปรไฟล์ให้เจ้าของแล้ว (ไม่มีเบอร์/ไลน์เต็ม)',
+        'Profile sent to owner (contact details censored)',
+      );
+  String get adminOwnerNotFound =>
+      t('ไม่พบเจ้าของประกาศในระบบ', 'Listing owner not found');
+  String get adminConfirmViewingChatOnly => t(
+        'ยืนยันนัดดูได้ในแชทหลังรับงานและคุยกับลูกค้าแล้ว',
+        'Confirm viewing in chat after claiming and talking to the customer',
+      );
+  String get adminLeadPropertyCard => t('ทรัพย์ที่ลูกค้าสนใจ', 'Property of interest');
+  String get adminOpenLinkedChat =>
+      t('เปิดแชทกับลูกค้า', 'Open customer chat');
+  String get adminChatBeforeConfirmHint => t(
+        'คุยกับลูกค้าในแชทก่อน แล้วค่อยกด「ยืนยันนัดดู」เมื่อตกลงรายละเอียดแล้ว',
+        'Chat with the customer first, then confirm the viewing once agreed.',
+      );
+  String get adminLeadChatRef => t('เลขแชท', 'Chat ref');
   String get adminCoordinateViewing =>
       t('ประสานงาน / ยืนยันนัดดู', 'Coordinate / confirm viewing');
   String get adminPublishBoard => t('เผยแพร่บอร์ด', 'Publish to board');
-  String get adminCopyTsv => t('คัดลอกส่ง Google Sheets', 'Copy for Google Sheets');
+  String get adminCopyTsv => t('คัดลอกส่งสเปรดชีต', 'Copy for Google Sheets');
   String get adminTsvCopied => t(
-        'คัดลอก TSV แล้ว — วางใน Google Sheets ได้',
+        'คัดลอกตารางแล้ว — วางในสเปรดชีตได้',
         'TSV copied — paste into Google Sheets',
       );
   String get adminNoStats => t(
-        'ยังไม่มีข้อมูล — ส่ง Lead หรือนัดชมเพื่อสะสมสถิติ',
+        'ยังไม่มีข้อมูล — รอเคสลูกค้าหรือนัดชมเพื่อสะสมสถิติ',
         'No data yet — submit leads or viewings to collect stats',
       );
   String get adminLifecycleTitle =>
-      t('Listing lifecycle', 'Listing lifecycle');
+      t('วงจรประกาศ', 'Listing lifecycle');
   String get adminRunNow => t('รันตอนี้', 'Run now');
   String get adminNoPhotosPending =>
       t('ไม่มีรูปรออนุมัติ', 'No photos pending approval');
-  String get adminNoFlags => t('ไม่มี flag ค้าง', 'No pending flags');
+  String get adminNoFlags => t('ไม่มีรายการแจ้งผิดปกติค้าง', 'No pending flags');
 
   // ── Profile extras ──
   String get demoModeEditEnv => t(
@@ -1656,6 +1854,26 @@ class AppStrings {
         'เลือกจากระบบเพื่อชื่อมาตรฐานและปักหมุดถูกต้อง (แก้จุดอ่อน LI: ไม่ใช้ GPS มือถือ)',
         'Pick from registry for standard name and map pin (fixes LI GPS issue)',
       );
+  String get createListingLocationSearchHint => t(
+        'ค้นหาโครงการ ทำเล หรือ BTS/MRT — เหมือนช่องค้นหาหน้าแรก',
+        'Search projects, areas, or BTS/MRT — same as the home search bar',
+      );
+  String get createListingLocationManualEntry => t(
+        'อยู่นอกโครงการ / ไม่พบในระบบ — กรอกทำเลเอง',
+        'Outside a project / not listed — enter manually',
+      );
+  String get createListingLocationManualTitle =>
+      t('กรอกทำเลเอง', 'Enter location manually');
+  String get createListingLocationManualHint => t(
+        'ระบุชื่อโครงการหรือทำเล และเขต/ย่านด้านล่าง',
+        'Enter project or area name and district below',
+      );
+  String get createListingStandaloneToggle =>
+      t('ไม่ระบุชื่อโครงการ (บ้าน/ทาวน์เฮาส์นอกโครงการ)', 'No project name (standalone house/townhouse)');
+  String get createListingPhotoPolicy => t(
+        'ใช้รูปถ่ายจริงของทรัพย์เท่านั้น — ห้ามลายน้ำ/โลโก้จากเว็บหรือนายหน้าอื่น · หลังอนุมัติเผยแพร่ ระบบจะฝังลายน้ำ PROPPITER ในไฟล์รูปอัตโนมัติ',
+        'Actual property photos only — no third-party watermarks/logos · after approval PROPPITER watermark is burned into image files automatically.',
+      );
   String get projectSearchPlaceholder => t('พิมพ์ชื่อโครงการ...', 'Search project name...');
   String projectCatalogLoaded(int n) =>
       t('โหลดสมุดโครงการ $n รายการ', 'Loaded $n projects');
@@ -1670,7 +1888,10 @@ class AppStrings {
         'Fill district below · team will add project to registry later',
       );
   String get projectPinFromCatalog => t('ปักหมุดตามโครงการ', 'Pinned to project');
-  String get projectRequired => t('เลือกโครงการ หรือกด「ไม่พบในระบบ」', 'Select a project or tap「Not listed」');
+  String get projectRequired => t(
+        'เลือกโครงการจากการค้นหา หรือกด「กรอกทำเลเอง」',
+        'Pick a project from search or tap「Enter manually」',
+      );
   String get propertyTypeLabel => t('ประเภททรัพย์', 'Property type');
   String get bedroomsFieldLabel => t('ห้องนอน', 'Bedrooms');
 
@@ -1708,6 +1929,48 @@ class AppStrings {
   String get offerPrivateNote => t(
         'ข้อมูลนี้ไม่แสดงต่อผู้ใช้รายอื่น — ทีม PROPPITER ตรวจสอบเท่านั้น',
         'Not visible to other users — PROPPITER team only',
+      );
+  String get offerVacancyWarningTitle => t(
+        'ข้อควรทราบก่อนส่งข้อเสนอ',
+        'Before you submit an offer',
+      );
+  String get offerVacancyWarningBody => t(
+        'กรุณาตรวจสอบว่าทรัพย์ของท่านยังว่างและพร้อมให้เช่าหรือขายตามที่ระบุไว้ '
+        'หากในขณะนี้ยังไม่ว่าง โปรดระบุในช่องรายละเอียดให้ชัดเจน '
+        'เช่น วันที่ว่าง เงื่อนไขการส่งมอบ และช่วงเวลาที่ผู้สนใจสามารถเข้าอยู่ได้',
+        'Please confirm your property is vacant and available as described. '
+        'If it is not available yet, kindly note this in the details — '
+        'available date, handover terms, and when the tenant or buyer may move in.',
+      );
+  String get offerMisuseWarning => t(
+        'เพื่อคุณภาพของการให้บริการ โปรดส่งข้อเสนอที่สอดคล้องกับความต้องการของประกาศเท่านั้น '
+        'หากพบข้อเสนอที่ไม่ตรงหรือไม่ใกล้เคียงซ้ำ ๆ ทีมงานอาจพิจารณาจำกัดสิทธิ์การเสนอทรัพย์บนบอร์ดเป็นการชั่วคราว',
+        'To maintain service quality, please submit offers that genuinely match the post. '
+        'Repeated offers that are irrelevant or far from requirements may result in '
+        'temporary limits on board offer access.',
+      );
+  String get propertyHonestyWarningTitle => t(
+        'กรุณาตรวจสอบความพร้อมและความถูกต้องของข้อมูล',
+        'Please verify availability and listing accuracy',
+      );
+  String get propertyHonestyWarningVacancy => t(
+        'โปรดยืนยันว่าทรัพย์อยู่ในสภาพพร้อมให้เช่าหรือขายตามที่ระบุ '
+        'หากยังไม่ว่าง กรุณาระบุใน「สถานะทรัพย์」หรือหมายเหตุให้ชัดเจน '
+        'เช่น วันที่ว่าง เงื่อนไขการส่งมอบ และช่วงเวลาที่ผู้สนใจเข้าอยู่ได้',
+        'Please confirm the property is available as stated. '
+        'If not yet vacant, specify under Property status or in notes — '
+        'available date, handover terms, and expected move-in timing.',
+      );
+  String get propertyHonestyWarningMisuse => t(
+        'ข้อมูลที่ไม่ถูกต้อง ไม่ครบถ้วน หรือไม่สอดคล้องกับความเป็นจริง '
+        'อาจส่งผลให้ไม่ได้รับสิทธิ์ co-agent ค่าคอมมิชชันไม่เป็นไปตามเกณฑ์มาตรฐาน '
+        'และระบบอาจพิจารณาจำกัดการลงประกาศหรือการเสนอทรัพย์',
+        'Inaccurate, incomplete, or misleading information may affect co-agent eligibility, '
+        'standard commission terms, and may result in limited access to posting or offering.',
+      );
+  String get offerDetailsVacancyHint => t(
+        'ระบุสภาพทรัพย์ วันที่ว่าง และเงื่อนไขการส่งมอบ (โดยเฉพาะหากยังไม่ว่างทันที)',
+        'Property condition, available date, and handover terms (if not vacant yet)',
       );
   String get offerTransactionLabel => t('ประเภทข้อเสนอ *', 'Offer type *');
   String get offerSale => t('ขาย', 'Sale');
@@ -1779,6 +2042,26 @@ class AppStrings {
       t('ระบุค่าคอมมิชชั่นที่จะให้', 'Describe the commission you will offer');
   String get offerContactNameField =>
       t('ชื่อผู้ติดต่อ *', 'Contact name *');
+  String get offerCustomerPhoneLast4Label => t(
+        'เลข 4 ตัวท้ายเบอร์ลูกค้า *',
+        'Customer phone — last 4 digits *',
+      );
+  String get offerCustomerPhoneLast4Hint => t(
+        'ใช้รีเช็คข้อมูลซ้ำในระบบ (โคเอเจนหาให้ลูกค้า)',
+        'For duplicate check (co-agent customer lead)',
+      );
+  String get offerCustomerPhoneLast4Invalid => t(
+        'กรุณากรอกเลข 4 ตัวท้ายเบอร์ลูกค้าให้ครบ',
+        'Enter the last 4 digits of the customer phone',
+      );
+  String get offerCustomerPhoneLast4Mismatch => t(
+        'เลข 4 ตัวท้ายไม่ตรงกับข้อมูลลูกค้าของประกาศนี้',
+        'Last 4 digits do not match this post’s customer record',
+      );
+  String get offerCustomerPhoneLast4Duplicate => t(
+        'พบข้อมูลที่อาจซ้ำในระบบ — โปรดตรวจสอบก่อนส่งข้อเสนอ',
+        'Possible duplicate found — please verify before submitting',
+      );
   String get offerContactPhoneField =>
       t('เบอร์โทรติดต่อ *', 'Contact phone *');
   String get offerValidationContactName =>
@@ -2101,45 +2384,47 @@ class AppStrings {
         '1) Claim before replying · 2) Reassign if busy · 3) Close when done\n'
         'FAQ bot filters first — only viewings · sensitive · staff · 2 unclear tries remain',
       );
-  String get adminFaqTitle => t('ตั้งค่า FAQ อัตโนมัติ', 'Auto-reply FAQ');
+  String get adminFaqTitle => t('ตั้งค่าตอบอัตโนมัติ', 'Auto-reply FAQ');
   String get adminFaqIntro => t(
         'แก้ข้อความตอบอัตโนมัติได้ทันที — ไม่ต้อง deploy\n'
         'ปิด switch เพื่อปิด rule ชั่วคราว',
         'Edit auto-replies instantly — no deploy needed\n'
         'Toggle off to disable a rule temporarily',
       );
-  String get adminFaqEmpty => t('ยังไม่มี FAQ — รัน migration บน Supabase', 'No FAQ rules yet');
+  String get adminFaqEmpty => t('ยังไม่มีคำถามพบบ่อย — ต้องตั้งค่าฐานข้อมูลก่อน', 'No FAQ rules yet');
   String get adminFaqEditTitle => t('แก้คำตอบ', 'Edit reply');
   String get adminFaqReplyLabel => t('ข้อความตอบ', 'Reply text');
-  String get adminFaqSettings => t('ตั้งค่า FAQ', 'FAQ settings');
+  String get adminFaqSettings => t('ตั้งค่าคำถามพบบ่อย', 'FAQ settings');
   String get adminConsoleTitle =>
-      t('ศูนย์แชทแอดมิน (คอม)', 'Admin chat console (desktop)');
+      t('ศูนย์แชทหลังบ้าน (จอคอม)', 'Admin chat console (desktop)');
   String get adminConsolePickChat => t(
         'เลือกแชทจากรายการซ้ายเพื่อตอบลูกค้า\nEnter ส่งข้อความ · ปุ่มด้านบนปิดเคส',
         'Pick a chat from the inbox to reply\nEnter to send · use Close case when done',
       );
   String get adminOpenConsole =>
       t('เปิดโหมดคอม', 'Open desktop console');
-  String get adminTabDashboard => t('แดชบอร์ด', 'Dashboard');
+  String get adminTabDashboard => t('ภาพรวม', 'Dashboard');
   String get adminDashboardBarTitle =>
       t('ภาพรวมแพลตฟอร์ม', 'Platform overview');
   String get adminViewConsumerApp =>
-      t('ดูแอpลูกค้า', 'View consumer app');
+      t('ดูแอปลูกค้า', 'View consumer app');
+  String get adminMoreActions => t('เมนูเพิ่มเติม', 'More actions');
+  String get adminRefresh => t('รีเฟรช', 'Refresh');
   String get adminPreviewBanner =>
-      t('โหมดดูแอpลูกค้า (แอดมิน)', 'Consumer preview (admin)');
+      t('โหมดดูแอปลูกค้า (หลังบ้าน)', 'Consumer preview (admin)');
   String get adminBackToConsole => t('กลับหลังบ้าน', 'Back to admin');
   String get adminDashProjects => t('โครงการ', 'Projects');
   String get adminDashListings => t('ประกาศเผยแพร่', 'Published');
   String adminDashListingsSub(int total) =>
       t('ทั้งหมด $total', 'Total $total');
-  String get adminDashLeads => t('Lead ใหม่', 'New leads');
+  String get adminDashLeads => t('เคสใหม่', 'New leads');
   String adminDashLeadsSub(int total) => t('รวม $total', 'Total $total');
   String get adminDashChat => t('แชทรอตอบ', 'Pending chat');
   String get adminDashAppointments => t('นัดชม', 'Viewings');
   String get adminDashOffers => t('ข้อเสนอรอ', 'Pending offers');
-  String get adminDashModeration => t('Moderation', 'Moderation');
+  String get adminDashModeration => t('ตรวจสอบ', 'Moderation');
   String adminDashModerationSub(int images, int flags) =>
-      t('รูป $images · flag $flags', 'Photos $images · flags $flags');
+      t('รูป $images · แจ้ง $flags', 'Photos $images · flags $flags');
   String get adminDashImports => t('นำเข้ารอ', 'Pending imports');
   String adminDashNeedsAction(int n) => t('ต้องทำ $n', '$n need action');
   String get adminDashSectionOps => t('งานประจำวัน', 'Daily operations');
@@ -2148,49 +2433,131 @@ class AppStrings {
   String get adminDashSectionTrend => t('แนวโน้ม 7 วัน', '7-day trend');
   String get adminDashDemandPosts => t('บอร์ดเปิด', 'Open board posts');
   String get adminDashModImages => t('รูปรอตรวจ', 'Photos pending');
-  String get adminDashModFlags => t('Flags เปิด', 'Open flags');
+  String get adminDashModFlags => t('แจ้งผิดปกติ', 'Open flags');
   String get adminDashUsers => t('ผู้ใช้ทั้งหมด', 'All users');
   String get adminDashOpenTab => t('เปิดแท็บ →', 'Open tab →');
   String adminDashUpdated(String time) => t('อัปเดต $time', 'Updated $time');
   String adminDashTrendLine(String date, int leads, int appts) =>
-      t('$date · Lead $leads · นัด $appts', '$date · leads $leads · viewings $appts');
+      t('$date · เคส $leads · นัด $appts', '$date · leads $leads · viewings $appts');
   String get adminConsoleInboxHint => t(
-        'Inbox — เฉพาะเคสที่ต้องคน',
+        'กล่องรับงาน — เฉพาะเคสที่ต้องมีคนดูแล',
         'Inbox — human-needed cases only',
       );
   String get adminSendReply => t('ส่ง', 'Send');
-  String get adminImportTitle => t('นำเข้าทรัพย์ LI', 'Import LI listings');
+  String get adminImportTitle => t('นำเข้าทรัพย์จากเว็บนอก', 'Import LI listings');
   String get adminTabImport => t('นำเข้า', 'Import');
   String get adminTabInventory => t('ทะเบียนทรัพย์', 'Inventory');
   String get adminTabProjects => t('โครงการ', 'Projects');
+  String get adminTabPromos => t('โฆษณา', 'Promos');
+  String get adminPromosSpecTitle => t('ขนาดรูปโฆษณา (ตามกรอบหน้าแรก)', 'Promo image size (home frame)');
+  String adminPromosSpecBody(int w, int h) => t(
+        'อัตราส่วน 21:9 · แนะนำ ${w}×${h} px · PNG/WebP/JPEG · ไม่เกิน 512 KB\n'
+        'รูปจะถูก crop แบบ cover ในกรอบสูงสุด 124pt',
+        'Aspect ratio 21:9 · recommended ${w}×${h} px · PNG/WebP/JPEG · max 512 KB\n'
+        'Image is cover-cropped in a max 124pt-tall frame',
+      );
+  String adminPromosActiveCount(int active, int max) =>
+      t('เปิดใช้งาน $active / $max รายการ', '$active / $max active');
+  String get adminPromosEmpty =>
+      t('ยังไม่มีโฆษณา — กดเพิ่มด้านล่าง', 'No promos yet — tap Add below');
+  String get adminPromosInactive => t('ปิด', 'Off');
+  String get adminPromosMoveUp => t('เลื่อนขึ้น', 'Move up');
+  String get adminPromosMoveDown => t('เลื่อนลง', 'Move down');
+  String get adminPromosAdd => t('เพิ่มโฆษณา', 'Add promo');
+  String get adminPromosEdit => t('แก้ไขโฆษณา', 'Edit promo');
+  String get adminPromosMaxActive =>
+      t('เปิดใช้งานได้สูงสุด 10 โฆษณา', 'Maximum 10 active promos');
+  String get adminPromosDeleteTitle => t('ลบโฆษณา', 'Delete promo');
+  String adminPromosDeleteBody(String title) =>
+      t('ลบ "$title" ถาวร?', 'Permanently delete "$title"?');
+  String get adminPromosNeedTitleOrImage => t(
+        'กรอกหัวข้อหรืออัปโหลดรูปอย่างน้อยหนึ่งอย่าง',
+        'Enter a title or upload an image',
+      );
+  String get adminPromosPreviewHome => t('บนหน้าแรก (carousel)', 'On home (carousel)');
+  String get adminPromosPreviewHomeHint => t(
+        'แสดงเฉพาะรูปในแถบเลื่อน — ไม่มีข้อความทับ',
+        'Image only in the scroll strip — no text overlay',
+      );
+  String get adminPromosPreviewDetail => t('เมื่อผู้ใช้แตะการ์ด', 'When user taps the card');
+  String get adminPromosSlugAuto => t('รหัส (สร้างอัตโนมัติ)', 'ID (auto-generated)');
+  String get adminPromosSlugEdit => t('แก้รหัส', 'Edit ID');
+  String get adminPromosSectionOptional => t('เพิ่มเติม (ไม่บังคับ)', 'Optional details');
+  String get adminPromosSectionAdvanced => t('ตั้งค่าขั้นสูง', 'Advanced');
+  String get adminPromosTitleThRequired => t('หัวข้อ (ไทย) *', 'Title (Thai) *');
+  String get adminPromosSubtitleThOptional =>
+      t('คำบรรยายสั้น (ไทย)', 'Short subtitle (Thai)');
+  String get adminPromosDefaultTitle => t('โปรโมชั่น', 'Promotion');
+  String get adminPromosPickCancelled => t('ยกเลิกเลือกรูป', 'Image pick cancelled');
+  String get adminPromosUploadDone => t('อัปโหลดรูปแล้ว', 'Image uploaded');
+  String get adminPromosUploadFailed => t('อัปโหลดไม่สำเร็จ — ตรวจ Supabase / bucket home-promo', 'Upload failed — check Supabase / home-promo bucket');
+  String get adminPromosDetailPreviewHint =>
+      t('(ยังไม่มีรายละเอียด)', '(No detail yet)');
+  String get adminPromosUploadImage => t('อัปโหลดรูป', 'Upload image');
+  String get adminPromosUploadHint => t(
+        'ใช้รูป 21:9 ตามขนาดด้านบน — ถ้ายังไม่อัปโหลดจะใช้รูปในแอป (ถ้ามี)',
+        'Use 21:9 image per spec above — bundled asset used if no upload',
+      );
+  String get adminPromosSlug => t('Slug (รหัส)', 'Slug (id)');
+  String get adminPromosSort => t('ลำดับ (1–10)', 'Sort order (1–10)');
+  String get adminPromosActive => t('เปิดใช้งาน', 'Active');
+  String get adminPromosTitleTh => t('หัวข้อ (ไทย)', 'Title (Thai)');
+  String get adminPromosTitleEn => t('หัวข้อ (อังกฤษ)', 'Title (English)');
+  String get adminPromosSubtitleTh => t('คำบรรยายย่อ (ไทย)', 'Subtitle (Thai)');
+  String get adminPromosSubtitleEn => t('คำบรรยายย่อ (อังกฤษ)', 'Subtitle (English)');
+  String get adminPromosDetailTh => t('รายละเอียด (ไทย)', 'Detail (Thai)');
+  String get adminPromosDetailEn => t('รายละเอียด (อังกฤษ)', 'Detail (English)');
+  String get adminPromosBulletsTh => t('จุดเด่น (ไทย, บรรทัดละข้อ)', 'Bullets (Thai, one per line)');
+  String get adminPromosBulletsEn => t('จุดเด่น (อังกฤษ)', 'Bullets (English)');
+  String get adminPromosBulletsHint =>
+      t('หนึ่งบรรทัดต่อหนึ่งข้อ', 'One bullet per line');
+  String get adminPromosGradientStart => t('สีไล่เริ่ม (#hex)', 'Gradient start (#hex)');
+  String get adminPromosGradientEnd => t('สีไล่จบ (#hex)', 'Gradient end (#hex)');
+  String get adminPromosAccent => t('สีเน้น (#hex)', 'Accent (#hex)');
   String get adminProjectsIntro => t(
-        'สมุดชื่อโครงการ — ดึงจาก Property Hub เว็บเดียว (ชื่อ · เขต · แผนที่ · BTS · สิ่งอำนวยความสะดวก)\n'
-        'ใช้ตอนลงประกาศให้พิมพ์ชื่อแล้วเจอ',
-        'Project registry — Property Hub only (name, district, map, BTS, facilities)\n'
-        'Used when posting listings',
+        'สมุดชื่อโครงการ — เพิ่มเองหรือดึงจากลิงก์ Property Hub / LI',
+        'Project registry — add manually or import from Property Hub / LI',
+      );
+  String get adminProjectsManualTitle => t('เพิ่มโครงการด้วยมือ', 'Add project manually');
+  String get adminProjectsManualHint => t(
+        'กรอกชื่อ · เขต · พิกัด · BTS — ไม่ต้องมีลิงก์ภายนอก',
+        'Enter name, district, coordinates, BTS — no external link required',
+      );
+  String get adminProjectsManualBtn => t('เปิดฟอร์มกรอกเอง', 'Open manual form');
+  String get adminProjectsFormSectionBasic => t('ข้อมูลหลัก', 'Basic info');
+  String get adminProjectsFormSectionLocation => t('ที่ตั้งและพิกัด', 'Location');
+  String get adminProjectsFormSectionExtra => t('รายละเอียดเพิ่ม', 'Extra details');
+  String get adminProjectsSourceUrl => t('ลิงก์อ้างอิง (ไม่บังคับ)', 'Reference URL (optional)');
+  String get adminProjectsSourceUrlHint => t(
+        'Property Hub หรือ Living Insider — กดดึงมาเติมฟอร์ม',
+        'Property Hub or LI — tap fetch to prefill',
+      );
+  String get adminProjectsPrefillBtn => t('ดึงมาเติมฟอร์ม', 'Fetch to prefill form');
+  String get adminProjectsPrefillDone => t('เติมข้อมูลจากลิงก์แล้ว — ตรวจก่อนบันทึก', 'Prefilled from link — review before save');
+  String get adminProjectsImportUnsupported => t(
+        'ลิงก์ไม่รองรับ — ใช้ propertyhub.in.th/projects/... หรือ livinginsider.com\n'
+        'หรือกด「เพิ่มด้วยมือ」',
+        'Unsupported link — use Property Hub or Living Insider, or add manually',
       );
   String get adminProjectsNeedSupabase => t(
-        'บันทึกลง Cloud ต้องเชื่อม Supabase แล้วรัน deploy project-import-propertyhub',
-        'Saving to cloud requires Supabase + project-import-propertyhub deployed',
+        'บันทึกลงคลาวด์ไม่ได้ — ตรวจการเชื่อมระบบและล็อกอินบัญชีหลังบ้าน',
+        'Cannot save to cloud — check connection and admin login',
       );
   String get adminProjectsImportTitle =>
-      t('ดึงโครงการทีละลิงก์ (Property Hub)', 'Import one Property Hub link');
+      t('ดึงโครงการจากลิงก์', 'Import project from link');
   String get adminProjectsImportUrlLabel =>
-      t('ลิงก์หน้าโครงการ Property Hub', 'Property Hub project URL');
+      t('ลิงก์หน้าโครงการ', 'Project page URL');
   String get adminProjectsImportUrlHintAny => t(
-        'https://propertyhub.in.th/projects/ชื่อโครงการ',
-        'https://propertyhub.in.th/projects/project-slug',
+        'Property Hub: propertyhub.in.th/projects/...\n'
+        'Living Insider: livinginsider.com/...',
+        'Property Hub or Living Insider project URL',
       );
-  String get adminProjectsPropertyHubOnly => t(
-        'รองรับเฉพาะลิงก์ propertyhub.in.th/projects/...',
-        'Only propertyhub.in.th/projects/... links are supported',
-      );
+  String get adminProjectsPropertyHubOnly => adminProjectsImportUnsupported;
   String get adminProjectsBulkTitle =>
       t('เติมสมุดโครงการจาก Property Hub', 'Fill catalog from Property Hub');
   String get adminProjectsBulkHint => t(
-        'กดปุ่มใหญ่ — ดึงรายละเอียดทีละชุด (รอจนจบ)\n'
-        'สำหรับหลายพันโครงการ: รัน scripts/sync-propertyhub-cloud.sh บน Mac (ค้นหาชื่อแบบเต็ม)',
-        'Main button imports in batches. For thousands of projects, run scripts/sync-propertyhub-cloud.sh on Mac',
+        'ค้นหารายชื่อแล้วดึงรายละเอียดทีละชุด — ใช้เวลาสักพัก',
+        'Find project names then import details in batches',
       );
   String get adminProjectsSyncAllBtn =>
       t('ดึงทั้งหมดจาก Property Hub', 'Sync all from Property Hub');
@@ -2206,6 +2573,25 @@ class AppStrings {
       t('ดึงแล้ว $done/$total · สำเร็จ $ok · ล้มเหลว $fail', 'Imported $done/$total · ok $ok · fail $fail');
   String adminProjectsBatchDone(int ok, int fail) =>
       t('เสร็จแล้ว — สำเร็จ $ok · ล้มเหลว $fail', 'Done — ok $ok · fail $fail');
+  String get adminProjectsResetTitle => t('รีเซ็ตสมุดโครงการ', 'Reset project catalog');
+  String get adminProjectsResetHint => t(
+        'ลบสมุดโครงการทั้งหมดแล้วดึงใหม่จาก Property Hub',
+        'Delete entire catalog and re-import from Property Hub',
+      );
+  String get adminProjectsResetBtn => t('ลบทั้งหมดแล้วดึงใหม่', 'Delete all & re-import');
+  String get adminProjectsResetConfirmTitle => t('ยืนยันรีเซ็ตสมุดโครงการ?', 'Reset entire catalog?');
+  String get adminProjectsResetConfirmBody => t(
+        'จะลบโครงการทุกรายการในระบบ (ประกาศที่ผูกโครงการจะถูกถอดลิงก์ ไม่ลบประกาศ)\n'
+        'จากนั้นค้นหาและดึงใหม่จาก Property Hub — ใช้เวลานาน',
+        'All projects will be deleted (listings unlinked, not deleted). '
+        'Then re-discover and import from Property Hub. This takes a while.',
+      );
+  String get adminProjectsResetConfirmBtn => t('ลบและดึงใหม่', 'Delete & re-import');
+  String get adminProjectsResetCancel => t('ยกเลิก', 'Cancel');
+  String adminProjectsResetDone(int deleted, int unlinked) => t(
+        'ลบโครงการ $deleted รายการ · ถอดลิงก์ประกาศ $unlinked รายการ',
+        'Deleted $deleted projects · unlinked $unlinked listings',
+      );
   String get adminProjectsImportUrlHint => t(
         'https://propertyhub.in.th/projects/...',
         'https://propertyhub.in.th/projects/...',
@@ -2225,25 +2611,104 @@ class AppStrings {
   String get adminProjectsEdit => t('แก้ไขโครงการ', 'Edit project');
   String get adminProjectsSaved => t('บันทึกโครงการแล้ว', 'Project saved');
   String get adminProjectsNameRequired => t('กรอกชื่อไทยและอังกฤษ', 'Enter Thai and English names');
-  String get adminProjectsCoordsInvalid => t('พิกัด Lat/Lng ไม่ถูกต้อง', 'Invalid Lat/Lng');
+  String get adminProjectsCoordsInvalid => t('พิกัดละติจูด/ลองจิจูดไม่ถูกต้อง', 'Invalid Lat/Lng');
   String get adminProjectsNameTh => t('ชื่อโครงการ (ไทย)', 'Project name (Thai)');
   String get adminProjectsNameEn => t('ชื่อโครงการ (EN)', 'Project name (EN)');
-  String get adminProjectsSlug => t('Slug (URL)', 'Slug (URL id)');
+  String get adminProjectsSlug => t('รหัสลิงก์ (ย่อ)', 'Slug (URL id)');
   String get adminProjectsSlugHint => t('ว่างไว้ = สร้างอัตโนมัติ', 'Leave blank to auto-generate');
   String get adminProjectsBts => t('BTS / MRT ใกล้เคียง', 'Nearby BTS / MRT');
+  String get adminProjectsBtsHint => t(
+        'ว่างไว้ = ระบบหาจากพิกัดอัตโนมัติ',
+        'Leave blank to auto-detect from coordinates',
+      );
+  String get adminProjectsNearbyTransitHint => t(
+        'สถานีด้านบนคำนวณจากพิกัด + รายละเอียด (ระยะเดินโดยประมาณ ≤ 1 กม.)',
+        'Stations from coords + description (walk ~≤1 km)',
+      );
+  String get adminProjectsRefreshTransit => t('หาสถานีจากพิกัด', 'Detect stations from coords');
+  String get adminProjectsTagsSelected => t('แท็กที่เลือก (แตะ ✕ เพื่อลบ)', 'Selected tags (tap ✕ to remove)');
+  String get adminProjectsTagsSuggest => t('แนะนำเพิ่ม (แตะเพื่อเลือก)', 'Suggested (tap to add)');
+  String get adminProjectsTagsEmpty => t('ยังไม่มีแท็ก — กดหาสถานีจากพิกัด', 'No tags yet — detect from coords');
   String get adminProjectsAliases => t('ชื่ออื่น (คั่นด้วย ,)', 'Aliases (comma-separated)');
   String get adminProjectsDesc => t('รายละเอียดโครงการ', 'Project description');
   String get adminProjectsActivate => t('เปิดใช้', 'Activate');
   String get adminProjectsDeactivate => t('ปิดใช้', 'Deactivate');
   String get adminImportIntro => t(
-        'วางลิงก์ Living Insider → ระบบดึงข้อมูล + รูป → สร้าง draft\n'
-        'Admin ตรวจแล้วกดอนุมัติ — เบอร์/Line ถูกตัดออกอัตโนมัติ',
-        'Paste Living Insider links → auto-fetch data + photos → draft\n'
-        'Review and approve — phone/Line stripped automatically',
+        'วางลิงก์สาธารณะทีละ 1 รายการ (LI / Facebook / เว็บอื่น) → ดึงข้อมูล + รูป → ตรวจแก้ → เผยแพร่\n'
+        'เบอร์/Line ถูกตัดออกอัตโนมัติ · บางลิงก์ (เช่น FB) อาจดึงไม่ครบ — แก้มือก่อนอนุมัติ',
+        'One public link at a time (LI / Facebook / other sites) → fetch → review & edit → publish\n'
+        'Phone/Line stripped · Some links (e.g. FB) may be partial — edit before approve',
       );
   String get adminImportPaste => t('วางจากคลิปบอร์ด', 'Paste clipboard');
   String get adminImportFetchAll => t('ดึงข้อมูลทั้งหมด', 'Fetch all');
-  String get adminImportNeedUrl => t('ใส่ลิงก์อย่างน้อย 1 รายการ', 'Add at least one link');
+  String get adminImportFetchOne => t('ดึงข้อมูล', 'Fetch');
+  String get adminImportSingleUrlLabel =>
+      t('ลิงก์อ้างอิง (ทีละ 1 รายการ)', 'Reference link (one at a time)');
+  String get adminImportUnsupportedUrl => t(
+        'ลิงก์ไม่ถูกต้อง — ใช้ http(s):// ที่เข้าถึงสาธารณะได้',
+        'Invalid link — use a public http(s):// URL',
+      );
+  String adminImportFetchedFor(String source) => t(
+        'ดึงจาก $source แล้ว — ตรวจสอบก่อนเผยแพร่',
+        'Fetched from $source — review before publishing',
+      );
+  String adminImportSourceLabel(String platform) {
+    switch (platform) {
+      case 'livinginsider':
+        return t('Living Insider', 'Living Insider');
+      case 'facebook':
+        return t('Facebook', 'Facebook');
+      default:
+        return t('เว็บทั่วไป', 'Generic web');
+    }
+  }
+
+  String adminImportParseWarnings(List<String> flags) {
+    final parts = <String>[];
+    if (flags.contains('facebook_login_wall')) {
+      parts.add(t(
+        'Facebook อาจต้อง login — กรอก/แก้ข้อมูลมือ',
+        'Facebook may require login — fill in manually',
+      ));
+    }
+    if (flags.contains('missing_price')) {
+      parts.add(t('ไม่พบราคา — ใส่ราคาก่อนเผยแพร่', 'Price missing — set before publish'));
+    }
+    if (flags.contains('missing_images')) {
+      parts.add(t('ไม่พบรูป — อัปโหลดหรือลองดึงใหม่', 'No images — upload or retry fetch'));
+    }
+    if (flags.contains('generic_og_parse') || flags.contains('needs_admin_review')) {
+      parts.add(t(
+        'ดึงจาก Open Graph — ตรวจหัวข้อ/รายละเอียด/ราคาให้ครบ',
+        'Parsed via Open Graph — verify title, details, price',
+      ));
+    }
+    if (parts.isEmpty) {
+      return t('ตรวจสอบข้อมูลก่อนเผยแพร่', 'Review all fields before publishing');
+    }
+    return parts.join(' · ');
+  }
+  String get adminImportReviewTitle =>
+      t('ตรวจสอบก่อนเผยแพร่', 'Review before publish');
+  String get adminImportReviewHint => t(
+        'แก้ไขข้อมูลได้ก่อนกดอนุมัติ — รูปถูกดึงจาก LI แล้ว',
+        'Edit fields before approve — photos already imported from LI',
+      );
+  String get adminImportSaveDraft => t('บันทึก draft', 'Save draft');
+  String get adminImportDraftSaved => t('บันทึก draft แล้ว', 'Draft saved');
+  String get adminImportRefetched => t('ดึงข้อมูลใหม่แล้ว', 'Re-fetched from LI');
+  String get adminImportNoDraft =>
+      t('ยังไม่มี draft — กดดึงข้อมูลก่อน', 'No draft yet — fetch first');
+  String get adminImportPriceRequired =>
+      t('ใส่ราคาที่ถูกต้องก่อนเผยแพร่', 'Enter a valid price before publishing');
+  String get adminImportReviewOpen => t('ตรวจสอบ / แก้ไข', 'Review / edit');
+  String get adminImportView => t('ดูรายละเอียด', 'View details');
+  String get adminImportBedrooms => t('ห้องนอน', 'Bedrooms');
+  String get adminImportProjectName => t('ชื่อโครงการ', 'Project name');
+  String get adminImportDistrict => t('เขต / ทำเล', 'District / area');
+  String get adminImportTxnType => t('ประเภทธุรกรรม', 'Transaction type');
+  String get adminImportPropertyType => t('ประเภททรัพย์', 'Property type');
+  String get adminImportNeedUrl => t('ใส่ลิงก์ LI', 'Paste an LI link');
   String adminImportBatchDone(int ok, int fail) => t(
         'ดึงสำเร็จ $ok · ล้มเหลว $fail',
         'Fetched $ok · failed $fail',
@@ -2251,13 +2716,17 @@ class AppStrings {
   String get adminImportSlotsTitle => t('ช่องวางลิงก์', 'Link slots');
   String adminImportUrlHint(int n) => t('ลิงก์ LI #$n', 'LI link #$n');
   String get adminImportBulkLabel => t('วางหลายลิงก์ (บรรทัดละ 1)', 'Bulk paste (one per line)');
-  String get adminImportBulkHint =>
-      t('https://www.livinginsider.com/istockdetail/...', 'https://www.livinginsider.com/istockdetail/...');
+  String get adminImportBulkHint => t(
+        'https://www.livinginsider.com/istockdetail/...\n'
+        'https://www.facebook.com/groups/.../posts/...',
+        'https://www.livinginsider.com/istockdetail/...\n'
+        'https://www.facebook.com/groups/.../posts/...',
+      );
   String adminImportQueueTitle(int n) => t('คิวนำเข้า ($n)', 'Import queue ($n)');
   String get adminImportShowArchived => t('แสดงจัดเก็บ', 'Show archived');
   String get adminImportEmpty => t(
-        'ยังไม่มีรายการ — วางลิงก์ด้านบนแล้วกดดึงข้อมูล',
-        'No imports yet — paste links above and fetch',
+        'ยังไม่มีรายการ — วางลิงก์ด้านบนแล้วกดดึงข้อมูล (ทีละ 1 ลิงก์)',
+        'No imports yet — paste one link above and fetch',
       );
   String get adminImportApprove => t('อนุมัติเผยแพร่', 'Approve & publish');
   String get adminImportRetry => t('ลองใหม่', 'Retry');
@@ -2294,6 +2763,40 @@ class AppStrings {
   String get adminInboxNeedsStaff => t('ต้องเจ้าหน้าที่', 'Needs staff');
   String get adminInboxPropertyChat => t('แชททรัพย์', 'Property chat');
   String get adminInboxDemandOffer => t('เสนอทรัพย์', 'Submit listing');
+  String get adminInboxRequirement =>
+      t('ความต้องการหาทรัพย์', 'Property need');
+  String get adminSendRequirementFormBtn =>
+      t('ส่งฟอร์มหาทรัพย์', 'Send need form');
+  String get adminSendViewingFormBtn =>
+      t('ส่งฟอร์มนัดดู', 'Send viewing form');
+  String get adminSendRequirementFormMessage => t(
+        'รบกวนกรอกความต้องการหาทรัพย์ด้านล่างครับ ทีมจะช่วยหาเพิ่มให้ตรงเงื่อนไข',
+        'Please fill in your property needs below — we will find more matches for you.',
+      );
+  String get adminSendViewingFormMessage => t(
+        'รบกวนกรอกแบบฟอร์มนัดดูด้านล่างครับ ทีมจะประสานนัดให้',
+        'Please complete the viewing request form below — we will arrange a visit.',
+      );
+  String get adminSendListingCardsTitle =>
+      t('ส่งการ์ดทรัพย์ในแชท', 'Send listing cards');
+  String get adminSendListingCardsHint =>
+      t('ค้นหารหัส PIR / ชื่อ / โครงการ', 'Search PIR code / title / project');
+  String adminSendListingCardsConfirm(int n) =>
+      t('ส่ง $n การ์ด', 'Send $n cards');
+  String get chatDiscoveryEntryHint => t(
+        'บอกทำเล งบ โครงการ — ทีมช่วยคัดทรัพย์ให้',
+        'Tell area, budget & project — we match listings for you',
+      );
+  String get chatLinkViewListing => t('ดูรายละเอียด', 'View details');
+  String get chatLinkAskListing => t('ถามห้องนี้', 'Ask about this room');
+  String get chatLinkFillRequirement =>
+      t('กรอกความต้องการหาทรัพย์', 'Fill property need form');
+  String get chatLinkBookViewing =>
+      t('กรอกแบบฟอร์มนัดดู', 'Fill viewing request form');
+  String get requirementOpenChat =>
+      t('เปิดแชทเคสนี้', 'Open case chat');
+  String get adminPromoteOfferToListing =>
+      t('สร้างประกาศ PIR จากข้อเสนอ', 'Create PIR listing from offer');
   String get adminPriorityHigh => t('ด่วน', 'Urgent');
   String get adminViewingFormSubmitted => t('ส่งฟอร์มนัดแล้ว', 'Viewing form sent');
   String get adminAwaitingReply => t('รอตอบ', 'Pending');
@@ -2303,6 +2806,15 @@ class AppStrings {
   String get adminInboxEmptyUnclaimed => t(
         'ไม่มีแชทรอรับงาน — เคสใหม่จะแจ้ง「แชทรอรับงาน」',
         'No unclaimed chats — new cases notify as「Chat awaiting claim」',
+      );
+  String adminInboxCheckMine(int n) => t(
+        'มีงานของคุณ $n เคส — ดูแท็บ「งานของฉัน」',
+        'You have $n assigned chat(s) — check the Mine tab',
+      );
+  String chatUnreadCount(int n) => t('$n ข้อความใหม่', '$n new');
+  String get chatTeamReplyWaiting => t(
+        'ทีมงานตอบกลับแล้ว — แตะเพื่ออ่าน',
+        'Team replied — tap to read',
       );
   String get adminInboxEmptyMine => t(
         'ยังไม่มีงานของคุณ — กด「รับงาน」จากแท็บรอรับงาน',
@@ -2337,19 +2849,19 @@ class AppStrings {
       t('⚠️ ยังไม่มีคนรับ — $code · รอ $minutes นาที', '⚠️ Unclaimed — $code · $minutes min');
   String notifyChatSlaOverdue(String code, int minutes, String who) =>
       t('⚠️ แชทค้าง — $code · $minutes นาที · $who', '⚠️ Overdue — $code · $minutes min · $who');
-  String adminLifecycleResult(String result) => t('Lifecycle: $result', 'Lifecycle: $result');
+  String adminLifecycleResult(String result) => t('ผลวงจรประกาศ: $result', 'Lifecycle: $result');
   String get adminLifecycleSubtitle => t(
-        'หมดอายุ / ซ่อนประกาศที่ไม่ bump 30 วัน — ตั้ง Cron เรียก listing-lifecycle-cron รายวัน',
+        'หมดอายุ / ซ่อนประกาศที่ไม่อัปเดตสถานะ 30 วัน — ตั้งงานอัตโนมัติรายวัน',
         'Expire / hide listings not bumped in 30 days — schedule listing-lifecycle-cron daily',
       );
   String adminPhotosPending(int n) => t('รูปรอตรวจ ($n)', 'Photos pending ($n)');
-  String adminFlagsSection(int n) => t('Flags ($n)', 'Flags ($n)');
-  String get adminResolveFlag => t('ปิด flag', 'Resolve flag');
+  String adminFlagsSection(int n) => t('แจ้งผิดปกติ ($n)', 'Flags ($n)');
+  String get adminResolveFlag => t('ปิดเรื่องแจ้ง', 'Resolve flag');
   String get adminHideListing => t('ซ่อนประกาศ', 'Hide listing');
   String get adminDefaultProperty => t('ทรัพย์', 'Property');
   String get adminConfirmViewingTitle => t('ยืนยันนัดดูทรัพย์', 'Confirm property viewing');
   String get adminTimeSlotLabel => t('ช่วงเวลา', 'Time slot');
-  String get adminNotesLabel => t('หมายเหตุแอดมิน', 'Admin notes');
+  String get adminNotesLabel => t('หมายเหตุทีมงาน', 'Admin notes');
   String get adminViewingSavedSnack =>
       t('บันทึกนัดชมแล้ว — ดูในแท็บนัดชม', 'Viewing saved — see Appointments tab');
   String get adminViewingRequestField => t('คำขอนัดดู', 'Viewing request');
@@ -2361,63 +2873,90 @@ class AppStrings {
   String get adminHideMap => t('ซ่อนแผนที่', 'Hide map');
   String get adminShowMap => t('แสดงแผนที่', 'Show map');
   String get adminAppointmentsEmpty => t(
-        'ยังไม่มีนัดชม — เปิด Lead แล้วกด「ประสานงาน / ยืนยันนัดดู」',
+        'ยังไม่มีนัดชม — เปิดเคสลูกค้าแล้วกด「ประสานงาน / ยืนยันนัดดู」',
         'No viewings yet — open a Lead and tap「Coordinate / confirm viewing」',
       );
   String get adminConfirmAppointment => t('ยืนยัน', 'Confirm');
   String get adminCompleteAppointment => t('เสร็จสิ้น', 'Complete');
   String get adminNeedRole => t(
-        'ต้องมี role = admin ใน Supabase profiles\n(ตั้งใน Table Editor หรือ SQL)',
+        'ต้องเป็นผู้ดูแลระบบในฐานข้อมูล\n(ตั้งสิทธิ์ในหน้าจัดการผู้ใช้)',
         'Requires role = admin in Supabase profiles\n(Set in Table Editor or SQL)',
       );
   String get adminTabChat => t('แชท', 'Chat');
   String get adminTabOffers => t('ข้อเสนอ', 'Offers');
-  String get adminTabLeads => t('Leads', 'Leads');
+  String get adminTabLeads => t('เคสลูกค้า', 'Leads');
   String get adminTabAppointments => t('นัดชม', 'Viewings');
   String get adminTabReports => t('รายงาน', 'Reports');
-  String get adminTabModeration => t('Moderation', 'Moderation');
+  String get adminTabModeration => t('ตรวจสอบ', 'Moderation');
   String get adminTabCreateBoard => t('สร้างบอร์ด', 'Create board');
   String get adminTrialBannerConfigured => t(
-        'โหมดทดลอง — แชท/Lead ตัวอย่าง · ตั้ง TRIAL_MODE=false เมื่อเปิดใช้จริง',
+        'โหมดทดลอง — แชทและเคสตัวอย่าง · ปิดโหมดทดลองเมื่อเปิดใช้จริง',
         'Trial — sample chat/leads · set TRIAL_MODE=false for production',
       );
   String get adminNoOffers => t('ยังไม่มีข้อเสนอ', 'No offers yet');
-  String get adminNoLeads => t('ยังไม่มี Lead', 'No leads yet');
+  String get adminNoLeads => t('ยังไม่มีเคสลูกค้า', 'No leads yet');
   String get adminMustLoginReal => t(
         'ต้องล็อกอินจริง (อีเมล+รหัส) — โหมดทดลองไม่ sync กับมือถือ',
         'Log in with email/password — trial mode does not sync across devices',
       );
   String get adminRecentLeadsTitle =>
-      t('Lead / นัดดู ล่าสุด', 'Recent leads / viewings');
+      t('เคสลูกค้า / นัดดู ล่าสุด', 'Recent leads / viewings');
   String get adminViewAllLeads => t('ดูทั้งหมด', 'View all');
   String get adminReject => t('ปฏิเสธ', 'Reject');
+  String get adminDemandPostFallback => t('ประกาศบอร์ด', 'Demand post');
+  String get adminOfferVerifyLabel => t('ตรวจสิทธิ์', 'Verification');
+  String get adminLeadFallbackTitle => t('เคสลูกค้า', 'Lead');
+  String get adminNoPendingListings => t('ไม่มีประกาศรอตรวจ', 'No listings pending review');
+  String get adminLatLabel => t('ละติจูด', 'Latitude');
+  String get adminLngLabel => t('ลองจิจูด', 'Longitude');
   String adminViewingPrefix(String v) => t('นัด: $v', 'Viewing: $v');
   String adminLeadStatsLine(int leads, int accepted) =>
-      t('Leads: $leads · รับแล้ว: $accepted', 'Leads: $leads · accepted: $accepted');
+      t('เคส $leads · รับแล้ว $accepted', 'Leads: $leads · accepted: $accepted');
   String get adminCreateBoardIntro => t(
         'บอร์ดประกาศจาก PROPPITER\n(ผู้ใช้จะไม่เห็นข้อเสนอของกัน)',
         'PROPPITER board posts\n(Users cannot see each other\'s offers)',
       );
+  String get adminBoardLeadsTitle =>
+      t('คำขอจากหน้าหลัก', 'Requests from home');
+  String get adminBoardLeadsHint => t(
+        'ลูกค้าส่งจากเมนูหาทรัพย์ · เลือกรายการเพื่อตรวจสอบ แก้ไข และเผยแพร่บอร์ด',
+        'Submitted from Find property · Select to review, edit, and publish to board',
+      );
+  String get adminBoardLeadsEmpty =>
+      t('ไม่มีคำขอรอตรวจสอบ', 'No requests awaiting review');
+  String get adminBoardFromLead =>
+      t('มาจากคำขอหน้าหลัก', 'From home request');
+  String get adminBoardEditAndPublish =>
+      t('ตรวจสอบและเผยแพร่', 'Review & publish');
+  String get adminBoardLeadPublished => t(
+        'เผยแพร่บอร์ดแล้ว — คำขอนี้ปิดคิว',
+        'Published to board — request cleared from queue',
+      );
+  String get adminBoardLeadClosed =>
+      t('ปิดคำขอแล้ว (ไม่เผยแพร่)', 'Request closed (not published)');
+  String get adminBoardCloseLead => t('ปิดคำขอ', 'Close request');
+  String get adminBoardManualCreate =>
+      t('สร้างบอร์ดด้วยตนเอง', 'Create board post manually');
+  String get adminDashRequirements =>
+      t('คำขอหาทรัพย์', 'Property requests');
   String get adminMaxPriceLabel => t('งบสูงสุด (บาท)', 'Max budget (THB)');
   String get adminMinAreaLabel => t('ตร.ม. ขั้นต่ำ', 'Min sqm');
   String get adminBtsDistanceLabel => t('ห่าง BTS (กม.)', 'Distance to BTS (km)');
   String get adminCreateBoardHint =>
       t('หาคอนโดย่านทองหล่อ BTS ≤1.5km ...', 'Condo Thonglor BTS ≤1.5km ...');
   String get adminBoardCreated => t('สร้างประกาศบอร์ดแล้ว', 'Board post created');
-  String get adminReportsTitle => t('รายงาน & Make.com', 'Reports & Make.com');
+  String get adminReportsTitle => t('รายงานและส่งออกข้อมูล', 'Reports & Make.com');
   String get adminReportsConfigured =>
-      t('ดึงจาก view platform_stats_daily (ไม่มีเบอร์โทร)', 'From platform_stats_daily view (no phone numbers)');
-  String get adminReportsDemo => t('โหมด Demo — ตัวเลขตัวอย่าง', 'Demo mode — sample numbers');
+      t('ดึงจากสรุปรายวันในระบบ (ไม่มีเบอร์โทร)', 'From platform_stats_daily view (no phone numbers)');
+  String get adminReportsDemo => t('โหมดทดลอง — ตัวเลขตัวอย่าง', 'Demo mode — sample numbers');
   String get adminDailyStats => t('สถิติรายวัน', 'Daily stats');
-  String get adminMakecomSetup => t('ตั้งค่า Make.com', 'Make.com setup');
+  String get adminMakecomSetup => t('เชื่อมส่งข้อมูลอัตโนมัติ', 'Make.com setup');
   String get adminMakecomInstructions => t(
-        '1. Schedule ทุก 1 ชม.\n'
-        '2. HTTP → Supabase REST\n'
-        '   /rest/v1/platform_stats_daily?order=stat_date.desc&limit=7\n'
-        '3. Google Sheets → Append row\n\n'
-        'Webhook (ทางเลือก): ตั้ง MAKECOM_WEBHOOK_URL ใน Edge Functions\n'
-        '→ รับ event lead_routed / appointment_scheduled\n\n'
-        'ดู docs/MAKECOM.md และ docs/phase-7-reporting-push.md',
+        '1. ตั้งให้ดึงข้อมูลทุก 1 ชั่วโมง\n'
+        '2. เรียกข้อมูลสรุปรายวันจากระบบ (7 วันล่าสุด)\n'
+        '3. บันทึกลงสเปรดชีตทีละแถว\n\n'
+        'ทางเลือก: แจ้งเตือนทันทีเมื่อมีเคสใหม่หรือนัดชม\n\n'
+        'ดูคู่มือใน docs/MAKECOM.md',
         '1. Schedule every hour\n'
         '2. HTTP → Supabase REST\n'
         '   /rest/v1/platform_stats_daily?order=stat_date.desc&limit=7\n'
@@ -2427,11 +2966,214 @@ class AppStrings {
         'See docs/MAKECOM.md and docs/phase-7-reporting-push.md',
       );
   String adminStatRowSubtitle(int leads, int accepted, int appts, int confirmed) => t(
-        'Lead $leads (รับ $accepted) · นัดชม $appts (ยืนยัน $confirmed)',
+        'เคส $leads (รับ $accepted) · นัดชม $appts (ยืนยัน $confirmed)',
         'Leads $leads (accepted $accepted) · viewings $appts (confirmed $confirmed)',
+      );
+  String get adminReportsCenterTitle =>
+      t('ศูนย์รายงาน PROPPITER', 'PROPPITER Reports Center');
+  String get adminReportDays7 => t('7 วัน', '7 days');
+  String get adminReportDays14 => t('14 วัน', '14 days');
+  String get adminReportDays30 => t('30 วัน', '30 days');
+  String get adminReportTotalLeads => t('เคสลูกค้ารวม', 'Total leads');
+  String get adminReportTotalAppts => t('นัดชมรวม', 'Total viewings');
+  String get adminReportAcceptRate => t('อัตรารับเคส', 'Lead accept rate');
+  String get adminReportConfirmRate => t('อัตรายืนยันนัด', 'Viewing confirm rate');
+  String adminReportInDays(int n) => t('ใน $n วัน', 'Over $n days');
+  String adminReportAcceptedCount(int n) => t('รับแล้ว $n', '$n accepted');
+  String adminReportConfirmedCount(int n) => t('ยืนยัน $n', '$n confirmed');
+  String adminReportCompletedCount(int n) => t('เสร็จสิ้น $n นัด', '$n completed');
+  String adminReportRatePercent(int pct) => t('$pct%', '$pct%');
+  String get adminReportFunnelTitle => t('ขั้นตอนปิดดีล', 'Deal funnel');
+  String get adminReportFunnelLeads => t('เคสลูกค้า', 'Leads');
+  String get adminReportFunnelAccepted => t('รับแล้ว', 'Accepted');
+  String get adminReportFunnelAppts => t('นัดชม', 'Viewings');
+  String get adminReportFunnelConfirmed => t('ยืนยัน', 'Confirmed');
+  String get adminReportChartLeads => t('เคสรายวัน', 'Daily leads');
+  String get adminReportChartAppts => t('นัดชมรายวัน', 'Daily viewings');
+  String get adminOpenReportsCenter => t('เปิดศูนย์รายงาน →', 'Open reports center →');
+  String get adminDashActionHint =>
+      t('แตะเพื่อไปคิวแชทหรือแท็บที่เกี่ยวข้อง', 'Tap to open chat queue or related tab');
+  String listingShares(int n) => t('แชร์ $n', '$n shares');
+  String listingChats(int n) => t('แชท $n', '$n chats');
+  String get listingInsightsEmpty =>
+      t('ยังไม่มีสถิติ — รอผู้สนใจเข้าชม', 'No stats yet — waiting for interest');
+  String get listingPortfolioHint => t(
+        'สถิติบนอุปกรณ์นี้ — ยังไม่รวมผู้ใช้คนอื่น',
+        'Stats on this device — not aggregated across all users yet',
+      );
+  String get listingPortfolioActive => t('ประกาศเผยแพร่', 'Published');
+  String get listingInsightViews => t('เข้าชม', 'Views');
+  String get listingInsightChats => t('แชท', 'Chats');
+  String get workLeadSummaryTitle => t('สรุปเคสลูกค้าของฉัน', 'My lead summary');
+  String workLeadSummaryLine(int inbox, int accepted, int pending) => t(
+        'กล่อง $inbox · รับแล้ว $accepted · รอดำเนินการ $pending',
+        'Inbox $inbox · accepted $accepted · pending $pending',
+      );
+  String get adminAnalyticsTabOverview => t('ภาพรวม', 'Overview');
+  String get adminAnalyticsTabFunnel => t('ขั้นปิดดีล', 'Funnel');
+  String get adminAnalyticsTabGeo => t('เขต/โซน', 'Geography');
+  String get adminAnalyticsTabChat => t('แชท/เวลาตอบ', 'Chat & SLA');
+  String get adminAnalyticsTabListings => t('ทรัพย์ยอดนิยม', 'Top listings');
+  String get adminAnalyticsTabExport => t('ส่งออก', 'Export');
+  String get adminAnalyticsServerHint => t(
+        'ดึงจากสรุปรายวันในระบบ — ออกแบบรองรับผู้ใช้หลายแสนคน',
+        'From rollup tables (analytics_platform_daily) — built for 100k+ users',
+      );
+  String get adminAnalyticsRefreshRollup => t('รวมตัวเลขใหม่', 'Refresh rollups');
+  String get adminAnalyticsRefreshRollupHint => t(
+        'รวมการเข้าชม เคสลูกค้า นัดชม และสัญญาจากฐานข้อมูล — ระบบจะรันอัตโนมัติทุกชั่วโมง',
+        'Merge events + leads/viewings/e-contracts — hourly cron in production',
+      );
+  String get adminAnalyticsRefreshed => t('รวมตัวเลขเรียบร้อยแล้ว', 'Rollups refreshed');
+  String get adminAnalyticsCompareHint => t(
+        'เทียบกับช่วงก่อนหน้า (ความยาวเท่ากัน)',
+        'Compared to the previous period (same length)',
+      );
+  String adminAnalyticsDeltaPct(int pct) =>
+      t('${pct >= 0 ? '+' : ''}$pct% เทียบช่วงก่อน', '${pct >= 0 ? '+' : ''}$pct% vs prior');
+  String get adminAnalyticsDeltaNew => t('ใหม่', 'new');
+  String get adminAnalyticsTotalViews => t('เข้าชมรวม', 'Total views');
+  String get adminAnalyticsGmv => t('มูลค่าปิด (โดยประมาณ)', 'Est. closed GMV');
+  String get adminAnalyticsNewUsersChart => t('ผู้ใช้ใหม่รายวัน', 'Daily new users');
+  String get adminAnalyticsFullFunnel => t('ขั้นตอนปิดดีลครบวงจร', 'Full conversion funnel');
+  String get adminAnalyticsFunnelViews => t('เข้าชม', 'Views');
+  String get adminAnalyticsFunnelChats => t('เริ่มแชท', 'Chats');
+  String get adminAnalyticsFunnelContract => t('สัญญาอิเล็กทรอนิกส์', 'E-Contract');
+  String get adminAnalyticsFunnelClosed => t('ปิดดีล', 'Closed');
+  String get adminAnalyticsGeoHint => t(
+        'ความต้องการตามเขต — จากสรุปรายวันในระบบ',
+        'Demand by district — from analytics_district_daily rollups',
+      );
+  String adminAnalyticsDistrictLine(int views, int leads, int appts) => t(
+        'เข้าชม $views · เคส $leads · นัด $appts',
+        'Views $views · leads $leads · viewings $appts',
+      );
+  String get adminAnalyticsChatVolume => t('แชทรวม', 'Total chats');
+  String get adminAnalyticsSlaBreaches => t('เกินเวลาตอบ', 'SLA breaches');
+  String adminAnalyticsChatCategory(String c) =>
+      t('แชท: ${adminChatCategoryLabel(c)}', 'Chat: ${adminChatCategoryLabel(c)}');
+  String adminAnalyticsChatLine(int vol, int claimed, int resolved, int sla, int? avgMin) => t(
+        'เข้า $vol · รับ $claimed · ปิด $resolved · เกินเวลา $sla'
+        '${avgMin != null ? ' · เฉลี่ย $avgMin นาที' : ''}',
+        'In $vol · claimed $claimed · resolved $resolved · SLA $sla'
+        '${avgMin != null ? ' · avg $avgMin min' : ''}',
+      );
+  String get adminAnalyticsTopListingsHint => t(
+        'ประกาศที่มีความสนใจสูงสุดในช่วงที่เลือก',
+        'Highest-engagement listings in the selected period',
+      );
+  String adminAnalyticsListingLine(int views, int chats, int leads) => t(
+        'เข้าชม $views · แชท $chats · เคส $leads',
+        'Views $views · chats $chats · leads $leads',
+      );
+  String get adminAnalyticsScaleNote => t(
+        'ระบบรองรับผู้ใช้จำนวนมาก: บันทึกเหตุการณ์ → สรุปรายชั่วโมง → ส่งออกรายงาน\n'
+        'ดู docs/phase-21-analytics-platform.md',
+        'Scale path: analytics_events (append) → hourly rollup → Make.com/BigQuery.\n'
+        'See docs/phase-21-analytics-platform.md',
+      );
+  String get adminAnalyticsPeriod12h => t('ทุก 12 ชม.', 'Every 12 hours');
+  String get adminAnalyticsPeriod24h => t('ทุก 24 ชม.', 'Every 24 hours');
+  String get adminAnalyticsPeriodDaily => t('รายวัน', 'Daily');
+  String get adminAnalyticsPeriodHint => t(
+        'เลือกความถี่รายงาน — 12/24 ชม. เหมาะดูแนวโน้มสั้น รายวันเหมาะดูย้อนหลัง',
+        'Report granularity — 12/24h for short trends, daily for history',
+      );
+  String get adminAnalyticsTabApp => t('แอป', 'App');
+  String get adminAnalyticsTabErrors => t('ข้อผิดพลาด', 'Errors');
+  String get adminAnalyticsAppInstalls => t('ติดตั้ง/ดาวน์โหลด', 'Installs');
+  String get adminAnalyticsAppOpens => t('เปิดแอป', 'App opens');
+  String get adminAnalyticsAppUninstalls => t('ถอนแอป (ประมาณ)', 'Uninstalls (est.)');
+  String get adminAnalyticsAppHint => t(
+        'เว็บ/PWA: นับ「ติดตั้ง」= เปิดครั้งแรกบนเครื่อง · ถอนแอปจริงบน iOS/Android ดูที่ App Store Connect / Play Console',
+        'Web/PWA: install = first open on device · real uninstalls on stores: App Store Connect / Play Console',
+      );
+  String get adminAnalyticsErrorsHint => t(
+        'รวบรวม error จากแอป — มีคำแปลไทยและแนวทางแก้',
+        'Client errors with Thai guidance and fix steps',
+      );
+  String get adminAnalyticsErrorCount => t('ครั้ง', 'occurrences');
+  String get adminAnalyticsErrorSessions => t('เซสชันที่กระทบ', 'Affected sessions');
+  String get adminAnalyticsErrorFixTitle => t('แนวทางแก้ปัญหา', 'How to fix');
+  String get adminAnalyticsErrorSeverityHigh => t('รุนแรง', 'High');
+  String get adminAnalyticsErrorSeverityMedium => t('ปานกลาง', 'Medium');
+  String get adminAnalyticsErrorSeverityLow => t('ต่ำ', 'Low');
+  String get adminAnalyticsPeriodInstallChart => t('ติดตั้งตามช่วง', 'Installs by period');
+  String get adminAnalyticsPeriodErrorChart => t('ข้อผิดพลาดตามช่วง', 'Errors by period');
+  String get adminAnalyticsPeriodLeadsChart => t('เคสลูกค้าตามช่วง', 'Leads by period');
+
+  /// แปลประเภทแชทในรายงานหลังบ้าน
+  String adminChatCategoryLabel(String raw) {
+    switch (raw) {
+      case 'viewing_request':
+        return 'ขอนัดดู';
+      case 'booking_interest':
+        return 'สนใจจอง';
+      case 'discovery':
+        return 'ค้นหาทรัพย์';
+      case 'staff_support':
+        return 'คุยกับเจ้าหน้าที่';
+      case 'escalation':
+        return 'ต้องคนดูแล';
+      case 'demand_offer':
+        return 'เสนอทรัพย์';
+      case 'customer_requirement':
+        return isEnglish ? 'Property need' : 'ความต้องการหาทรัพย์';
+      case 'property_chat':
+        return 'แชททรัพย์';
+      case 'other':
+        return 'อื่นๆ';
+      default:
+        return raw.replaceAll('_', ' ');
+    }
+  }
+  String get listingPortfolioServerHint => t(
+        'รวมจากเซิร์ฟเวอร์ (ทุกผู้ใช้)',
+        'Aggregated from server (all users)',
       );
 
   // ── Property chat ──
+  List<String> get discoveryChatQuickReplies => isEnglish
+      ? [
+          'Looking for a condo near BTS — budget around 15k',
+          'Need a pet-friendly unit with parking',
+          'Compare a few projects in Sukhumvit area',
+          'Please recommend more options',
+        ]
+      : [
+          'หาคอนโดใกล้ BTS งบประมาณ 15,000',
+          'ต้องการห้องเลี้ยงสัตว์ได้ มีที่จอดรถ',
+          'ช่วยเปรียบเทียบโครงการแถวสุขุมวิท',
+          'ช่วยแนะนำทรัพย์เพิ่มให้หน่อย',
+        ];
+
+  List<String> get requirementChatQuickReplies => isEnglish
+      ? [
+          'Any updates on my search?',
+          'Can you add more location options?',
+          'Please publish on the board when ready',
+        ]
+      : [
+          'มีความคืบหน้าเรื่องหาทรัพย์ไหมครับ',
+          'ช่วยเพิ่มโซนที่สนใจได้ไหม',
+          'พร้อมแล้วช่วยลงบอร์ดให้ด้วยครับ',
+        ];
+
+  String requirementSubmittedInThreadAck(String title) => t(
+        'ส่งความต้องการแล้ว: $title — ทีมจะติดต่อในแชทเคสความต้องการ',
+        'Requirement submitted: $title — our team will follow up in your need chat',
+      );
+
+  String requirementBoardCodeLabel(String code) =>
+      t('บอร์ด: $code', 'Board: $code');
+
+  String get adminBoardCloseLeadConfirm => t(
+        'ปิดคำขอนี้โดยไม่เผยแพร่บนบอร์ด?',
+        'Close this request without publishing to the board?',
+      );
+
+  String get adminBoardOpenChat => t('เปิดแชทเคส', 'Open case chat');
+
   List<String> get propertyChatQuickReplies => isEnglish
       ? [
           'Interested — please share more details',
@@ -2472,7 +3214,7 @@ class AppStrings {
         'สลับโปรไฟล์เป็น เจ้าของ/นายหน้า แล้วเปิด Lead ในกล่องมอบหมาย',
         'Switch profile to owner/broker and open leads in the assigned inbox',
       );
-  String get workLeadInbox => t('กล่อง Lead (มอบหมาย)', 'Lead inbox (assigned)');
+  String get workLeadInbox => t('กล่องเคสลูกค้า (มอบหมาย)', 'Lead inbox (assigned)');
   String get workNoLeadsInbox => t(
         'ยังไม่มี Lead — ลูกค้าส่งคำขอจากแชท/นัดดูจะปรากฏที่นี่',
         'No leads yet — customer chat/viewing requests appear here',

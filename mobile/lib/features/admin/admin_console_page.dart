@@ -5,10 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_strings.dart';
+import '../../models/admin_dashboard_overview.dart';
 import '../../services/admin_repository.dart';
 import '../../services/chat_service.dart';
+import '../../services/in_app_notification_hub.dart';
+import '../../services/realtime_service.dart';
+import '../../services/supabase_service.dart';
+import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/admin_desktop.dart';
+import '../../widgets/admin_dashboard_bar.dart';
+import '../../widgets/admin_mobile_layout.dart';
 import '../../widgets/admin_recent_leads_strip.dart';
 import 'admin_chat_panel.dart';
 import 'admin_chats_tab.dart';
@@ -29,6 +36,10 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
   bool _loading = true;
   String? _selectedRoomId;
   Timer? _refreshTimer;
+  AdminDashboardOverview _overview = const AdminDashboardOverview();
+  final _notifHub = InAppNotificationHub.instance;
+  final _realtime = RealtimeService();
+  StreamSubscription<String>? _notifSub;
 
   @override
   void initState() {
@@ -36,17 +47,40 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     _selectedRoomId = widget.initialRoomId;
     _init();
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refreshInbox());
+    final uid = SupabaseService.client?.auth.currentUser?.id ?? '';
+    _realtime.subscribeToAdminChatOps(enabled: true, adminUserId: uid);
+    _notifSub = _realtime.messages.listen((msg) {
+      _notifHub.show(msg, countAsUnread: false);
+      _refreshInbox();
+    });
   }
 
   @override
   void dispose() {
     _refreshTimer?.cancel();
+    _notifSub?.cancel();
+    _realtime.dispose();
     super.dispose();
   }
 
   Future<void> _refreshInbox() async {
     await ChatService.instance.refreshAdminInbox();
-    if (mounted) setState(() {});
+    try {
+      final overview = await _admin.fetchDashboardOverview();
+      if (mounted) {
+        setState(() => _overview = overview);
+      }
+    } catch (_) {
+      if (mounted) setState(() {});
+    }
+  }
+
+  void _jumpFromKpi(int tabIndex) {
+    if (tabIndex == 1) {
+      _clearRoom();
+      return;
+    }
+    context.go('/admin');
   }
 
   @override
@@ -72,7 +106,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
         _loading = false;
       });
     }
-    await ChatService.instance.refreshAdminInbox();
+    await _refreshInbox();
   }
 
   void _selectRoom(String roomId) {
@@ -94,11 +128,15 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     final s = context.s;
 
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return AdminMobileLayout.scaffold(
+        context: context,
+        body: const Center(child: CircularProgressIndicator()),
+      );
     }
 
     if (!_allowed) {
-      return Scaffold(
+      return AdminMobileLayout.scaffold(
+        context: context,
         appBar: AppBar(title: Text(s.adminConsoleTitle)),
         body: Center(
           child: Padding(
@@ -109,8 +147,13 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       );
     }
 
-    return Scaffold(
-      appBar: AppBar(
+    return Theme(
+      data: AdminTheme.shellTheme(Theme.of(context)),
+      child: AdminMobileLayout.scaffold(
+      context: context,
+      safeBottom: false,
+      appBar: AdminMobileLayout.appBar(
+        context: context,
         title: Text(s.adminConsoleTitle),
         actions: [
           IconButton(
@@ -142,9 +185,16 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
           ),
         ],
       ),
-      body: Column(
+      body: AdminMobileLayout.tabBody(
+        context,
+        child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          AdminDashboardBar(
+            data: _overview,
+            compact: true,
+            onJump: _jumpFromKpi,
+          ),
           AdminRecentLeadsStrip(onChanged: _refreshInbox),
           Expanded(
             child: LayoutBuilder(
@@ -205,6 +255,8 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
           ),
         ],
       ),
+      ),
+      ),
     );
   }
 }
@@ -217,7 +269,7 @@ class _EmptyChatPane extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: AppTheme.primaryLight.withOpacity(0.35),
+      color: AdminTheme.surfaceMuted,
       child: Center(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -232,7 +284,7 @@ class _EmptyChatPane extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 15,
                   height: 1.45,
-                  color: AppTheme.textSecondary,
+                  color: AdminTheme.textMuted,
                 ),
               ),
             ],

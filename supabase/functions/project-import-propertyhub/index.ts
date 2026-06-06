@@ -1,7 +1,8 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireAdmin } from "../_shared/admin_auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { matchProject } from "../_shared/li_parser.ts";
+import { createServiceClient } from "../_shared/supabase_env.ts";
 import {
   discoverBangkokProjectSlugs,
   isMetroBangkokProject,
@@ -10,23 +11,21 @@ import {
   slugFromPropertyHubUrl,
 } from "../_shared/propertyhub_parser.ts";
 
-function serviceDb() {
-  return createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-  );
-}
-
 async function upsertProject(
-  db: ReturnType<typeof serviceDb>,
+  db: SupabaseClient,
   parsed: Awaited<ReturnType<typeof parsePropertyHubProjectFromUrl>>,
   userId: string,
+  options?: { allowAllRegions?: boolean },
 ) {
-  if (!isMetroBangkokProject({
-    district: parsed.district,
-    lat: parsed.lat,
-    lng: parsed.lng,
-  })) {
+  const allowAll = options?.allowAllRegions === true;
+  if (
+    !allowAll &&
+    !isMetroBangkokProject({
+      district: parsed.district,
+      lat: parsed.lat,
+      lng: parsed.lng,
+    })
+  ) {
     throw new Error("outside_metro: โครงการอยู่นอก กทม.+ปริมณฑล");
   }
 
@@ -39,6 +38,7 @@ async function upsertProject(
     name_en: parsed.nameEn,
     district: parsed.district,
     bts_station: parsed.btsStation,
+    nearby_transit: parsed.nearbyTransit ?? [],
     property_type: parsed.propertyType,
     lat: parsed.lat,
     lng: parsed.lng,
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const mode = (body.mode as string | undefined) ?? "url";
-    const db = serviceDb();
+    const db = createServiceClient();
 
     if (mode === "discover") {
       const slugs = await discoverBangkokProjectSlugs(
@@ -99,6 +99,47 @@ Deno.serve(async (req) => {
         hint: slugs.length < 500
           ? "ใช้ scripts/discover-propertyhub-slugs.py (กทม.+ปริมณฑลเท่านั้น) แล้ว sync-propertyhub-cloud.sh"
           : undefined,
+      });
+    }
+
+    if (mode === "purge_all") {
+      const confirm = body.confirm === true;
+      if (!confirm) {
+        return jsonResponse({
+          error: "confirm_required",
+          hint: "ส่ง { mode: purge_all, confirm: true } — ลบโครงการทั้งหมดแล้วดึงใหม่",
+        }, 400);
+      }
+
+      const { count: linkedCount, error: countErr } = await db
+        .from("listings")
+        .select("id", { count: "exact", head: true })
+        .not("project_id", "is", null);
+      if (countErr) throw new Error(countErr.message);
+
+      const { error: unlinkErr } = await db
+        .from("listings")
+        .update({ project_id: null })
+        .not("project_id", "is", null);
+      if (unlinkErr) throw new Error(unlinkErr.message);
+
+      const { count: projectCount, error: projCountErr } = await db
+        .from("property_projects")
+        .select("id", { count: "exact", head: true });
+      if (projCountErr) throw new Error(projCountErr.message);
+
+      const { error: delErr } = await db
+        .from("property_projects")
+        .delete()
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      if (delErr) throw new Error(delErr.message);
+
+      return jsonResponse({
+        purged: true,
+        projects_deleted: projectCount ?? 0,
+        listings_unlinked: linkedCount ?? 0,
+        scope: "bangkok_metro_only",
+        next: "รัน scripts/full-resync-propertyhub.sh หรือกดดึงทั้งหมดในแอป",
       });
     }
 
@@ -170,6 +211,8 @@ Deno.serve(async (req) => {
       const slugs = (body.slugs as string[] | undefined) ?? [];
       const limit = Math.min(typeof body.limit === "number" ? body.limit : 20, 30);
       const slice = slugs.slice(0, limit);
+      const allowAllRegions =
+        body.allow_all_regions === true || body.import_scope === "all";
       const results: Array<Record<string, unknown>> = [];
       let ok = 0;
       let fail = 0;
@@ -178,7 +221,9 @@ Deno.serve(async (req) => {
         const url = `https://propertyhub.in.th/projects/${slug}`;
         try {
           const parsed = await parsePropertyHubProjectFromUrl(url);
-          const { project, updated } = await upsertProject(db, parsed, auth.userId);
+          const { project, updated } = await upsertProject(db, parsed, auth.userId, {
+            allowAllRegions: allowAllRegions,
+          });
           ok++;
           results.push({ slug, ok: true, updated, id: project.id });
         } catch (e) {
@@ -202,15 +247,32 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
-    const parsed = await parsePropertyHubProjectFromUrl(
-      sourceUrl.startsWith("http")
-        ? sourceUrl
-        : `https://propertyhub.in.th/projects/${slugFromPropertyHubUrl(sourceUrl) ?? body.slug}`,
-    );
-    const { project, updated } = await upsertProject(db, parsed, auth.userId);
+    const normalizedUrl = sourceUrl.startsWith("http")
+      ? sourceUrl
+      : `https://propertyhub.in.th/projects/${slugFromPropertyHubUrl(sourceUrl) ?? body.slug}`;
+
+    const parsed = await parsePropertyHubProjectFromUrl(normalizedUrl);
+
+    if (body.mode === "parse" || body.parse_only === true) {
+      return jsonResponse({ parsed });
+    }
+
+    const allowAllRegions =
+      body.allow_all_regions === true || body.import_scope === "all";
+    const { project, updated } = await upsertProject(db, parsed, auth.userId, {
+      allowAllRegions: allowAllRegions,
+    });
 
     return jsonResponse({ project, parsed, updated });
   } catch (e) {
-    return jsonResponse({ error: String(e) }, 422);
+    const msg = String(e);
+    if (msg.includes("edge_config_missing")) {
+      return jsonResponse({
+        error: "edge_secrets_missing",
+        detail: msg,
+        hint: "รัน ./scripts/set-edge-secrets.sh หลังใส่ SUPABASE_SERVICE_ROLE_KEY ใน .env.local",
+      }, 500);
+    }
+    return jsonResponse({ error: msg }, 422);
   }
 });

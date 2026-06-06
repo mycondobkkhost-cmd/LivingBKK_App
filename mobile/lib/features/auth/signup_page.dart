@@ -2,22 +2,24 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/env.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/app_perspective.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_profile_service.dart';
 import '../../state/session_gate.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/legal_policy_rich_text.dart';
 import '../../theme/living_bkk_brand.dart';
-import '../../theme/li_layout.dart';
 import '../../utils/admin_routing.dart';
+import '../../widgets/legal_policy_rich_text.dart';
+import '../../widgets/proppiter_brand_hero.dart';
 import 'auth_form_widgets.dart';
 
-/// สมัครสมาชิก — โครงคล้ายแอปทั่วไป แต่ใช้ธีม LivingBKK (ม่วงพาสเทล / layout ต่างจาก login)
+/// สมัครสมาชิก — ธีมเดียวกับ login / หน้าแรก
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key, required this.roleController});
 
@@ -101,13 +103,17 @@ class _SignUpPageState extends State<SignUpPage> {
         phone: phone,
         displayName: _displayName.text.trim().isEmpty ? null : _displayName.text.trim(),
       );
-      await _afterAuth();
-      if (!mounted) return;
       if (_avatarBytes != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.signUpAvatarLaterHint)),
-        );
+        try {
+          await UserProfileService.instance.uploadAvatarBytes(_avatarBytes!);
+        } catch (_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(s.signUpAvatarLaterHint)),
+          );
+        }
       }
+      await _afterAuth();
     } catch (e) {
       if (!mounted) return;
       _snack(AuthService.friendlyMessage(e));
@@ -132,43 +138,30 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceWarm,
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor: AppTheme.headerTint,
-        surfaceTintColor: Colors.transparent,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: AppTheme.textPrimary),
-          onPressed: () => context.canPop() ? context.pop() : context.go('/login'),
-        ),
-        title: Text(
-          s.signUpPageTitle,
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontWeight: FontWeight.w800,
-            fontSize: 17,
-          ),
-        ),
-        centerTitle: true,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 20, LiLayout.pagePadding, 32),
+    return AuthScreenShell(
+      onBack: () => context.canPop() ? context.pop() : context.go('/login'),
+      heroHeight: 232,
+      heroBrandSize: ProppiterBrandHeroSize.auth,
+      heroBrandAlignment: const Alignment(0, -0.15),
+      formOverlap: -14,
+      form: AuthCard(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
+              s.signUpPageTitle,
+              textAlign: TextAlign.center,
+              style: authTitleTextStyle(),
+            ),
+            const SizedBox(height: 10),
+            Text(
               s.signUpPageIntro,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-                height: 1.45,
-              ),
+              style: authSubtitleTextStyle(),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             Center(child: _AvatarPicker(bytes: _avatarBytes, onTap: _pickAvatar)),
-            const SizedBox(height: 28),
+            const SizedBox(height: 20),
             AuthFormField(
               controller: _email,
               hint: s.emailLabel,
@@ -182,14 +175,19 @@ class _SignUpPageState extends State<SignUpPage> {
                   height: 52,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryLight,
+                    color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppTheme.border),
                   ),
                   alignment: Alignment.center,
                   child: Text(
                     s.signUpCountryCode,
-                    style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.primary),
+                    style: GoogleFonts.prompt(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      height: 1.3,
+                      color: LivingBkkBrand.homeHeaderBlockColor,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -221,47 +219,49 @@ class _SignUpPageState extends State<SignUpPage> {
                 onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             CheckboxListTile(
               value: _acceptedTerms,
               onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
-              activeColor: AppTheme.primary,
+              activeColor: LivingBkkBrand.homeHeaderBlockColor,
               title: LegalPolicyRichText(
                 s: s,
                 prefix: s.signUpTermsPrefix,
                 suffix: '',
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             SizedBox(
               height: 50,
               child: FilledButton(
                 onPressed: _loading ? null : _submit,
-                style: AppTheme.pillFilled,
+                style: authPrimaryButtonStyle(),
                 child: _loading
                     ? const SizedBox(
                         height: 22,
                         width: 22,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : Text(
-                        s.signUpTitle,
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                      ),
+                    : Text(s.signUpTitle),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(s.authHaveAccount, style: TextStyle(color: AppTheme.textSecondary)),
+                Text(s.authHaveAccount, style: authBodyTextStyle()),
                 TextButton(
                   onPressed: () => context.go('/login'),
                   child: Text(
                     s.authSignInLink,
-                    style: TextStyle(fontWeight: FontWeight.w700),
+                    style: GoogleFonts.prompt(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      height: 1.35,
+                      color: LivingBkkBrand.homeHeaderBlockColor,
+                    ),
                   ),
                 ),
               ],
@@ -287,20 +287,25 @@ class _AvatarPicker extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           Container(
-            width: 96,
-            height: 96,
+            width: 88,
+            height: 88,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
-                colors: [AppTheme.primaryLight, AppTheme.inputFill],
+              color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.08),
+              border: Border.all(
+                color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.35),
+                width: 2,
               ),
-              border: Border.all(color: AppTheme.primary.withOpacity(0.35), width: 2),
               image: bytes != null
                   ? DecorationImage(image: MemoryImage(bytes!), fit: BoxFit.cover)
                   : null,
             ),
             child: bytes == null
-                ? Icon(Icons.person_outline, size: 44, color: AppTheme.primary.withOpacity(0.45))
+                ? Icon(
+                    Icons.person_outline,
+                    size: 40,
+                    color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.45),
+                  )
                 : null,
           ),
           Positioned(
@@ -309,7 +314,7 @@ class _AvatarPicker extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: AppTheme.primary,
+                color: LivingBkkBrand.homeHeaderBlockColor,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.white, width: 2),
               ),

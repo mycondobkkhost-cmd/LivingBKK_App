@@ -19,6 +19,13 @@ abstract final class DemandBoardPostMeta {
 
   /// ลูกค้าเลือก「หาแบบด่วนที่สุด」— แสดงป้ายไฟบนบอร์ดให้เจ้าของ/นายหน้ารีบเสนอ
   static const urgentRushKey = 'urgent_rush';
+  static const customerPhoneLast4Key = 'customer_phone_last4';
+
+  static String? customerPhoneLast4FromExtra(Map<String, dynamic> extra) {
+    final raw = extra[customerPhoneLast4Key]?.toString().trim();
+    if (raw == null || raw.length != 4) return null;
+    return raw;
+  }
 
   static bool isUrgentRushFromExtra(Map<String, dynamic> extra) {
     final v = extra[urgentRushKey];

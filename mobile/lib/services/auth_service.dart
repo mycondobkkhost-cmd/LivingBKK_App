@@ -170,16 +170,25 @@ class AuthService extends ChangeNotifier {
   Future<String?> fetchProfileRole() async {
     if (isTrialSignedIn) return trialRole;
     if (_client == null || currentUser == null) return null;
+
+    String? metaRole;
+    final rawMeta = currentUser!.userMetadata?['role'];
+    if (rawMeta is String && rawMeta.isNotEmpty) metaRole = rawMeta;
+
     try {
       final row = await _client!
           .from('profiles')
           .select('role')
           .eq('id', currentUser!.id)
           .maybeSingle();
-      return row?['role'] as String?;
+      final dbRole = row?['role'] as String?;
+      if (dbRole == 'admin') return dbRole;
+      if (metaRole == 'admin') return metaRole;
+      if (dbRole != null && dbRole.isNotEmpty) return dbRole;
     } catch (_) {
-      return null;
+      return metaRole;
     }
+    return metaRole;
   }
 
   /// เฉพาะแอดมินระบบ — มุมมองลูกค้า/เอเจนซี่/เจ้าของสลับที่หน้าแรก ไม่เขียน DB

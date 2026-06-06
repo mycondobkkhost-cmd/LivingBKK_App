@@ -24,6 +24,7 @@ import '../../widgets/listings_map.dart';
 import '../../widgets/reference_code_chip.dart';
 import '../../shell/main_shell_scope.dart';
 import '../contact/property_chat_page.dart';
+import '../../widgets/app_mobile_scaffold.dart';
 
 class ListingDetailPage extends StatefulWidget {
   const ListingDetailPage({
@@ -134,7 +135,11 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   void _openChat() {
-    ListingActivityService.instance.recordChatStart(widget.listing.id);
+    ListingActivityService.instance.recordChatStart(
+      widget.listing.id,
+      district: widget.listing.district,
+      listingType: widget.listing.listingType,
+    );
     openPropertyChat(
       context,
       widget.listing,
@@ -143,7 +148,11 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   Future<void> _openBookProperty() async {
-    ListingActivityService.instance.recordChatStart(widget.listing.id);
+    ListingActivityService.instance.recordChatStart(
+      widget.listing.id,
+      district: widget.listing.district,
+      listingType: widget.listing.listingType,
+    );
     final s = AppStrings.of(context);
     setState(() => _bookingBusy = true);
     try {
@@ -164,7 +173,11 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   void _openScheduleViewing() {
-    ListingActivityService.instance.recordChatStart(widget.listing.id);
+    ListingActivityService.instance.recordChatStart(
+      widget.listing.id,
+      district: widget.listing.district,
+      listingType: widget.listing.listingType,
+    );
     openPropertyChat(
       context,
       widget.listing,
@@ -209,7 +222,8 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                 'เหมาะ${listing.listingType == 'rent' ? 'เช่าอยู่อาศัย' : 'ลงทุนหรืออยู่อาศัย'}');
     final liveViewers = _simulatedLiveViewers(listing);
 
-    return Scaffold(
+    return AppMobileScaffold(
+      safeBottomBody: false,
       backgroundColor: p.background,
       body: Stack(
         children: [
@@ -444,7 +458,11 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                       listingId: listing.id,
                       isAgent: widget.isAgent,
                       onShare: () {
-                        ListingActivityService.instance.recordShare(listing.id);
+                        ListingActivityService.instance.recordShare(
+                          listing.id,
+                          district: listing.district,
+                          listingType: listing.listingType,
+                        );
                         ListingShareActions.shareLink(listing, isEnglish: s.isEnglish);
                       },
                       onDownload: () =>
@@ -793,7 +811,12 @@ class _PropertyFactsRow extends StatelessWidget {
           label: listing.localizedFloorRange(s.isEnglish)!,
         ),
       if (listing.petAllowed)
-        _FactItem(icon: Icons.pets_outlined, label: s.filterPetAllowed),
+        _FactItem(
+          icon: Icons.pets_outlined,
+          label: listing.petPolicy.allowed
+              ? listing.petPolicy.summary(s)
+              : s.filterPetAllowed,
+        ),
       _FactItem(
         icon: Icons.apartment_outlined,
         label: s.propertyTypeChip(listing.propertyType),

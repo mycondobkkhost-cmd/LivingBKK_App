@@ -4,9 +4,14 @@ import 'package:go_router/go_router.dart';
 import '../../l10n/app_strings.dart';
 import '../../navigation/post_listing_navigation.dart';
 import '../../models/listing_viewing_access.dart';
+import '../../services/listing_activity_service.dart';
 import '../../services/listing_owner_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/listing_insights_strip.dart';
 import 'close_listing_sheet.dart';
+import '../../theme/li_layout.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class MyListingsPage extends StatefulWidget {
   const MyListingsPage({super.key});
@@ -23,6 +28,7 @@ class _MyListingsPageState extends State<MyListingsPage> {
   @override
   void initState() {
     super.initState();
+    ListingActivityService.instance.load();
     _load();
   }
 
@@ -149,18 +155,38 @@ class _MyListingsPageState extends State<MyListingsPage> {
         })
         .toList();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(s.myListingsTitle),
-        actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: _load)],
-      ),
+    return ConsumerPageShell(
+      title: s.myListingsTitle,
+      onBack: () => context.pop(),
+      actions: [
+        ConsumerHeaderIconButton(
+          icon: Icons.refresh_rounded,
+          onTap: _load,
+        ),
+      ],
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _rows.isEmpty
               ? Center(child: Text(s.noListingsYet))
               : ListView(
-                  padding: const EdgeInsets.all(12),
+                  padding: PageSafeInsets.padLTRB(
+                    context,
+                    left: LiLayout.pagePadding,
+                    top: LiLayout.pagePadding,
+                    right: LiLayout.pagePadding,
+                    bottom: 16,
+                    addHomeIndicator: false,
+                  ),
                   children: [
+                    if (published.isNotEmpty)
+                      ListingPortfolioSummary(
+                        listingIds: _rows
+                            .map((r) => r['id']?.toString())
+                            .whereType<String>()
+                            .toList(),
+                        publishedCount: published.length,
+                      ),
+                    if (published.isNotEmpty) const SizedBox(height: 12),
                     if (pending.isNotEmpty) ...[
                       _sectionTitle(s.listingSectionPendingReview),
                       ...pending.map((r) => _tile(s, r, pending: true)),
@@ -238,6 +264,9 @@ class _MyListingsPageState extends State<MyListingsPage> {
                 _viewingAccessLine(s, r)!,
                 style: TextStyle(fontSize: 12, color: AppTheme.primary, height: 1.35),
               ),
+            ],
+            if (status == 'published') ...[
+              ListingInsightsStrip(listingId: r['id'] as String),
             ],
             if (extra != null) ...[
               const SizedBox(height: 6),

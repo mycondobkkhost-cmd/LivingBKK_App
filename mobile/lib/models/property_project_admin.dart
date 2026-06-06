@@ -11,6 +11,7 @@ class PropertyProjectRow {
     required this.lng,
     required this.isActive,
     this.btsStation,
+    this.nearbyTransit = const [],
     this.aliases = const [],
     this.yearBuilt,
     this.facilities = const [],
@@ -29,6 +30,7 @@ class PropertyProjectRow {
   final String nameEn;
   final String district;
   final String? btsStation;
+  final List<String> nearbyTransit;
   final String propertyType;
   final double lat;
   final double lng;
@@ -49,6 +51,7 @@ class PropertyProjectRow {
   factory PropertyProjectRow.fromJson(Map<String, dynamic> json) {
     final aliasesRaw = json['aliases'];
     final facilitiesRaw = json['facilities'];
+    final nearbyTransitRaw = json['nearby_transit'];
     return PropertyProjectRow(
       id: json['id'] as String,
       slug: json['slug'] as String? ?? '',
@@ -56,6 +59,9 @@ class PropertyProjectRow {
       nameEn: json['name_en'] as String? ?? '',
       district: json['district'] as String? ?? '',
       btsStation: json['bts_station'] as String?,
+      nearbyTransit: nearbyTransitRaw is List
+          ? nearbyTransitRaw.map((e) => e.toString()).toList()
+          : const [],
       propertyType: json['property_type'] as String? ?? 'condo',
       lat: (json['lat'] as num?)?.toDouble() ?? 13.7563,
       lng: (json['lng'] as num?)?.toDouble() ?? 100.5018,
@@ -83,6 +89,7 @@ class PropertyProjectRow {
         'name_en': nameEn,
         'district': district,
         if (btsStation != null && btsStation!.isNotEmpty) 'bts_station': btsStation,
+        if (nearbyTransit.isNotEmpty) 'nearby_transit': nearbyTransit,
         'property_type': propertyType,
         'lat': lat,
         'lng': lng,

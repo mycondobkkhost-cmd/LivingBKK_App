@@ -7,11 +7,17 @@ import '../../l10n/app_strings.dart';
 import '../../models/admin_chat_ops.dart';
 import '../../models/chat_message.dart';
 import '../../models/chat_room.dart';
+import '../../services/admin_repository.dart';
+import '../../services/appointment_repository.dart';
 import '../../services/chat_repository.dart';
 import '../../services/chat_service.dart';
+import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
-import '../../widgets/reference_code_chip.dart';
+import '../../utils/admin_listing_nav.dart';
 import '../../utils/reference_codes.dart';
+import '../../widgets/reference_code_chip.dart';
+import 'admin_listing_link_picker.dart';
+import 'admin_viewing_schedule_sheet.dart';
 
 /// แผงตอบแชทแอดมิน — ใช้ได้ทั้งหน้าเต็มและฝังใน console บนคอม
 class AdminChatPanel extends StatefulWidget {
@@ -36,8 +42,11 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   final _chat = ChatService.instance;
+  final _admin = AdminRepository();
+  final _appointments = AppointmentRepository();
   RealtimeChannel? _realtimeChannel;
   bool _loading = true;
+  bool _linkedLeadHasViewing = false;
 
   ChatRoom? get _room => _chat.roomById(widget.roomId);
 
@@ -59,6 +68,11 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
 
   Future<void> _load() async {
     await _chat.loadThreadIfMissing(widget.roomId);
+    final lead = await _admin.fetchLeadByThreadId(widget.roomId);
+    if (lead != null) {
+      final qual = lead['qualification_json'] as Map<String, dynamic>?;
+      _linkedLeadHasViewing = qual?['viewing_schedule'] != null;
+    }
     final room = _room;
     if (room != null && room.isPersisted) {
       _realtimeChannel = _chat.subscribeToThread(room, () {
@@ -97,6 +111,163 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
     });
   }
 
+  Future<void> _sendFormLink(ChatMessageLink link, String defaultMessage) async {
+    final room = _room;
+    if (room == null) return;
+    final s = context.s;
+    if (!_chat.canReplyAsAdmin(room)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminMustClaimFirst)),
+      );
+      return;
+    }
+    final note = _input.text.trim();
+    final text = note.isNotEmpty ? note : defaultMessage;
+    try {
+      await _chat.sendAdminReply(room, text, links: [link]);
+      _input.clear();
+      _scrollToBottom();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminClaimedByOther)),
+      );
+    }
+  }
+
+  Future<void> _sendRequirementFormLink() async {
+    final s = context.s;
+    await _sendFormLink(
+      ChatMessageLink.requirementForm(s),
+      s.adminSendRequirementFormMessage,
+    );
+  }
+
+  Future<void> _sendViewingFormLink() async {
+    final s = context.s;
+    await _sendFormLink(
+      ChatMessageLink.viewingForm(s),
+      s.adminSendViewingFormMessage,
+    );
+  }
+
+  bool _teamHasRepliedInChat(ChatRoom room) {
+    return room.messages.any((m) {
+      if (m.role != ChatMessageRole.adminNotice) return false;
+      final t = m.text;
+      if (t.startsWith('รับข้อความแล้ว') || t.startsWith('Message received')) {
+        return false;
+      }
+      if (t.startsWith('รายละเอียดนัดดู') || t.startsWith('Viewing details')) {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  Future<void> _confirmViewing() async {
+    final room = _room;
+    if (room == null) return;
+    final s = context.s;
+    if (!_chat.canReplyAsAdmin(room)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminMustClaimFirst)),
+      );
+      return;
+    }
+    if (!_teamHasRepliedInChat(room)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminChatBeforeConfirmHint)),
+      );
+      return;
+    }
+
+    final lead = await _admin.fetchLeadByThreadId(room.id);
+    if (!mounted) return;
+    if (lead == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.notFoundLead)),
+      );
+      return;
+    }
+
+    final qual = lead['qualification_json'] as Map<String, dynamic>?;
+    final preferred = qual?['viewing_schedule']?.toString();
+    final listingPoint = await _admin.fetchListingMapPoint(
+      lead['listing_id']?.toString(),
+      listingCode: lead['listing_code']?.toString(),
+    );
+    if (!mounted) return;
+
+    final result = await showAdminViewingScheduleSheet(
+      context,
+      preferredSlot: preferred,
+    );
+    if (result == null || !mounted) return;
+
+    try {
+      await _appointments.scheduleFromLead(
+        leadId: lead['id']?.toString() ?? '',
+        seekerNickname: lead['seeker_nickname']?.toString() ?? s.leadDefaultName,
+        seekerPhone: lead['seeker_phone']?.toString(),
+        listingId: lead['listing_id']?.toString(),
+        listingCode: lead['listing_code']?.toString(),
+        scheduledDate: result.date,
+        timeSlot: result.timeSlot,
+        locationLabel: listingPoint?['project_name']?.toString() ??
+            listingPoint?['district']?.toString() ??
+            s.adminApproxZone,
+        lat: (listingPoint?['lat'] as num?)?.toDouble(),
+        lng: (listingPoint?['lng'] as num?)?.toDouble(),
+        adminNotes: result.adminNotes,
+      );
+
+      final dateLabel =
+          '${result.date.day}/${result.date.month}/${result.date.year + (s.isEnglish ? 0 : 543)}';
+      final confirmText = s.t(
+        'ยืนยันนัดดูแล้วครับ — $dateLabel · ${result.timeSlot}',
+        'Viewing confirmed — $dateLabel · ${result.timeSlot}',
+      );
+      await _chat.sendAdminReply(room, confirmText);
+      _scrollToBottom();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminViewingSavedSnack)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  Future<void> _sendListingCards() async {
+    final room = _room;
+    if (room == null) return;
+    final s = context.s;
+    if (!_chat.canReplyAsAdmin(room)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminMustClaimFirst)),
+      );
+      return;
+    }
+    final links = await AdminListingLinkPicker.show(context);
+    if (links == null || links.isEmpty || !mounted) return;
+    final note = _input.text.trim();
+    final text = note.isNotEmpty
+        ? note
+        : s.t('ชุดทรัพย์ที่แนะนำ', 'Recommended listings');
+    try {
+      await _chat.sendAdminReply(room, text, links: links);
+      _input.clear();
+      _scrollToBottom();
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminClaimedByOther)),
+      );
+    }
+  }
+
   Future<void> _send() async {
     final room = _room;
     if (room == null) return;
@@ -129,13 +300,29 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
 
   Future<void> _claim() async {
     final room = _room;
-    if (room == null || !room.isUnclaimed) return;
-    await _chat.claimThread(room);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(context.s.adminClaimSuccess)),
-    );
-    setState(() {});
+    if (room == null) return;
+    final s = context.s;
+    if (!room.isUnclaimed) {
+      if (_chat.isClaimedByOtherAdmin(room)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(s.adminClaimedByOther)),
+        );
+      }
+      return;
+    }
+    try {
+      await _chat.claimThread(room);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminClaimSuccess)),
+      );
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString().replaceFirst('Exception: ', ''))),
+      );
+    }
   }
 
   Future<void> _assign() async {
@@ -256,7 +443,11 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
-                  live.isUnclaimed ? s.adminMustClaimFirst : s.adminClaimedByOther,
+                  live.isUnclaimed
+                      ? s.adminMustClaimFirst
+                      : (claimedOther
+                          ? s.adminClaimedByOther
+                          : s.adminMustClaimFirst),
                   style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
                 ),
               ),
@@ -283,7 +474,38 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
                         onSubmitted: canReply ? (_) => _send() : null,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 4),
+                    if (canReply && !live.isCustomerRequirement)
+                      IconButton(
+                        onPressed: _sendRequirementFormLink,
+                        icon: const Icon(Icons.edit_note_outlined),
+                        tooltip: s.adminSendRequirementFormBtn,
+                      ),
+                    if (canReply &&
+                        (live.viewingSubmitted || _linkedLeadHasViewing))
+                      IconButton(
+                        onPressed: _confirmViewing,
+                        icon: const Icon(Icons.event_available_outlined),
+                        tooltip: s.adminConfirmViewingInChat,
+                      ),
+                    if (canReply &&
+                        (live.isPropertyListing ||
+                            live.isDiscovery ||
+                            live.viewingSubmitted))
+                      IconButton(
+                        onPressed: _sendViewingFormLink,
+                        icon: const Icon(Icons.assignment_outlined),
+                        tooltip: s.adminSendViewingFormBtn,
+                      ),
+                    if (canReply &&
+                        (live.isDiscovery ||
+                            live.isCustomerRequirement ||
+                            live.isPropertyListing))
+                      IconButton(
+                        onPressed: _sendListingCards,
+                        icon: const Icon(Icons.add_link),
+                        tooltip: s.adminSendListingCardsTitle,
+                      ),
                     IconButton.filled(
                       onPressed: canReply ? _send : null,
                       icon: const Icon(Icons.send),
@@ -382,7 +604,7 @@ class _MetaBar extends StatelessWidget {
     final s = context.s;
     return Container(
       width: double.infinity,
-      color: pending ? AppTheme.accentMidLight : AppTheme.primaryLight,
+      color: pending ? const Color(0xFFFFF7ED) : AdminTheme.surfaceMuted,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Wrap(
         spacing: 8,
@@ -398,7 +620,11 @@ class _MetaBar extends StatelessWidget {
           ),
           Text(
             pending
-                ? (canReply ? s.adminPendingMeta : s.adminClaimedByOther)
+                ? (canReply
+                    ? s.adminPendingMeta
+                    : (room.isUnclaimed
+                        ? s.adminMustClaimFirst
+                        : s.adminClaimedByOther))
                 : s.adminResolvedMeta,
             style: TextStyle(
               fontSize: 12,
@@ -411,6 +637,12 @@ class _MetaBar extends StatelessWidget {
               label: s.adminClaimedBy(room.assignedAdminName!),
               color: AppTheme.primary,
             ),
+          if (room.isDiscovery)
+            _MetaChip(label: s.adminInboxDiscovery, color: AppTheme.primary),
+          if (room.isCustomerRequirement)
+            _MetaChip(label: s.adminInboxRequirement, color: AppTheme.accentDeep),
+          if (room.isDemandOffer)
+            _MetaChip(label: s.adminInboxDemandOffer, color: AppTheme.accentMid),
           if (room.viewingSubmitted)
             _MetaChip(label: s.adminViewingFormChip, color: AppTheme.accentDeep),
           if (room.isStaffSupport)
@@ -426,6 +658,11 @@ class _MetaBar extends StatelessWidget {
               code: room.listingCode,
               label: s.propertyCodeLabel,
               compact: true,
+              onNavigate: () => openAdminListing(
+                context,
+                listingId: room.listingId.isNotEmpty ? room.listingId : null,
+                listingCode: room.listingCode,
+              ),
             ),
         ],
       ),
@@ -442,7 +679,7 @@ class _ClaimBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.s;
     return Material(
-      color: AppTheme.accentDeepLight,
+      color: AdminTheme.surfaceMuted,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
@@ -469,7 +706,7 @@ class _BlockedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppTheme.accentMidLight,
+      color: AdminTheme.surface,
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
@@ -566,69 +803,118 @@ class _AdminBubble extends StatelessWidget {
 
     Color bg;
     Color fg;
-    Alignment align;
 
+    // มุมมองแอดมิน: ลูกค้าซ้าย / ทีม+AI ขวา (สลับกับหน้าลูกค้า)
     if (isUser) {
       bg = AppTheme.primary;
       fg = Colors.white;
-      align = Alignment.centerRight;
     } else if (isStaff) {
-      bg = AppTheme.accentMidLight;
+      bg = const Color(0xFFEDE9FE);
       fg = AppTheme.textPrimary;
-      align = Alignment.centerLeft;
     } else if (isSystem) {
-      bg = AppTheme.accentDeepLight;
+      bg = AdminTheme.surfaceMuted;
       fg = AppTheme.textPrimary;
-      align = Alignment.center;
     } else {
       bg = AppTheme.accentMutedLight;
       fg = AppTheme.textPrimary;
-      align = Alignment.centerLeft;
     }
 
-    return Align(
-      alignment: align,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-        child: Column(
-          crossAxisAlignment:
-              isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _roleLabel(s),
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: isStaff ? AppTheme.accentMid : AppTheme.textSecondary,
-                  ),
+    final bubble = ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+      child: Column(
+        crossAxisAlignment:
+            isUser ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+        children: [
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                _roleLabel(s),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: isStaff ? AppTheme.accentMid : AppTheme.textSecondary,
                 ),
+              ),
+              const SizedBox(width: 6),
+              Text(
+                time,
+                style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+              ),
+              if (message.requiresAdmin) ...[
                 const SizedBox(width: 6),
-                Text(
-                  time,
-                  style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
-                ),
-                if (message.requiresAdmin) ...[
-                  const SizedBox(width: 6),
-                  Icon(Icons.priority_high, size: 14, color: AppTheme.error),
+                Icon(Icons.priority_high, size: 14, color: AppTheme.error),
+              ],
+            ],
+          ),
+          const SizedBox(height: 4),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: bg,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppTheme.border.withOpacity(0.45)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(message.text, style: TextStyle(color: fg, height: 1.4)),
+                if (message.links.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  ...message.links.map(
+                    (link) => Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            link.kind == ChatMessageLinkKind.requirementForm
+                                ? Icons.edit_note_outlined
+                                : link.kind == ChatMessageLinkKind.viewingForm
+                                    ? Icons.event_available_outlined
+                                    : Icons.link,
+                            size: 14,
+                            color: isUser ? Colors.white70 : AppTheme.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              link.label,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color:
+                                    isUser ? Colors.white70 : AppTheme.primary,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ],
             ),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: bg,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppTheme.border.withOpacity(0.45)),
-              ),
-              child: Text(message.text, style: TextStyle(color: fg, height: 1.4)),
-            ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+
+    if (isSystem) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Center(child: bubble),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (!isUser) const Spacer(),
+          bubble,
+          if (isUser) const Spacer(),
+        ],
       ),
     );
   }

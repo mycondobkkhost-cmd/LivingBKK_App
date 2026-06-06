@@ -42,6 +42,7 @@ class StorageService {
 
       final hash = _perceptualHash(bytes);
 
+      // ฟรี — hash ในแอป + Edge Function image-dedup-check (ไม่ใช้ Vision/Rekognition)
       await SupabaseService.client!.from('listing_images').insert({
         'listing_id': listingId,
         'storage_path': path,

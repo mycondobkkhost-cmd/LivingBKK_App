@@ -44,4 +44,6 @@ flutter:
   assets:
     - assets/env
     - assets/brand/
+    - assets/promo/
+    - assets/home_services/
     - assets/data/search_display_index.json

@@ -1,5 +1,6 @@
 import 'lead_inbox_repository.dart';
 import '../utils/reference_codes.dart';
+import '../utils/listing_ids.dart';
 import 'auth_service.dart';
 import 'supabase_service.dart';
 
@@ -38,6 +39,7 @@ class LeadSubmission {
     this.preferredAreas,
     this.customerPhoneLast4,
     this.duplicatePhoneSuffix = false,
+    this.threadId,
   });
 
   final String listingCode;
@@ -62,6 +64,7 @@ class LeadSubmission {
   /// โคเอเจนท์: 4 ตัวท้ายเบอร์ลูกค้า
   final String? customerPhoneLast4;
   final bool duplicatePhoneSuffix;
+  final String? threadId;
 
   Map<String, dynamic> toJson(String? seekerId) {
     final qualification = <String, dynamic>{};
@@ -76,7 +79,8 @@ class LeadSubmission {
 
     return {
       'listing_code': listingCode,
-      if (listingId != null) 'listing_id': listingId,
+      if (listingIdForBackend(listingId) != null)
+        'listing_id': listingIdForBackend(listingId),
       if (seekerId != null) 'seeker_id': seekerId,
       'seeker_nickname': seekerNickname,
       'seeker_phone': seekerPhone,
@@ -93,6 +97,7 @@ class LeadSubmission {
       if (preferredAreas != null && preferredAreas!.isNotEmpty)
         'preferred_areas': preferredAreas,
       if (qualification.isNotEmpty) 'qualification_json': qualification,
+      if (threadId != null && threadId!.isNotEmpty) 'thread_id': threadId,
       'status': 'new',
     };
   }
@@ -180,17 +185,35 @@ class LeadRepository {
 
     try {
       final uid = AuthService.instance.effectiveUserId;
-      var listingId = lead.listingId;
+      var listingId = listingIdForBackend(lead.listingId);
       listingId ??= await resolveListingId(lead.listingCode);
 
       final payload = lead.toJson(uid);
       if (listingId != null) payload['listing_id'] = listingId;
 
-      final inserted = await SupabaseService.client!
-          .from('leads')
-          .insert(payload)
-          .select('id, transaction_ref')
-          .single();
+      Map<String, dynamic> inserted;
+      try {
+        inserted = Map<String, dynamic>.from(
+          await SupabaseService.client!
+              .from('leads')
+              .insert(payload)
+              .select('id, transaction_ref')
+              .single() as Map,
+        );
+      } catch (e) {
+        if (lead.threadId != null && _unknownColumn(e, 'thread_id')) {
+          final fallback = Map<String, dynamic>.from(payload)..remove('thread_id');
+          inserted = Map<String, dynamic>.from(
+            await SupabaseService.client!
+                .from('leads')
+                .insert(fallback)
+                .select('id, transaction_ref')
+                .single() as Map,
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       final leadId = inserted['id'] as String?;
       final txnRef = inserted['transaction_ref'] as String?;
@@ -246,6 +269,12 @@ class LeadRepository {
     return msg.contains('PGRST205') ||
         msg.contains('public.leads') ||
         msg.contains('schema cache');
+  }
+
+  bool _unknownColumn(Object e, String column) {
+    final msg = e.toString().toLowerCase();
+    return msg.contains(column) &&
+        (msg.contains('column') || msg.contains('pgrst204'));
   }
 
   Future<List<Map<String, dynamic>>> myLeads() async {

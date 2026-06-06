@@ -15,7 +15,6 @@ abstract final class ListingFormOptions {
     ListingFormOption(id: 'brand_new', labelTh: 'ทรัพย์มือ 1', labelEn: 'Brand new'),
     ListingFormOption(id: 'second_hand', labelTh: 'ทรัพย์มือสอง', labelEn: 'Resale / second-hand'),
     ListingFormOption(id: 'renovated', labelTh: 'ทรัพย์รีโนเวท', labelEn: 'Renovated'),
-    ListingFormOption(id: 'pet_friendly', labelTh: 'เลี้ยงสัตว์ได้', labelEn: 'Pet friendly'),
     ListingFormOption(id: 'company_reg', labelTh: 'จดทะเบียนบริษัทได้', labelEn: 'Company registration'),
     ListingFormOption(id: 'direct_owner', labelTh: 'ผ่อนตรงเจ้าของ', labelEn: 'Pay owner directly'),
     ListingFormOption(id: 'npa', labelTh: 'ทรัพย์ NPA', labelEn: 'NPA property'),

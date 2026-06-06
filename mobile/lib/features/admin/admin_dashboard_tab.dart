@@ -3,8 +3,12 @@ import 'package:intl/intl.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../models/admin_dashboard_overview.dart';
+import '../../models/platform_stats_summary.dart';
 import '../../services/admin_repository.dart';
+import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/ops/ops_funnel_strip.dart';
+import '../../widgets/ops/ops_mini_bar_chart.dart';
 import 'admin_exclusive_settings_card.dart';
 
 /// แท็บแดชบอร์ดรายละเอียด — สรุปทุกระบบ
@@ -41,6 +45,17 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     });
   }
 
+  String _pct(double rate, AppStrings s) =>
+      s.adminReportRatePercent((rate * 100).round());
+
+  void _openAttentionTab() {
+    final tab = _data.customerRequirementsPending > 0 &&
+            _data.customerRequirementsPending >= _data.chatWaiting
+        ? 8
+        : 1;
+    widget.onOpenTab?.call(tab);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.s;
@@ -48,44 +63,95 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final trendSummary = PlatformStatsSummary.fromRows(_platformStats);
+    final leadPoints = OpsMiniBarChart.fromDailyRows(
+      _platformStats,
+      labelBuilder: (d, en) => OpsMiniBarChart.shortDateLabel(d, en),
+      valuePicker: (r) => (r['lead_count'] as num?)?.toInt() ?? 0,
+      isEnglish: s.isEnglish,
+      maxPoints: 7,
+    );
+
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (_data.attentionTotal > 0)
+            Card(
+              color: AppTheme.error.withOpacity(0.08),
+              child: ListTile(
+                leading: Icon(Icons.priority_high, color: AppTheme.error),
+                title: Text(
+                  s.adminDashNeedsAction(_data.attentionTotal),
+                  style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.error),
+                ),
+                subtitle: Text(s.adminDashActionHint),
+                trailing: IconButton(
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => _openAttentionTab(),
+                ),
+                onTap: _openAttentionTab,
+              ),
+            ),
           _sectionTitle(s.adminDashSectionOps),
           _row([
-            _metricCard(s.adminDashChat, _data.chatWaiting, Icons.chat, 1, s),
+            _metricCard(s.adminDashChat, _data.chatWaiting, Icons.chat, 1, s,
+                alert: _data.chatWaiting > 0),
             _metricCard(s.adminDashLeads, _data.leadsNew, Icons.support_agent, 3, s,
-                foot: s.adminDashLeadsSub(_data.leadsTotal)),
+                foot: s.adminDashLeadsSub(_data.leadsTotal), alert: _data.leadsNew > 0),
           ]),
           _row([
-            _metricCard(s.adminDashAppointments, _data.appointmentsPending, Icons.event, 4, s),
-            _metricCard(s.adminDashOffers, _data.offersPending, Icons.local_offer, 2, s),
+            _metricCard(s.adminDashAppointments, _data.appointmentsPending, Icons.event, 4, s,
+                alert: _data.appointmentsPending > 0),
+            _metricCard(s.adminDashOffers, _data.offersPending, Icons.local_offer, 2, s,
+                alert: _data.offersPending > 0),
           ]),
           const SizedBox(height: 12),
           _sectionTitle(s.adminDashSectionCatalog),
           _row([
-            _metricCard(s.adminDashProjects, _data.projects, Icons.apartment, 9, s),
+            _metricCard(s.adminDashProjects, _data.projects, Icons.apartment, 10, s),
             _metricCard(s.adminDashListings, _data.listingsPublished, Icons.home_work, -1, s,
                 foot: s.adminDashListingsSub(_data.listingsTotal)),
           ]),
           _row([
-            _metricCard(s.adminDashImports, _data.importsPending, Icons.cloud_download, 8, s),
-            _metricCard(s.adminDashDemandPosts, _data.demandPostsOpen, Icons.campaign, 7, s),
+            _metricCard(s.adminDashImports, _data.importsPending, Icons.cloud_download, 9, s,
+                alert: _data.importsPending > 0),
+            _metricCard(s.adminDashDemandPosts, _data.demandPostsOpen, Icons.campaign, 8, s),
+          ]),
+          _row([
+            _metricCard(
+              s.adminDashRequirements,
+              _data.customerRequirementsPending,
+              Icons.assignment,
+              8,
+              s,
+              alert: _data.customerRequirementsPending > 0,
+            ),
           ]),
           const SizedBox(height: 12),
           const AdminExclusiveSettingsCard(),
           _sectionTitle(s.adminDashSectionTrust),
           _row([
-            _metricCard(s.adminDashModImages, _data.moderationImages, Icons.image, 6, s),
-            _metricCard(s.adminDashModFlags, _data.moderationFlags, Icons.flag, 6, s),
+            _metricCard(s.adminDashModImages, _data.moderationImages, Icons.image, 6, s,
+                alert: _data.moderationImages > 0),
+            _metricCard(s.adminDashModFlags, _data.moderationFlags, Icons.flag, 6, s,
+                alert: _data.moderationFlags > 0),
           ]),
           _row([
             _metricCard(s.adminDashUsers, _data.usersTotal, Icons.people, -1, s),
           ]),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: () => widget.onOpenTab?.call(5),
+              icon: const Icon(Icons.analytics_outlined, size: 18),
+              label: Text(s.adminOpenReportsCenter),
+            ),
+          ),
           if (_platformStats.isNotEmpty) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
             _sectionTitle(s.adminDashSectionTrend),
             Card(
               child: Padding(
@@ -93,18 +159,34 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    for (final row in _platformStats.take(7))
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Text(
-                          s.adminDashTrendLine(
-                            row['stat_date']?.toString() ?? '—',
-                            (row['lead_count'] as num?)?.toInt() ?? 0,
-                            (row['appointment_count'] as num?)?.toInt() ?? 0,
-                          ),
-                          style: TextStyle(fontSize: 13, color: AppTheme.textSecondary),
+                    OpsFunnelStrip(
+                      steps: [
+                        OpsFunnelStep(
+                          label: s.adminReportFunnelLeads,
+                          value: trendSummary.totalLeads,
                         ),
-                      ),
+                        OpsFunnelStep(
+                          label: s.adminReportFunnelAccepted,
+                          value: trendSummary.totalAccepted,
+                          rateLabel: _pct(trendSummary.leadAcceptRate, s),
+                        ),
+                        OpsFunnelStep(
+                          label: s.adminReportFunnelAppts,
+                          value: trendSummary.totalAppointments,
+                        ),
+                        OpsFunnelStep(
+                          label: s.adminReportFunnelConfirmed,
+                          value: trendSummary.totalConfirmed,
+                          rateLabel: _pct(trendSummary.apptConfirmRate, s),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    OpsMiniBarChart(
+                      title: s.adminReportChartLeads,
+                      points: leadPoints,
+                      maxBarHeight: 56,
+                    ),
                   ],
                 ),
               ),
@@ -149,8 +231,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
     int tabIndex,
     AppStrings s, {
     String? foot,
+    bool alert = false,
   }) {
     return Card(
+      color: alert ? AppTheme.error.withOpacity(0.05) : null,
       child: InkWell(
         onTap: tabIndex >= 0 ? () => widget.onOpenTab?.call(tabIndex) : null,
         borderRadius: BorderRadius.circular(12),
@@ -159,13 +243,20 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: AppTheme.primary, size: 22),
+              Icon(icon, color: alert ? AppTheme.error : AppTheme.primary, size: 22),
               const SizedBox(height: 8),
-              Text('$value', style: const TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-              Text(title, style: TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
+              Text(
+                '$value',
+                style: TextStyle(
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: alert ? AppTheme.error : null,
+                ),
+              ),
+              Text(title, style: AdminTheme.caption),
               if (foot != null) ...[
                 const SizedBox(height: 4),
-                Text(foot, style: TextStyle(fontSize: 11, color: AppTheme.textSecondary)),
+                Text(foot, style: AdminTheme.caption),
               ],
               if (tabIndex >= 0) ...[
                 const SizedBox(height: 6),

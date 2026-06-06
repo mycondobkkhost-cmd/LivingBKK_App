@@ -91,7 +91,7 @@ function firstMatch(html: string, re: RegExp): string | null {
   return m?.[1] ? decodeHtml(m[1]) : null;
 }
 
-function extractContacts(text: string): LiParsedListing["contactPrivate"] {
+export function extractContacts(text: string): LiParsedListing["contactPrivate"] {
   const phones = [...text.matchAll(PHONE_RE)].map((m) => m[0]);
   const lines = [...text.matchAll(LINE_RE)].map((m) => m[0]);
   const urls = [...text.matchAll(URL_RE)].map((m) => m[0]);

@@ -31,11 +31,15 @@ import '../../state/user_role_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_loading_overlay.dart';
 import '../../utils/listing_draft_translate.dart';
+import '../../widgets/demand/demand_offer_warning_banner.dart';
 import '../../widgets/legal_policy_rich_text.dart';
-import '../../widgets/listing_viewing_access_section.dart';
+import '../../models/listing_pet_policy.dart';
+import '../../widgets/listing_pet_policy_section.dart';
 import '../../models/listing_viewing_access.dart';
+import '../../widgets/listing_viewing_access_section.dart';
 import '../../widgets/project_picker_field.dart';
 import '../../utils/legal_navigation.dart';
+import '../../widgets/app_mobile_scaffold.dart';
 
 /// สร้างประกาศ — wizard อ้างอิง LI (เจ้าของ/เอเจนท์ · ลิงก์แผนที่เมื่อนอกโครงการ)
 class CreateListingPage extends StatefulWidget {
@@ -104,6 +108,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
   final _viewingAccessNote = TextEditingController();
   ListingOccupancyInput _occupancy = const ListingOccupancyInput();
   final _tenantRent = TextEditingController();
+  ListingPetPolicyInput _petPolicy = const ListingPetPolicyInput();
+  final _petMaxWeight = TextEditingController();
+  final _petMaxCount = TextEditingController();
   final Set<String> _listingLangs = {'th'};
   List<XFile> _images = [];
   final Set<String> _hashtagIds = {};
@@ -219,6 +226,8 @@ class _CreateListingPageState extends State<CreateListingPage> {
     _leaseMonths.dispose();
     _viewingAccessNote.dispose();
     _tenantRent.dispose();
+    _petMaxWeight.dispose();
+    _petMaxCount.dispose();
     super.dispose();
   }
 
@@ -253,6 +262,8 @@ class _CreateListingPageState extends State<CreateListingPage> {
       _selectedProject = null;
       _customProject = false;
       _standalone = false;
+      _customProjectName.clear();
+      _districtArea.clear();
       _locationScope = ListingLocationScope.catalogProject;
     });
   }
@@ -445,6 +456,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
             return false;
           }
         }
+        if (_petPolicy.allowed && !_petPolicy.typesValidWhenAllowed) {
+          _snack(s.petPolicyTypeRequired);
+          return false;
+        }
         if (_listingLangs.contains('en')) {
           if (_titleEn.text.trim().isEmpty || _descEn.text.trim().isEmpty) {
             _snack(s.t(
@@ -582,6 +597,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
     }
     summary[s.occupancySectionTitle] =
         _occupancy.summary(s, _propertySlug);
+    summary[s.petPolicySectionTitle] = _petPolicy.summary(s);
     if (_images.isNotEmpty) {
       summary[s.propertyPhotos] = s.pickPhotos(_images.length);
     }
@@ -608,6 +624,8 @@ class _CreateListingPageState extends State<CreateListingPage> {
                       height: 1.4,
                     ),
                   ),
+                  const SizedBox(height: 12),
+                  const DemandOfferWarningBanner(compact: true),
                   const SizedBox(height: 12),
                   for (final e in summary.entries)
                     Padding(
@@ -756,7 +774,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
             brokerCommissionPercent: brokerPct,
             transferTerms: _isSaleListing ? _transferTermsLabel(s) : null,
             leaseMonths: int.tryParse(_leaseMonths.text) ?? 12,
-            petAllowed: _hashtagIds.contains('pet_friendly'),
+            petPolicy: _petPolicy.copyWith(
+              maxWeightKg: double.tryParse(_petMaxWeight.text.replaceAll(',', '')),
+              maxCount: int.tryParse(_petMaxCount.text.replaceAll(',', '')),
+            ),
             lineId: _lineId.text.trim().isEmpty ? null : _lineId.text.trim(),
             listingLanguages: _listingLangs.toList()..sort(),
             titleEn: _listingLangs.contains('en') ? _titleEn.text.trim() : null,
@@ -864,7 +885,8 @@ class _CreateListingPageState extends State<CreateListingPage> {
     final s = AppStrings.of(context);
     final isEnglish = s.isEnglish;
 
-    return Scaffold(
+    return AppMobileScaffold(
+      safeBottomBody: false,
       appBar: AppBar(
         leading: IconButton(
           icon: const Icon(Icons.close),
@@ -1044,38 +1066,58 @@ class _CreateListingPageState extends State<CreateListingPage> {
   }
 
   List<Widget> _stepLocation(AppStrings s) {
+    final manualMode = _customProject || _standalone;
     return [
       ProjectPickerField(
         selected: _selectedProject,
-        customMode: _customProject,
+        manualMode: manualMode,
         standaloneMode: _standalone,
         onProjectSelected: _onProjectSelected,
-        onEnableCustom: () => setState(() {
+        onAreaSelected: (area, districtHint) {
+          setState(() {
+            _selectedProject = null;
+            _customProject = true;
+            _standalone = false;
+            _customProjectName.text = area;
+            if (_districtArea.text.trim().isEmpty) {
+              _districtArea.text = districtHint;
+            }
+            _syncLocationScope();
+          });
+        },
+        onEnterManual: () => setState(() {
           _customProject = true;
           _standalone = false;
           _selectedProject = null;
           _syncLocationScope();
         }),
-        onNoProject: () => setState(() {
-          _standalone = true;
-          _customProject = false;
-          _selectedProject = null;
-          if (_propertySlug == 'condo') _propertySlug = 'house';
-          _syncLocationScope();
-        }),
         onClear: _clearProject,
       ),
-      if (_customProject) ...[
+      if (manualMode) ...[
         const SizedBox(height: 12),
-        TextField(
-          controller: _customProjectName,
-          decoration: InputDecoration(
-            labelText: s.t('ชื่อโครงการหรือทำเล', 'Project or area name'),
-            border: _inputBorder,
-          ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: Text(s.createListingStandaloneToggle),
+          subtitle: Text(s.createListingNoProjectHint),
+          value: _standalone,
+          onChanged: (v) => setState(() {
+            _standalone = v;
+            _customProject = !v;
+            _selectedProject = null;
+            if (v && _propertySlug == 'condo') _propertySlug = 'house';
+            _syncLocationScope();
+          }),
         ),
-      ],
-      if (_standalone || _customProject || _selectedProject == null) ...[
+        if (!_standalone) ...[
+          const SizedBox(height: 8),
+          TextField(
+            controller: _customProjectName,
+            decoration: InputDecoration(
+              labelText: s.t('ชื่อโครงการหรือทำเล *', 'Project or area name *'),
+              border: _inputBorder,
+            ),
+          ),
+        ],
         const SizedBox(height: 12),
         TextField(
           controller: _districtArea,
@@ -1264,6 +1306,13 @@ class _CreateListingPageState extends State<CreateListingPage> {
         noteController: _viewingAccessNote,
         onChanged: (v) => setState(() => _viewingAccess = v),
       ),
+      const SizedBox(height: 24),
+      ListingPetPolicySection(
+        value: _petPolicy,
+        maxWeightController: _petMaxWeight,
+        maxCountController: _petMaxCount,
+        onChanged: (v) => setState(() => _petPolicy = v),
+      ),
       const SizedBox(height: 12),
       Row(
         children: [
@@ -1380,6 +1429,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
   List<Widget> _stepMedia(AppStrings s) {
     return [
       Text(s.propertyPhotos, style: _labelStyle),
+      const SizedBox(height: 4),
+      _infoBox(s.createListingPhotoPolicy),
+      const SizedBox(height: 12),
       OutlinedButton.icon(
         onPressed: _pickImages,
         icon: const Icon(Icons.photo_library_outlined),
@@ -1450,6 +1502,8 @@ class _CreateListingPageState extends State<CreateListingPage> {
       ],
       const SizedBox(height: 8),
       ..._commissionSection(s),
+      const SizedBox(height: 16),
+      const DemandOfferWarningBanner(),
       const SizedBox(height: 16),
       _infoBox(s.createListingPublishPrivacyNotice),
       const SizedBox(height: 12),

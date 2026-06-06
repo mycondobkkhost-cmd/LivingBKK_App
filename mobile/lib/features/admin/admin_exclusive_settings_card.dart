@@ -21,6 +21,8 @@ class _AdminExclusiveSettingsCardState extends State<AdminExclusiveSettingsCard>
   final _saleHours = TextEditingController();
   final _ownerBoost = TextEditingController();
   final _agentBoost = TextEditingController();
+  final _hotThreshold = TextEditingController();
+  bool _hotEnabled = true;
   bool _loading = true;
   bool _saving = false;
 
@@ -36,6 +38,7 @@ class _AdminExclusiveSettingsCardState extends State<AdminExclusiveSettingsCard>
     _saleHours.dispose();
     _ownerBoost.dispose();
     _agentBoost.dispose();
+    _hotThreshold.dispose();
     super.dispose();
   }
 
@@ -47,6 +50,8 @@ class _AdminExclusiveSettingsCardState extends State<AdminExclusiveSettingsCard>
     _saleHours.text = '${c.saleBumpHours}';
     _ownerBoost.text = '${c.ownerFeedBoost}';
     _agentBoost.text = '${c.agentFeedBoost}';
+    _hotEnabled = c.hotBadgeEnabled;
+    _hotThreshold.text = '${c.hotViewsPerHourThreshold}';
     if (mounted) setState(() => _loading = false);
   }
 
@@ -56,7 +61,12 @@ class _AdminExclusiveSettingsCardState extends State<AdminExclusiveSettingsCard>
     final sale = int.tryParse(_saleHours.text.trim());
     final owner = int.tryParse(_ownerBoost.text.trim());
     final agent = int.tryParse(_agentBoost.text.trim());
-    if (rent == null || sale == null || owner == null || agent == null) {
+    final hotThreshold = int.tryParse(_hotThreshold.text.trim());
+    if (rent == null ||
+        sale == null ||
+        owner == null ||
+        agent == null ||
+        hotThreshold == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.adminExclusiveSettingsInvalid)),
       );
@@ -69,6 +79,8 @@ class _AdminExclusiveSettingsCardState extends State<AdminExclusiveSettingsCard>
         saleBumpHours: sale.clamp(1, 720),
         ownerFeedBoost: owner.clamp(0, 200),
         agentFeedBoost: agent.clamp(0, 200),
+        hotBadgeEnabled: _hotEnabled,
+        hotViewsPerHourThreshold: hotThreshold.clamp(1, 100000),
       );
       await _admin.updateExclusiveSettings(next);
       PlatformSettingsService.instance.applyExclusive(next);
@@ -121,6 +133,25 @@ class _AdminExclusiveSettingsCardState extends State<AdminExclusiveSettingsCard>
               _field(s.adminExclusiveSaleBumpHours, _saleHours),
               _field(s.adminExclusiveOwnerFeedBoost, _ownerBoost),
               _field(s.adminExclusiveAgentFeedBoost, _agentBoost),
+              const Divider(height: 28),
+              Text(
+                s.adminHotBadgeSectionTitle,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                s.adminHotBadgeSectionHint,
+                style: TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+              ),
+              const SizedBox(height: 8),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: Text(s.adminHotBadgeEnabled),
+                subtitle: Text(s.adminHotBadgeEnabledHint),
+                value: _hotEnabled,
+                onChanged: (v) => setState(() => _hotEnabled = v),
+              ),
+              _field(s.adminHotBadgeThreshold, _hotThreshold, enabled: _hotEnabled),
               const SizedBox(height: 12),
               SizedBox(
                 width: double.infinity,
@@ -142,11 +173,16 @@ class _AdminExclusiveSettingsCardState extends State<AdminExclusiveSettingsCard>
     );
   }
 
-  Widget _field(String label, TextEditingController c) {
+  Widget _field(
+    String label,
+    TextEditingController c, {
+    bool enabled = true,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: TextField(
         controller: c,
+        enabled: enabled,
         keyboardType: TextInputType.number,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         decoration: InputDecoration(

@@ -79,7 +79,8 @@ class RealtimeService {
       if (role != 'admin_notice') return;
       final preview = record['text']?.toString() ?? '';
       final short = preview.length > 80 ? '${preview.substring(0, 80)}…' : preview;
-      _controller.add('ข้อความจากทีม: $short');
+      final threadId = record['thread_id']?.toString() ?? '';
+      _controller.add('chat:$threadId:ข้อความจากทีม: $short');
     }
 
     _userChatChannel = SupabaseService.client!.channel('user-chat-$uid');
@@ -141,6 +142,7 @@ class RealtimeService {
       final priority = record['priority']?.toString() ?? 'normal';
       final unclear = (record['unclear_streak'] as num?)?.toInt() ?? 0;
       final adminReplyDone = record['admin_reply_done'] == true;
+      final adminEscalated = record['admin_escalated'] == true;
 
       final needsOps = _threadNeedsOps(
         category: category,
@@ -149,6 +151,7 @@ class RealtimeService {
         viewingSubmitted: viewing,
         unclearStreak: unclear,
         adminReplyDone: adminReplyDone,
+        adminEscalated: adminEscalated,
       );
       if (!needsOps) return;
 
@@ -164,18 +167,42 @@ class RealtimeService {
     }
 
     _adminChatChannel = SupabaseService.client!.channel('admin-chat-$adminUserId');
+    void onUserMessage(PostgresChangePayload payload) {
+      final record = payload.newRecord;
+      if (record['role']?.toString() != 'user') return;
+      final preview = record['text']?.toString() ?? '';
+      final short =
+          preview.length > 60 ? '${preview.substring(0, 60)}…' : preview;
+      _controller.add('แชทลูกค้าใหม่ — $short');
+    }
+
+    void onThreadInsert(PostgresChangePayload payload) {
+      final record = payload.newRecord;
+      final code = record['listing_code']?.toString() ?? 'Support';
+      _controller.add('แชทใหม่ — $code');
+    }
+
     _adminChatChannel!
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'chat_threads',
-          callback: onThread,
+          callback: (payload) {
+            onThreadInsert(payload);
+            onThread(payload);
+          },
         )
         .onPostgresChanges(
           event: PostgresChangeEvent.update,
           schema: 'public',
           table: 'chat_threads',
           callback: onThread,
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'chat_messages',
+          callback: onUserMessage,
         )
         .subscribe();
   }
@@ -187,13 +214,21 @@ class RealtimeService {
     required bool viewingSubmitted,
     required int unclearStreak,
     required bool adminReplyDone,
+    bool adminEscalated = false,
   }) {
-    if (viewingSubmitted && !adminReplyDone) return true;
-    if (category == 'escalation' || category == 'viewing_request') return true;
+    if (adminReplyDone) return false;
+    if (viewingSubmitted) return true;
+    if (adminEscalated) return true;
+    if (category == 'escalation' ||
+        category == 'viewing_request' ||
+        category == 'booking_interest') {
+      return true;
+    }
     if (category == 'demand_offer' && status == 'waiting_admin') return true;
+    if (category == 'customer_requirement') return true;
+    if (category == 'discovery') return true;
     if (category == 'staff_support' && status == 'waiting_admin') return true;
-    if (status == 'waiting_admin' && priority == 'high') return true;
-    if (status == 'waiting_admin' && unclearStreak >= 2) return true;
+    if (status == 'waiting_admin') return true;
     return false;
   }
 

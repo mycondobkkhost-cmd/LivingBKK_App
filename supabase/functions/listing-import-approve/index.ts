@@ -1,6 +1,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireAdmin } from "../_shared/admin_auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { watermarkListingImages } from "../_shared/watermark_listing_images.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -68,7 +69,13 @@ Deno.serve(async (req) => {
       entity_id: importId,
     }).catch(() => {});
 
-    return jsonResponse({ import: updated, listing_id: listingId });
+    const watermark = await watermarkListingImages(db, listingId);
+
+    return jsonResponse({
+      import: updated,
+      listing_id: listingId,
+      watermark,
+    });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
   }

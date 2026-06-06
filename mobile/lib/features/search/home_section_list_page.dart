@@ -5,6 +5,8 @@ import '../../models/listing_public.dart';
 import '../../models/listing_route_extra.dart';
 import '../../theme/li_layout.dart';
 import '../../widgets/listing_card.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class HomeSectionListPage extends StatelessWidget {
   const HomeSectionListPage({
@@ -20,10 +22,18 @@ class HomeSectionListPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
+    return ConsumerPageShell(
+      title: title,
+      onBack: () => context.pop(),
       body: ListView.separated(
-        padding: const EdgeInsets.all(LiLayout.pagePadding),
+        padding: PageSafeInsets.padLTRB(
+          context,
+          left: LiLayout.pagePadding,
+          top: LiLayout.pagePadding,
+          right: LiLayout.pagePadding,
+          bottom: LiLayout.pagePadding,
+          addHomeIndicator: false,
+        ),
         itemCount: items.length,
         separatorBuilder: (_, __) => const SizedBox(height: 10),
         itemBuilder: (context, i) {

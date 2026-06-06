@@ -18,23 +18,193 @@ export const AI_DISCLAIMER =
   "AI เป็นตัวช่วยแนะนำโครงการและทรัพย์เบื้องต้นเท่านั้น " +
   "หากต้องการรายละเอียดที่ครบถ้วน กรุณาติดต่อเจ้าหน้าที่โดยตรง";
 
-const SENSITIVE_KEYS = [
-  "ทิศ",
-  "ต่อรอง",
-  "ลดราคา",
-  "เจ้าของ",
+/** ประเภทคำถามละเอียดอ่อน — แต่ละแบบมีคำตอบมาตรฐานต่างกัน */
+export type SensitiveKind =
+  | "contact"
+  | "owner"
+  | "negotiate"
+  | "unit_privacy"
+  | "commission";
+
+const CONTACT_KEYS = [
+  "เบอร์",
+  "เบอ",
   "โทร",
+  "โทรศัพท์",
+  "เบอร์โทร",
+  "ติดต่อเจ้าของ",
+  "เบอร์เจ้าของ",
   "line",
   "ไลน์",
-  "เลขห้อง",
-  "ชั้น",
-  "commission",
-  "คอม",
+  "ไอดีไลน์",
+  "line id",
+  "whatsapp",
+  "phone",
+  "call",
+  "เบอร์ติดต่อ",
 ];
 
+const OWNER_KEYS = [
+  "เจ้าของ",
+  "ผู้ขาย",
+  "ผู้ให้เช่า",
+  "ผู้ลงประกาศ",
+  "คนขาย",
+  "คนเช่า",
+  "owner",
+  "landlord",
+];
+
+const NEGOTIATE_DIRECT_KEYS = [
+  "ต่อรอง",
+  "ลดราคา",
+  "ลดได้",
+  "ลดค่า",
+  "ส่วนลด",
+  "discount",
+  "ขอลด",
+  "ต่อราคา",
+  "ต่อค่าเช่า",
+  "ต่อค่า",
+  "เจรจา",
+];
+
+const UNIT_PRIVACY_KEYS = [
+  "เลขห้อง",
+  "ห้องเลข",
+  "unit",
+  "ชั้น",
+  "ชั้นที่",
+  "floor",
+  "ทิศ",
+  "ทิศห้อง",
+  "หันทาง",
+];
+
+function matchesAny(q: string, keys: string[]): boolean {
+  return keys.some((k) => q.includes(k));
+}
+
+function isNegotiateIntent(q: string): boolean {
+  if (matchesAny(q, NEGOTIATE_DIRECT_KEYS)) return true;
+  if (!q.includes("สัญญา") && !q.includes("ระยะสัญญา")) return false;
+  return q.includes("ต่อรอง") || q.includes("ลด") || q.includes("ต่อราคา") ||
+    q.includes("ต่อค่า") || (q.includes("ปี") && q.includes("ได้ไหม"));
+}
+
+/** จำแนกคำถามละเอียดอ่อน (null = ไม่ใช่) — ลำดับสำคัญ: ต่อรอง > ติดต่อ > เจ้าของ > ห้อง/ชั้น */
+export function classifySensitive(text: string): SensitiveKind | null {
+  const q = text.toLowerCase().trim();
+
+  if (isNegotiateIntent(q)) return "negotiate";
+
+  if (matchesAny(q, CONTACT_KEYS)) return "contact";
+  if (matchesAny(q, OWNER_KEYS)) return "owner";
+  if (matchesAny(q, UNIT_PRIVACY_KEYS)) return "unit_privacy";
+
+  return null;
+}
+
 export function isSensitive(text: string): boolean {
-  const q = text.toLowerCase();
-  return SENSITIVE_KEYS.some((k) => q.includes(k));
+  return classifySensitive(text) != null;
+}
+
+/** ขอเบอร์เจ้าของ / ช่องทางติดต่อ — ให้ลูกค้าทิ้งเบอร์ตัวเอง */
+export function contactRequestReply(): BotReply {
+  return {
+    role: "ai",
+    text:
+      "เข้าใจครับว่าต้องการติดต่อโดยตรง — ทางแพลตฟอร์มไม่เปิดเผยเบอร์โทร " +
+      "Line หรือช่องทางส่วนตัวของเจ้าของ/ผู้ลงประกาศ เพื่อความเป็นส่วนตัวและความปลอดภัยของทุกฝ่ายครับ\n\n" +
+      "หากสะดวก รบกวนแจ้งเบอร์ติดต่อของคุณ พร้อมคำถามหรือรายละเอียดที่อยากทราบในแชทนี้ " +
+      "เจ้าหน้าที่ PROPPITER จะติดต่อกลับโดยเร็วที่สุดในช่วงเวลาทำการครับ\n\n" +
+      "หากมีคำถามอื่นที่ตอบได้จากข้อมูลประกาศ (เช่น ทำเล ราคา Net เงื่อนไขเบื้องต้น) ถามต่อได้เลยครับ",
+  };
+}
+
+/** ถามข้อมูลเจ้าของ — PDPA */
+export function ownerPdpaReply(): BotReply {
+  return {
+    role: "ai",
+    text:
+      "ขอบคุณที่สนใจทรัพย์ครับ\n\n" +
+      "เพื่อเป็นไปตามนโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA) และความเป็นส่วนตัวของเจ้าของทรัพย์ " +
+      "แพลตฟอร์มไม่สามารถเปิดเผยข้อมูลติดต่อ ชื่อ หรือข้อมูลส่วนตัวของเจ้าของ/ผู้ลงประกาศได้ครับ\n\n" +
+      "หากมีคำถามอื่นเกี่ยวกับทรัพย์นี้ — เช่น ทำเล ราคา Net เงื่อนไขเบื้องต้น หรือการนัดดูห้อง — " +
+      "แจ้งได้เลยครับ ยินดีช่วยตอบในสิ่งที่เปิดเผยได้ตามประกาศครับ",
+  };
+}
+
+/** ต่อรองราคา / เงื่อนไขสัญญา — ส่งต่อเจ้าหน้าที่ */
+export function negotiateAdminReply(): BotReply {
+  return {
+    role: "ai",
+    text:
+      "รับทราบเรื่องการเจรจาราคาและเงื่อนไขสัญญาครับ\n\n" +
+      "เรื่องส่วนนี้ต้องให้เจ้าหน้าที่พิจารณาเป็นรายกับทางเจ้าของหรือผู้มีอำนาจตัดสินใจ — " +
+      "ผมได้แจ้งทีมงานแล้ว และจะกลับมาตอบคุณในแชทนี้โดยเร็วที่สุดครับ\n\n" +
+      "หากมีข้อมูลเพิ่มเติมที่อยากให้ทีมนำไปเสนอ (เช่น ระยะสัญญาที่ต้องการ วันที่พร้อมเข้าอยู่ หรืองบประมาณ) " +
+      "พิมพ์เพิ่มในแชทนี้ได้เลยครับ",
+    requires_admin: true,
+  };
+}
+
+/** เลขห้อง / ชั้น / ทิศ — ไม่เปิดในแชทอัตโนมัติ */
+export function unitPrivacyReply(): BotReply {
+  return {
+    role: "ai",
+    text:
+      "ตามนโยบายแพลตฟอร์ม เราไม่เปิดเผยเลขห้อง ชั้น หรือทิศห้องที่แน่นอนในแชทอัตโนมัติ " +
+      "เพื่อปกป้องความเป็นส่วนตัวครับ — รายละเอียดเหล่านี้เจ้าหน้าที่จะแจ้งเมื่อคุณนัดดูห้อง " +
+      "หรือดำเนินการต่อผ่านแพลตฟอร์มครับ\n\n" +
+      "หากมีคำถามอื่นเกี่ยวกับทำเล ราคา Net หรือเงื่อนไขเบื้องต้น ถามต่อได้เลยครับ",
+  };
+}
+
+/** ค่าคอม / ส่วนแบ่ง — ส่งต่อเจ้าหน้าที่ */
+export function commissionAdminReply(): BotReply {
+  return {
+    role: "ai",
+    text:
+      "เรื่องค่าคอมมิชชันและโครงสร้างส่วนแบ่งเป็นรายละเอียดที่เจ้าหน้าที่จะอธิบายให้ชัดเจนเมื่อดำเนินการต่อครับ — " +
+      "ผมได้แจ้งทีมงานแล้ว และจะกลับมาตอบในแชทนี้โดยเร็วที่สุดครับ",
+    requires_admin: true,
+  };
+}
+
+/** ลูกค้าแจ้งเบอร์มาแล้ว — ยืนยันและส่งทีม */
+export function phoneReceivedAckReply(): BotReply {
+  return {
+    role: "ai",
+    text:
+      "ขอบคุณมากครับ ทางเราได้รับเบอร์ติดต่อและข้อมูลของท่านเรียบร้อยแล้ว " +
+      "ทีมงานจะรีบนำข้อมูลไปตรวจสอบและติดต่อกลับเพื่อให้บริการโดยเร็วที่สุดครับ",
+    requires_admin: true,
+  };
+}
+
+export function sensitiveReply(kind: SensitiveKind, text?: string): BotReply {
+  switch (kind) {
+    case "contact":
+      if (text && containsThaiPhone(text)) return phoneReceivedAckReply();
+      return contactRequestReply();
+    case "owner":
+      return ownerPdpaReply();
+    case "negotiate":
+      return negotiateAdminReply();
+    case "unit_privacy":
+      return unitPrivacyReply();
+    case "commission":
+      return commissionAdminReply();
+  }
+}
+
+/** ลูกค้าทิ้งเบอร์ติดต่อมาในแชท — แจ้งทีมโทรกลับ */
+const TH_PHONE_PATTERN =
+  /(?:^|[^\d])(0[689]\d{8}|0[2-9]\d{7,8})(?:[^\d]|$)/;
+
+export function containsThaiPhone(text: string): boolean {
+  return TH_PHONE_PATTERN.test(text.replace(/[\s\-().]/g, ""));
 }
 
 export function welcomeMessage(
@@ -225,7 +395,7 @@ export function softClarifyReply(): BotReply {
   return {
     role: "ai",
     text:
-      "ยังไม่แน่ใจคำถามครับ ลองระบุทำlez · งบ · หรือรายละเอียดที่ต้องการเพิ่ม\n" +
+      "ยังไม่แน่ใจคำถามครับ ลองระบุทำเล · งบ · หรือรายละเอียดที่ต้องการเพิ่ม\n" +
       "หรือพิมพ์「ขอคุยกับเจ้าหน้าที่」เมื่อต้องการให้ทีมช่วยโดยตรง",
   };
 }

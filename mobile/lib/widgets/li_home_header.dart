@@ -7,8 +7,10 @@ import '../state/user_role_controller.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_theme.dart';
 import '../theme/li_layout.dart';
+import '../features/notifications/notification_center_sheet.dart';
 import 'language_switch_button.dart';
 import 'living_bkk_logo.dart';
+import 'notification_bell_button.dart';
 import 'perspective_selector_row.dart';
 
 /// หัวหน้าแรก — LivingBKK branding
@@ -61,12 +63,13 @@ class LiHomeHeader extends StatelessWidget {
               ),
               LanguageSwitchButton(controller: localeController),
               const SizedBox(width: 4),
-              IconButton(
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-                icon: const Icon(Icons.notifications_outlined, size: 21),
-                onPressed: () {},
+              NotificationBellButton(
+                compact: true,
+                onPressed: () => NotificationCenterSheet.show(
+                  context,
+                  roleController: roleController,
+                  localeController: localeController,
+                ),
               ),
               IconButton(
                 visualDensity: VisualDensity.compact,

@@ -9,7 +9,10 @@ import '../features/profile/profile_page.dart';
 import '../features/search/map_home_page.dart';
 import '../features/search/saved_listings_page.dart';
 import '../services/auth_service.dart';
+import '../services/user_profile_service.dart';
 import '../services/notification_service.dart';
+import '../services/chat_service.dart';
+import '../services/in_app_notification_hub.dart';
 import '../services/realtime_service.dart';
 import '../services/supabase_service.dart';
 import '../config/env.dart';
@@ -46,6 +49,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
   final _realtime = RealtimeService();
+  final _notifHub = InAppNotificationHub.instance;
   StreamSubscription<String>? _notifSub;
 
   static const _tabContact = 3;
@@ -58,6 +62,16 @@ class _MainShellState extends State<MainShell> {
     _setupPushNavigation();
     _syncRoleFromServer();
     widget.roleController.addListener(_syncAdminRealtime);
+    _notifHub.addListener(_onNotifHubChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _onNotifHubChanged());
+  }
+
+  void _onNotifHubChanged() {
+    if (!mounted) return;
+    if (_notifHub.openContactTabOnNextShell) {
+      _notifHub.clearPendingNavigation();
+      _selectTab(_tabContact);
+    }
   }
 
   void _setupPushNavigation() {
@@ -100,30 +114,52 @@ class _MainShellState extends State<MainShell> {
     );
   }
 
+  void _pushInAppNotification(String msg) {
+    if (!mounted) return;
+    var body = msg;
+    String? threadId;
+    if (msg.startsWith('chat:')) {
+      final rest = msg.substring(5);
+      final sep = rest.indexOf(':');
+      if (sep > 0) {
+        threadId = rest.substring(0, sep);
+        body = rest.substring(sep + 1);
+      }
+    }
+    final isChat = body.contains('ข้อความจากทีม') ||
+        body.contains('Message from team') ||
+        body.contains('แชท');
+    if (isChat && threadId != null && threadId.isNotEmpty) {
+      ChatService.instance.bumpUnread(threadId);
+    }
+    _notifHub.show(body, countAsUnread: isChat && threadId == null, threadId: threadId);
+  }
+
   void _setupRealtime() {
-    NotificationService.onForegroundMessage = (msg) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), duration: const Duration(seconds: 4)),
-      );
-    };
+    NotificationService.onForegroundMessage = _pushInAppNotification;
     _realtime.subscribeToMyLeads();
-    _realtime.subscribeToMyChatReplies();
+    ChatService.instance.ensureCustomerInboxRealtime();
     _notifSub = _realtime.messages.listen((msg) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(msg), duration: const Duration(seconds: 4)),
-      );
+      if (!msg.startsWith('chat:')) {
+        _pushInAppNotification(msg);
+      }
     });
   }
 
-  void _selectTab(int index) => setState(() => _index = index);
+  void _selectTab(int index) {
+    if (index == _tabContact) {
+      _notifHub.clearUnread();
+      ChatService.instance.clearAllUnread();
+    }
+    setState(() => _index = index);
+  }
 
   @override
   void dispose() {
     NotificationService.onForegroundMessage = null;
     NotificationService.onNotificationOpen = null;
     widget.roleController.removeListener(_syncAdminRealtime);
+    _notifHub.removeListener(_onNotifHubChanged);
     _notifSub?.cancel();
     _realtime.dispose();
     super.dispose();
@@ -204,9 +240,27 @@ class _MainShellState extends State<MainShell> {
                 ),
               ],
             ),
-            bottomNavigationBar: AppBottomNav(
-              index: safeIndex,
-              onChanged: _selectTab,
+            bottomNavigationBar: MediaQuery.removePadding(
+              context: context,
+              removeBottom: true,
+              child: ListenableBuilder(
+                listenable: Listenable.merge([
+                  _notifHub,
+                  ChatService.instance,
+                  UserProfileService.instance,
+                ]),
+                builder: (context, _) {
+                  final badge = ChatService.instance.totalUnreadChats > 0
+                      ? ChatService.instance.totalUnreadChats
+                      : _notifHub.unreadChatCount;
+                  return AppBottomNav(
+                    index: safeIndex,
+                    onChanged: _selectTab,
+                    contactBadgeCount: badge,
+                    profileAvatarUrl: UserProfileService.instance.avatarUrl,
+                  );
+                },
+              ),
             ),
           ),
         );

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ดึงสมุดโครงการจาก Property Hub ขึ้น Supabase Cloud — เฉพาะ กทม.+ปริมณฑล
+# ดึงสมุดโครงการจาก Property Hub ขึ้น Supabase Cloud — กทม.+ปริมณฑล (ค่าเริ่มต้น)
 # ต้อง deploy project-import-propertyhub ก่อน
 set -euo pipefail
 
@@ -31,6 +31,7 @@ ADMIN_PASSWORD="${ADMIN_PASSWORD:-demo12345}"
 BATCH_SIZE="${BATCH_SIZE:-20}"
 MAX_BATCHES="${MAX_BATCHES:-0}"
 START_OFFSET="${START_OFFSET:-0}"
+IMPORT_SCOPE="${IMPORT_SCOPE:-metro}"
 
 if [[ -z "$ANON_KEY" ]]; then
   ANON_KEY="$(grep -E '^SUPABASE_ANON_KEY=' "$ROOT/mobile/assets/env" | cut -d= -f2- | tr -d '\r' || true)"
@@ -108,17 +109,18 @@ while true; do
   fi
 
   RESULT=$(python3 << PY
-import json
+import json, os
 with open("/tmp/ph-discover.json") as f:
     data = json.load(f)
 slugs = data.get("slugs") or []
 offset = $OFFSET
 size = $BATCH_SIZE
+scope = os.environ.get("IMPORT_SCOPE", "metro")
 batch = slugs[offset:offset+size]
 if not batch:
     print(json.dumps({"stop": True}))
 else:
-    print(json.dumps({"mode": "batch", "slugs": batch, "limit": size}))
+    print(json.dumps({"mode": "batch", "slugs": batch, "limit": size, "import_scope": scope}))
 PY
 )
 

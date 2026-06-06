@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../config/demand_board_menu_config.dart';
 import '../../data/demo_listings_factory.dart';
 import '../../navigation/demand_board_navigation.dart';
 import '../../l10n/app_strings.dart';
@@ -14,6 +15,11 @@ import '../../services/requirement_match_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/demand/demand_urgent_rush_strip.dart';
 import '../../widgets/listing_card.dart';
+import '../contact/property_chat_page.dart';
+import '../../services/chat_service.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class MyRequirementsPage extends StatefulWidget {
   const MyRequirementsPage({super.key});
@@ -31,6 +37,9 @@ class _MyRequirementsPageState extends State<MyRequirementsPage> {
   void initState() {
     super.initState();
     _loadPool();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      CustomerRequirementRepository.instance.refreshFromServer();
+    });
   }
 
   Future<void> _loadPool() async {
@@ -47,16 +56,15 @@ class _MyRequirementsPageState extends State<MyRequirementsPage> {
     final s = AppStrings.of(context);
     final reqRepo = CustomerRequirementRepository.instance;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(s.myRequirementsTitle),
-        actions: [
-          TextButton(
-            onPressed: () => DemandBoardNavigation.openCreateRequirement(context),
-            child: Text(s.requirementCreateCta),
-          ),
-        ],
-      ),
+    return ConsumerPageShell(
+      title: s.myRequirementsTitle,
+      onBack: () => context.pop(),
+      actions: [
+        ConsumerHeaderTextButton(
+          label: s.requirementCreateCta,
+          onTap: () => DemandBoardNavigation.openCreateRequirement(context),
+        ),
+      ],
       body: ListenableBuilder(
         listenable: reqRepo,
         builder: (context, _) {
@@ -64,7 +72,14 @@ class _MyRequirementsPageState extends State<MyRequirementsPage> {
           final showingDemo = reqRepo.isShowingDemo;
 
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: PageSafeInsets.padLTRB(
+              context,
+              left: LiLayout.pagePadding,
+              top: LiLayout.pagePadding,
+              right: LiLayout.pagePadding,
+              bottom: 16,
+              addHomeIndicator: false,
+            ),
             children: [
               Card(
                 color: AppTheme.accentDeepLight,
@@ -176,6 +191,57 @@ class _RequirementCard extends StatelessWidget {
                 style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
               ),
             ],
+            if (requirement.demandPostCode != null) ...[
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: requirement.demandPostId != null
+                    ? () => context.push(
+                          DemandBoardMenuConfig.boardDetailRoute(
+                            requirement.demandPostId!,
+                          ),
+                        )
+                    : null,
+                borderRadius: BorderRadius.circular(6),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        s.requirementBoardCodeLabel(requirement.demandPostCode!),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                      if (requirement.demandPostId != null) ...[
+                        const SizedBox(width: 4),
+                        Icon(Icons.open_in_new, size: 12, color: AppTheme.primary),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 10),
+            OutlinedButton.icon(
+              onPressed: isDemo
+                  ? null
+                  : () async {
+                      final room = await ChatService.instance
+                          .openRequirementChat(requirement);
+                      if (!context.mounted || room == null) return;
+                      await Navigator.push<void>(
+                        context,
+                        MaterialPageRoute<void>(
+                          builder: (_) => PropertyChatPage(room: room),
+                        ),
+                      );
+                    },
+              icon: const Icon(Icons.chat_bubble_outline, size: 18),
+              label: Text(s.requirementOpenChat),
+            ),
             if (!isDemo && !requirement.savedToDatabase) ...[
               const SizedBox(height: 8),
               Text(

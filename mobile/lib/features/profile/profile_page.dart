@@ -6,6 +6,8 @@ import '../../config/env.dart';
 import '../../models/app_perspective.dart';
 import '../contact/contact_tab_page.dart';
 import '../../services/auth_service.dart';
+import '../../services/user_profile_service.dart';
+import '../../widgets/profile/profile_avatar.dart';
 import '../../l10n/app_strings.dart';
 import '../../state/locale_controller.dart';
 import '../../state/session_gate.dart';
@@ -16,6 +18,10 @@ import '../../widgets/language_switch_button.dart';
 import '../../widgets/demand/demand_board_profile_menu.dart';
 import '../../widgets/post_listing/post_listing_profile_menu.dart';
 import '../../widgets/profile/profile_menu_tile.dart';
+import '../../theme/li_layout.dart';
+import '../../theme/living_bkk_brand.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({
@@ -34,6 +40,33 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
+  bool _uploadingAvatar = false;
+
+  Future<void> _changeAvatar() async {
+    final s = AppStrings(widget.localeController.isEnglish);
+    if (!AuthService.instance.isRealSupabaseSession) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.profileAvatarNeedLogin)),
+      );
+      return;
+    }
+    setState(() => _uploadingAvatar = true);
+    try {
+      await UserProfileService.instance.pickAndUploadAvatar();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.profileAvatarUpdated)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    } finally {
+      if (mounted) setState(() => _uploadingAvatar = false);
+    }
+  }
+
   String _statusLine(AppStrings s, AuthService auth) {
     if (auth.isTrialSignedIn) {
       return s.statusTrial(auth.trialDisplayName ?? '');
@@ -45,6 +78,8 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   String _displayName(AuthService auth, AppStrings s) {
+    final profileName = UserProfileService.instance.displayName;
+    if (profileName != null && profileName.isNotEmpty) return profileName;
     final email = auth.displayEmail;
     if (email != null && email.isNotEmpty) {
       final local = email.split('@').first;
@@ -66,6 +101,7 @@ class _ProfilePageState extends State<ProfilePage> {
     return ListenableBuilder(
       listenable: Listenable.merge([
         AuthService.instance,
+        UserProfileService.instance,
         widget.roleController,
         widget.localeController,
         widget.themeController,
@@ -75,21 +111,28 @@ class _ProfilePageState extends State<ProfilePage> {
         final perspective = widget.roleController.perspective;
         final s = AppStrings(widget.localeController.isEnglish);
 
-        return Scaffold(
-          backgroundColor: ProfileShellTheme.background(context),
-          body: SafeArea(
-            bottom: false,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _ProfileHeader(
-                  name: _displayName(auth, s),
-                  status: _statusLine(s, auth),
-                  badge: _badgeLabel(s, auth),
-                ),
-                Expanded(
-                  child: ListView(
-                    children: [
+        return ConsumerPageShell(
+          title: s.navProfile,
+          safeBottomBody: false,
+          body: ListView(
+            padding: PageSafeInsets.padLTRB(
+              context,
+              left: LiLayout.pagePadding,
+              top: 12,
+              right: LiLayout.pagePadding,
+              bottom: 8,
+              addHomeIndicator: false,
+            ),
+            children: [
+              _ProfileHeader(
+                name: _displayName(auth, s),
+                status: _statusLine(s, auth),
+                badge: _badgeLabel(s, auth),
+                avatarUrl: UserProfileService.instance.avatarUrl,
+                uploadingAvatar: _uploadingAvatar,
+                onAvatarTap: auth.isRealSupabaseSession ? _changeAvatar : null,
+              ),
+              const SizedBox(height: 8),
                       ProfileMenuTile(
                         icon: Icons.language_outlined,
                         title: s.displayLanguage,
@@ -238,12 +281,8 @@ class _ProfilePageState extends State<ProfilePage> {
                             },
                           ),
                       ],
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              SizedBox(height: PageSafeInsets.shellScrollBottom().bottom + 8),
+            ],
           ),
         );
       },
@@ -256,11 +295,17 @@ class _ProfileHeader extends StatelessWidget {
     required this.name,
     required this.status,
     required this.badge,
+    this.avatarUrl,
+    this.uploadingAvatar = false,
+    this.onAvatarTap,
   });
 
   final String name;
   final String status;
   final String badge;
+  final String? avatarUrl;
+  final bool uploadingAvatar;
+  final VoidCallback? onAvatarTap;
 
   @override
   Widget build(BuildContext context) {
@@ -270,24 +315,68 @@ class _ProfileHeader extends StatelessWidget {
     final badgeBackground = ProfileShellTheme.badgeBackground(context);
     final accent = ProfileShellTheme.accent(context);
 
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        ProfileShellTheme.horizontalPadding,
-        20,
-        ProfileShellTheme.horizontalPadding,
-        16,
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: LivingBkkBrand.surfaceWhite,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          CircleAvatar(
-            radius: 32,
-            backgroundColor: badgeBackground,
-            child: Icon(
-              Icons.person_outline,
-              size: 36,
-              color: textPrimary,
-            ),
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              ProfileAvatar(
+                imageUrl: avatarUrl,
+                size: 64,
+                onTap: uploadingAvatar ? null : onAvatarTap,
+              ),
+              if (uploadingAvatar)
+                Positioned.fill(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withOpacity(0.35),
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              else if (onAvatarTap != null)
+                Positioned(
+                  right: -2,
+                  bottom: -2,
+                  child: Container(
+                    padding: const EdgeInsets.all(5),
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: badgeBackground, width: 2),
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 16),
           Expanded(

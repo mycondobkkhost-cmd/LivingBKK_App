@@ -30,6 +30,9 @@ class CustomerRequirement {
     this.createdAt,
     this.savedToDatabase = false,
     this.urgentRush = false,
+    this.threadId,
+    this.demandPostId,
+    this.demandPostCode,
   });
 
   final String id;
@@ -59,6 +62,13 @@ class CustomerRequirement {
 
   /// ลูกค้าต้องการหาแบบด่วนที่สุด — ทีมเผยแพร่บนบอร์ดพร้อมป้ายไฟ
   final bool urgentRush;
+
+  /// แชทเคสความต้องการ (หลังส่งฟอร์ม)
+  final String? threadId;
+
+  /// บอร์ดที่เผยแพร่แล้ว
+  final String? demandPostId;
+  final String? demandPostCode;
 
   bool get isSale => transactionType == 'sale';
   bool get isRent => transactionType == 'rent';
@@ -239,14 +249,104 @@ class CustomerRequirement {
       'transaction_type': transactionType,
       'property_type': propertyType,
       'zone': zone,
+      'min_price_net': minPriceNet,
       'max_price_net': maxPriceNet,
       'min_area_sqm': minAreaSqm,
       'furnishing': furnishing,
       'notes': compiledNotes(),
       'title': titleTh(),
       'status': 'pending',
+      'requester_role': requesterRole,
+      'urgent_rush': urgentRush,
+      'payload': toPayloadJson(),
     };
   }
+
+  Map<String, dynamic> toPayloadJson() => {
+        'property_types': propertyTypes,
+        'location_labels': locationLabels,
+        'contact_name': contactName,
+        'contact_phone': contactPhone,
+        if (messengerId != null) 'messenger_id': messengerId,
+        if (contractStartBy != null)
+          'contract_start_by': contractStartBy!.toIso8601String(),
+        if (decisionTimeframe != null) 'decision_timeframe': decisionTimeframe,
+        if (preferredProjectName != null) 'preferred_project_name': preferredProjectName,
+        if (preferredProjectSlug != null) 'preferred_project_slug': preferredProjectSlug,
+        'buy_payment_types': buyPaymentTypes,
+        'buy_purposes': buyPurposes,
+        if (notes != null && notes!.trim().isNotEmpty) 'raw_notes': notes!.trim(),
+      };
+
+  factory CustomerRequirement.fromRow(Map<String, dynamic> row) {
+    final payload = row['payload'];
+    final map = payload is Map ? Map<String, dynamic>.from(payload) : <String, dynamic>{};
+
+    List<String> strList(dynamic v) {
+      if (v is! List) return const [];
+      return v.map((e) => e.toString()).toList();
+    }
+
+    DateTime? parseDt(dynamic v) {
+      if (v == null) return null;
+      return DateTime.tryParse(v.toString());
+    }
+
+    final propertyTypes = strList(map['property_types']);
+    final locationLabels = strList(map['location_labels']);
+
+    return CustomerRequirement(
+      id: row['id']?.toString() ?? '',
+      transactionType: row['transaction_type']?.toString() ?? 'rent',
+      propertyType: row['property_type']?.toString() ?? 'condo',
+      propertyTypes: propertyTypes,
+      zone: row['zone']?.toString() ?? '',
+      requesterRole: row['requester_role']?.toString() ?? 'direct',
+      locationLabels: locationLabels.isNotEmpty
+          ? locationLabels
+          : (row['zone']?.toString().isNotEmpty == true
+              ? [row['zone'].toString()]
+              : const []),
+      minPriceNet: _num(row['min_price_net']) ?? _num(map['min_price_net']),
+      maxPriceNet: _num(row['max_price_net']),
+      minAreaSqm: _num(row['min_area_sqm']),
+      furnishing: row['furnishing']?.toString() ?? 'any',
+      notes: map['raw_notes']?.toString() ?? row['notes']?.toString(),
+      contractStartBy: parseDt(map['contract_start_by']),
+      decisionTimeframe: map['decision_timeframe']?.toString(),
+      preferredProjectName: map['preferred_project_name']?.toString(),
+      preferredProjectSlug: map['preferred_project_slug']?.toString(),
+      buyPaymentTypes: strList(map['buy_payment_types']),
+      buyPurposes: strList(map['buy_purposes']),
+      contactName: map['contact_name']?.toString() ?? '',
+      contactPhone: map['contact_phone']?.toString() ?? '',
+      messengerId: map['messenger_id']?.toString(),
+      status: row['status']?.toString() ?? 'pending',
+      createdAt: parseDt(row['created_at']),
+      savedToDatabase: true,
+      urgentRush: row['urgent_rush'] == true,
+      threadId: row['thread_id']?.toString(),
+      demandPostId: row['demand_post_id']?.toString(),
+      demandPostCode: _demandPostCodeFromRow(row),
+    );
+  }
+
+  static String? _demandPostCodeFromRow(Map<String, dynamic> row) {
+    final posts = row['demand_posts'];
+    if (posts is Map) {
+      return posts['post_code']?.toString();
+    }
+    return null;
+  }
+
+  static double? _num(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString());
+  }
+
+  /// ข้อความบอร์ดเริ่มต้นจากคำขอหน้าหลัก (แอดมินแก้ได้ก่อนเผยแพร่)
+  String suggestedBoardDescription() => compiledNotes();
 
   /// รวมรายละเอียดทั้งหมดใน notes สำหรับทีมงาน
   String compiledNotes() {
@@ -297,12 +397,16 @@ class CustomerRequirement {
   }
 
   CustomerRequirement copyWith({
+    String? id,
     String? status,
     bool? savedToDatabase,
     bool? urgentRush,
+    String? threadId,
+    String? demandPostId,
+    String? demandPostCode,
   }) {
     return CustomerRequirement(
-      id: id,
+      id: id ?? this.id,
       transactionType: transactionType,
       propertyType: propertyType,
       propertyTypes: propertyTypes,
@@ -327,6 +431,9 @@ class CustomerRequirement {
       createdAt: createdAt,
       savedToDatabase: savedToDatabase ?? this.savedToDatabase,
       urgentRush: urgentRush ?? this.urgentRush,
+      threadId: threadId ?? this.threadId,
+      demandPostId: demandPostId ?? this.demandPostId,
+      demandPostCode: demandPostCode ?? this.demandPostCode,
     );
   }
 

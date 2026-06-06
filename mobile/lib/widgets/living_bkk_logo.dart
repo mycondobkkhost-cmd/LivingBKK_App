@@ -8,7 +8,7 @@ import '../theme/living_bkk_brand.dart';
 
 enum LivingBkkLogoSize { sm, md, lg }
 
-/// LivingBKK logo — official mark PNG + Prompt wordmark (brand guide v4).
+/// PROPPITER logo — official lockup PNG จาก master (ห้ามประกอบฟอนต์เอง)
 class LivingBkkLogo extends StatelessWidget {
   const LivingBkkLogo({
     super.key,
@@ -29,17 +29,14 @@ class LivingBkkLogo extends StatelessWidget {
   final bool onGradient;
   final bool? isEnglish;
 
-  double get _markHeight => switch (size) {
-        LivingBkkLogoSize.sm => 26,
-        LivingBkkLogoSize.md => 32,
-        LivingBkkLogoSize.lg => 40,
+  double get _lockupHeight => switch (size) {
+        LivingBkkLogoSize.sm => 28,
+        LivingBkkLogoSize.md => 36,
+        LivingBkkLogoSize.lg => 48,
       };
 
-  double get _wordmarkFontSize => switch (size) {
-        LivingBkkLogoSize.sm => 20,
-        LivingBkkLogoSize.md => 24,
-        LivingBkkLogoSize.lg => 30,
-      };
+  String _lockupAsset(bool onDark) =>
+      onDark ? BrandAssets.logoLockupCompactDark : BrandAssets.logoLockupCompactLight;
 
   bool _resolveEnglish(BuildContext context) {
     if (isEnglish != null) return isEnglish!;
@@ -63,27 +60,12 @@ class LivingBkkLogo extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Baseline(
-              baseline: _markHeight,
-              baselineType: TextBaseline.alphabetic,
-              child: Image.asset(
-                BrandAssets.logoMark,
-                height: _markHeight,
-                fit: BoxFit.contain,
-                filterQuality: FilterQuality.high,
-              ),
-            ),
-            SizedBox(width: size == LivingBkkLogoSize.sm ? 6 : 8),
-            _LivingBkkWordmark(
-              fontSize: _wordmarkFontSize,
-              livingColor: onDark ? Colors.white : LivingBkkBrand.navy,
-            ),
-          ],
+        Image.asset(
+          _lockupAsset(onDark || onGradient),
+          height: _lockupHeight,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
+          semanticLabel: LivingBkkBrand.name,
         ),
         if (showMainSlogan) ...[
           SizedBox(height: size == LivingBkkLogoSize.lg ? 6 : 4),
@@ -128,39 +110,7 @@ class LivingBkkLogo extends StatelessWidget {
   }
 }
 
-class _LivingBkkWordmark extends StatelessWidget {
-  const _LivingBkkWordmark({
-    required this.fontSize,
-    required this.livingColor,
-  });
-
-  final double fontSize;
-  final Color livingColor;
-
-  @override
-  Widget build(BuildContext context) {
-    final base = GoogleFonts.prompt(
-      fontSize: fontSize,
-      height: 1,
-      letterSpacing: -0.5,
-    );
-
-    return Text(
-      'PROPPITER',
-      style: base.copyWith(
-        fontWeight: FontWeight.w800,
-        color: livingColor,
-        letterSpacing: -0.8,
-      ),
-      textHeightBehavior: const TextHeightBehavior(
-        applyHeightToFirstAscent: false,
-        applyHeightToLastDescent: false,
-      ),
-    );
-  }
-}
-
-/// Brand mark only (transparent gradient icon).
+/// Brand mark only (transparent P icon).
 class LivingBkkLogoMarkWidget extends StatelessWidget {
   const LivingBkkLogoMarkWidget({super.key, this.height = 28});
 

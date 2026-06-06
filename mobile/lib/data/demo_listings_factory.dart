@@ -107,6 +107,7 @@ class DemoListingsFactory {
             propertyType: project.propertyType,
             areaSqm: area,
             bedrooms: bedrooms,
+            bathrooms: bedrooms == 0 ? 1 : (bedrooms >= 2 ? 2 : 1),
             floorRange: floor.$1,
             floorRangeEn: floor.$2,
             yieldPercent: !isRent && _rng.nextDouble() > 0.5

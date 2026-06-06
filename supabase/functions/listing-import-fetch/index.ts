@@ -1,15 +1,22 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { requireAdmin } from "../_shared/admin_auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { fetchPageHtml, parseGenericHtml } from "../_shared/generic_url_parser.ts";
+import {
+  detectListingImportPlatform,
+  isAllowedImportUrl,
+  normalizeImportUrl,
+  type ListingImportPlatform,
+} from "../_shared/listing_import_source.ts";
 import {
   fetchLiHtml,
-  isLivingInsiderListingUrl,
   matchProject,
-  normalizeLiUrl,
   parseLiHtml,
+  type LiParsedListing,
 } from "../_shared/li_parser.ts";
 
 const MAX_IMAGES = 12;
+const PLACEHOLDER_PRICE = 1;
 
 function serviceDb() {
   return createClient(
@@ -37,13 +44,14 @@ async function uploadListingImages(
   listingId: string,
   adminId: string,
   imageUrls: string[],
+  prefix: string,
 ): Promise<number> {
   let uploaded = 0;
   for (let i = 0; i < Math.min(imageUrls.length, MAX_IMAGES); i++) {
     const bytes = await downloadImage(imageUrls[i]);
     if (!bytes) continue;
 
-    const path = `${adminId}/${listingId}/li_${i}_${Date.now()}.jpeg`;
+    const path = `${adminId}/${listingId}/${prefix}_${i}_${Date.now()}.jpeg`;
     const { error: upErr } = await db.storage
       .from("listing-images")
       .upload(path, bytes, {
@@ -67,6 +75,44 @@ async function uploadListingImages(
   return uploaded;
 }
 
+async function fetchAndParse(
+  sourceUrl: string,
+  platform: ListingImportPlatform,
+): Promise<{ html: string; parsed: LiParsedListing }> {
+  if (platform === "livinginsider") {
+    const html = await fetchLiHtml(sourceUrl);
+    return { html, parsed: parseLiHtml(html, sourceUrl) };
+  }
+  const html = await fetchPageHtml(sourceUrl);
+  return { html, parsed: parseGenericHtml(html, sourceUrl, platform) };
+}
+
+function resolveImportStatus(parsed: LiParsedListing, imageCount: number): string {
+  if (parsed.flags.includes("facebook_login_wall")) return "needs_fix";
+  if (parsed.priceNet <= 0 || parsed.flags.includes("missing_price")) {
+    return "needs_fix";
+  }
+  if (
+    imageCount === 0 ||
+    parsed.flags.includes("missing_images") ||
+    parsed.flags.includes("images_upload_failed") ||
+    parsed.flags.includes("needs_admin_review")
+  ) {
+    return "needs_fix";
+  }
+  if (
+    parsed.flags.includes("missing_project") ||
+    parsed.flags.includes("missing_coords")
+  ) {
+    return "needs_fix";
+  }
+  return "draft_ready";
+}
+
+function effectivePrice(parsed: LiParsedListing): number {
+  return parsed.priceNet > 0 ? parsed.priceNet : PLACEHOLDER_PRICE;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -78,7 +124,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const importId = body.import_id as string | undefined;
-    let sourceUrl = normalizeLiUrl((body.source_url as string | undefined) ?? "");
+    let sourceUrl = normalizeImportUrl((body.source_url as string | undefined) ?? "");
 
     const db = serviceDb();
 
@@ -94,15 +140,19 @@ Deno.serve(async (req) => {
         return jsonResponse({ error: "Import not found" }, 404);
       }
       importRow = data as Record<string, unknown>;
-      sourceUrl = normalizeLiUrl(String(importRow.source_url ?? ""));
+      sourceUrl = normalizeImportUrl(String(importRow.source_url ?? ""));
     }
 
     if (!sourceUrl) {
       return jsonResponse({ error: "source_url required" }, 400);
     }
-    if (!isLivingInsiderListingUrl(sourceUrl)) {
-      return jsonResponse({ error: "URL ต้องเป็น livinginsider.com (istockdetail/livingdetail)" }, 400);
+    if (!isAllowedImportUrl(sourceUrl)) {
+      return jsonResponse({
+        error: "ลิงก์ไม่ถูกต้อง — ใช้ http(s):// ที่เข้าถึงสาธารณะได้",
+      }, 400);
     }
+
+    const platform = detectListingImportPlatform(sourceUrl);
 
     if (!importRow) {
       const { data: dup } = await db
@@ -122,7 +172,7 @@ Deno.serve(async (req) => {
         .from("listing_imports")
         .insert({
           source_url: sourceUrl,
-          source_platform: "livinginsider",
+          source_platform: platform,
           status: "fetching",
           created_by: auth.userId,
         })
@@ -133,30 +183,29 @@ Deno.serve(async (req) => {
     } else {
       await db
         .from("listing_imports")
-        .update({ status: "fetching", error_message: null })
+        .update({
+          status: "fetching",
+          error_message: null,
+          source_platform: platform,
+        })
         .eq("id", importRow.id);
     }
 
     const rowId = importRow.id as string;
 
     try {
-      const html = await fetchLiHtml(sourceUrl);
-      const parsed = parseLiHtml(html, sourceUrl);
+      const { html, parsed } = await fetchAndParse(sourceUrl, platform);
 
       if (parsed.sourceExternalId) {
-        const { data: dupLi } = await db
+        const { data: dupExt } = await db
           .from("listing_imports")
           .select("id, status")
           .eq("source_external_id", parsed.sourceExternalId)
           .neq("id", rowId)
           .maybeSingle();
-        if (dupLi && dupLi.status !== "archived" && dupLi.status !== "failed") {
-          throw new Error(`LI ID ${parsed.sourceExternalId} นำเข้าแล้ว`);
+        if (dupExt && dupExt.status !== "archived" && dupExt.status !== "failed") {
+          throw new Error(`รายการนี้นำเข้าแล้ว (${parsed.sourceExternalId})`);
         }
-      }
-
-      if (parsed.priceNet <= 0) {
-        throw new Error("ไม่พบราคาในหน้า LI");
       }
 
       const project = await matchProject(db, parsed.projectName);
@@ -178,7 +227,7 @@ Deno.serve(async (req) => {
         title: parsed.title.slice(0, 200),
         listing_type: parsed.listingType,
         property_type: parsed.propertyType,
-        price_net: parsed.priceNet,
+        price_net: effectivePrice(parsed),
         description_public: parsed.description.slice(0, 8000),
         area_sqm: parsed.areaSqm,
         bedrooms: parsed.bedrooms,
@@ -186,7 +235,7 @@ Deno.serve(async (req) => {
         project_name: (project?.name_th as string | undefined) ?? parsed.projectName,
         project_id: project?.id ?? null,
         geo_zone_id: project?.geo_zone_id ?? null,
-        source_platform: "livinginsider",
+        source_platform: platform,
         source_url: sourceUrl,
         source_external_id: parsed.sourceExternalId,
         status: "draft",
@@ -214,18 +263,19 @@ Deno.serve(async (req) => {
         listingId!,
         auth.userId,
         parsed.imageUrls,
+        platform === "livinginsider" ? "li" : "ext",
       );
 
-      if (imageCount === 0) parsed.flags.push("images_upload_failed");
+      if (imageCount === 0 && parsed.imageUrls.length > 0) {
+        parsed.flags.push("images_upload_failed");
+      }
 
-      const status = parsed.flags.includes("missing_price") ||
-          parsed.flags.includes("missing_images")
-        ? "needs_fix"
-        : "draft_ready";
+      const status = resolveImportStatus(parsed, imageCount);
 
       const rawPayload = {
         fetched_at: new Date().toISOString(),
-        li_web_id: parsed.sourceExternalId,
+        source_platform: platform,
+        external_id: parsed.sourceExternalId,
         contact_private: parsed.contactPrivate,
         html_bytes: html.length,
       };
@@ -234,12 +284,13 @@ Deno.serve(async (req) => {
         .from("listing_imports")
         .update({
           source_external_id: parsed.sourceExternalId,
+          source_platform: platform,
           status,
           error_message: null,
           title_preview: parsed.title,
           project_preview: (project?.name_th as string | undefined) ??
             parsed.projectName,
-          price_preview: parsed.priceNet,
+          price_preview: parsed.priceNet > 0 ? parsed.priceNet : null,
           image_count: imageCount,
           listing_id: listingId,
           raw_payload: rawPayload,
@@ -247,6 +298,7 @@ Deno.serve(async (req) => {
             ...parsed,
             contactPrivate: undefined,
             matched_project_id: project?.id ?? null,
+            source_platform: platform,
           },
         })
         .eq("id", rowId)
@@ -260,6 +312,7 @@ Deno.serve(async (req) => {
         listing_id: listingId,
         image_count: imageCount,
         flags: parsed.flags,
+        source_platform: platform,
       });
     } catch (e) {
       const msg = String(e);

@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import '../config/legal_config.dart';
 import '../models/listing_create_rules.dart';
 import '../models/listing_occupancy.dart';
+import '../models/listing_pet_policy.dart';
 import '../models/listing_viewing_access.dart';
 import '../models/offer_commission_scheme.dart';
 import 'auth_service.dart';
@@ -42,7 +43,7 @@ class ListingCreateInput {
     this.lng,
     this.btsStation,
     this.acceptCoAgent = true,
-    this.petAllowed = false,
+    this.petPolicy = const ListingPetPolicyInput(),
     this.lineId,
     this.listingLanguages = const ['th'],
     this.titleEn,
@@ -57,6 +58,8 @@ class ListingCreateInput {
     this.brokerCommissionPercent,
     this.occupancy = const ListingOccupancyInput(),
   });
+
+  bool get petAllowed => petPolicy.allowed;
 
   final String title;
   final String listingType;
@@ -90,7 +93,7 @@ class ListingCreateInput {
   final double? lng;
   final String? btsStation;
   final bool acceptCoAgent;
-  final bool petAllowed;
+  final ListingPetPolicyInput petPolicy;
   final String? lineId;
   final List<String> listingLanguages;
   final String? titleEn;
@@ -159,7 +162,7 @@ class ListingCreateRepository {
       'co_agent_listing_type': input.coAgentListingType,
       'owner_co_agent_opt_in': input.acceptCoAgent,
       'co_agent_eligible': input.acceptCoAgent,
-      'pet_allowed': input.petAllowed,
+      ...input.petPolicy.toDbFields(),
       'owner_exclusive_mandate': input.ownerExclusiveMandate,
       if (input.ownerExclusiveContractDays != null)
         'owner_exclusive_contract_days': input.ownerExclusiveContractDays,

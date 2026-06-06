@@ -13,10 +13,16 @@ class PerspectiveDropdownChip extends StatelessWidget {
     super.key,
     required this.controller,
     required this.localeController,
+    this.onPurpleHeader = false,
+    this.compact = false,
+    this.mini = false,
   });
 
   final UserRoleController controller;
   final LocaleController localeController;
+  final bool onPurpleHeader;
+  final bool compact;
+  final bool mini;
 
   static const _perspectives = [
     AppPerspective.customer,
@@ -91,9 +97,16 @@ class PerspectiveDropdownChip extends StatelessWidget {
         final s = AppStrings(localeController.isEnglish);
         final p = context.palette;
 
+        final onPurple = onPurpleHeader;
+        final captionColor = onPurple ? Colors.white70 : p.textSecondary;
+        final labelColor = onPurple ? Colors.white : p.textPrimary;
+        final dividerColor =
+            onPurple ? Colors.white24 : p.border.withOpacity(0.75);
+        final iconColor = onPurple ? Colors.white : p.primary;
+
         return Material(
-          color: p.surface,
-          elevation: 1,
+          color: onPurple ? Colors.white.withOpacity(0.16) : p.surface,
+          elevation: onPurple ? 0 : 1,
           shadowColor: p.cardShadow,
           borderRadius: BorderRadius.circular(AppTheme.radiusPill),
           child: Builder(
@@ -105,44 +118,61 @@ class PerspectiveDropdownChip extends StatelessWidget {
                   if (box != null) _openMenu(context, box);
                 },
                 child: Container(
-                  constraints: const BoxConstraints(maxWidth: 162),
-                  padding: const EdgeInsets.fromLTRB(9, 7, 2, 7),
+                  constraints: BoxConstraints(
+                    maxWidth: mini ? 148 : (compact ? 200 : 162),
+                  ),
+                  padding: EdgeInsets.fromLTRB(
+                    mini ? 8 : (compact ? 10 : 9),
+                    mini ? 4 : (compact ? 5 : 7),
+                    mini ? 2 : (compact ? 4 : 2),
+                    mini ? 4 : (compact ? 5 : 7),
+                  ),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                    border: Border.all(color: p.border.withOpacity(0.8)),
+                    border: Border.all(
+                      color: onPurple
+                          ? Colors.white24
+                          : p.border.withOpacity(0.8),
+                    ),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        s.perspectiveCaption,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                          height: 1.1,
-                          color: p.textSecondary,
+                      if (!compact) ...[
+                        Text(
+                          s.perspectiveCaption,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            height: 1.1,
+                            color: captionColor,
+                          ),
                         ),
-                      ),
-                      Container(
-                        width: 1,
-                        height: 12,
-                        margin: const EdgeInsets.symmetric(horizontal: 6),
-                        color: p.border.withOpacity(0.75),
-                      ),
+                        Container(
+                          width: 1,
+                          height: 12,
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          color: dividerColor,
+                        ),
+                      ],
                       Flexible(
                         child: Text(
                           s.perspectiveChipShort(_key(current)),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11,
+                            fontSize: mini ? 12 : (compact ? 13 : 11),
                             fontWeight: FontWeight.w700,
-                            height: 1.1,
-                            color: p.textPrimary,
+                            height: 1.0,
+                            color: labelColor,
                           ),
                         ),
                       ),
-                      Icon(Icons.expand_more, size: 18, color: p.primary),
+                      Icon(
+                        Icons.expand_more,
+                        size: mini ? 16 : (compact ? 20 : 18),
+                        color: iconColor,
+                      ),
                     ],
                   ),
                 ),

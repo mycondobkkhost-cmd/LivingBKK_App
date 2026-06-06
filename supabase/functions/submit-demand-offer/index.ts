@@ -36,6 +36,7 @@ Deno.serve(async (req) => {
       commission_note,
       contact_name,
       contact_phone,
+      customer_phone_last4,
       area_sqm,
       bedrooms,
       external_url,
@@ -98,6 +99,17 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Demand post not open" }, 400);
     }
 
+    let mergedExternalNote = external_note ?? null;
+    if (customer_phone_last4) {
+      const suffix = String(customer_phone_last4).replace(/\D/g, "").slice(-4);
+      if (suffix.length === 4) {
+        const tag = `[customer_phone_last4:${suffix}]`;
+        mergedExternalNote = mergedExternalNote
+          ? `${mergedExternalNote}\n${tag}`
+          : tag;
+      }
+    }
+
     const { data: offer, error: insertError } = await supabase
       .from("demand_offers")
       .insert({
@@ -119,9 +131,9 @@ Deno.serve(async (req) => {
         area_sqm,
         bedrooms,
         external_url: external_url || null,
-        external_note,
+        external_note: mergedExternalNote,
       })
-      .select("id, status, created_at")
+      .select("id, status, created_at, offer_code")
       .single();
 
     if (insertError) {

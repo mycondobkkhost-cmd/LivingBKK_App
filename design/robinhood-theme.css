@@ -1,0 +1,42 @@
+/**
+ * PROPPITER × Robinhood TH — CSS custom properties
+ * Use with any web stack or import in Flutter web index.html for parity.
+ */
+:root {
+  --pp-purple: #4e2a84;
+  --pp-purple-dark: #3a1f66;
+  --pp-purple-mid: #6b3fa0;
+  --pp-purple-light: #9b6dff;
+  --pp-purple-tint: #f3e8ff;
+  --pp-yellow: #ffcb05;
+  --pp-orange: #ff6b00;
+  --pp-orange-bright: #ff8a00;
+  --pp-navy: #1a1b41;
+  --pp-bg: #f8f9fa;
+  --pp-surface: #ffffff;
+  --pp-border: #e8eaef;
+  --pp-text: #1a1b41;
+  --pp-text-muted: #6b7280;
+  --pp-wordmark-prop: #4e2a84;
+  --pp-wordmark-piter: #ff6b00;
+  --pp-radius-search: 28px;
+  --pp-radius-card: 16px;
+  --pp-shadow-search: 0 4px 14px rgba(78, 42, 132, 0.12);
+  --pp-header-gradient: linear-gradient(
+    180deg,
+    #4e2a84 0%,
+    #6b3fa0 28%,
+    #b85ce8 48%,
+    #ff8a00 68%,
+    #f8f9fa 90%,
+    #ffffff 100%
+  );
+  --pp-logo-gradient: linear-gradient(
+    135deg,
+    #4e2a84 0%,
+    #9b6dff 40%,
+    #ffcb05 72%,
+    #ff8a00 100%
+  );
+  --pp-safe-top: env(safe-area-inset-top, 0px);
+}

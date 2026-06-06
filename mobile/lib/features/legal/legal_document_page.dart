@@ -5,6 +5,9 @@ import '../../data/legal_documents.dart';
 import '../../l10n/app_strings.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/legal_navigation.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class LegalDocumentPage extends StatelessWidget {
   const LegalDocumentPage({super.key, required this.type});
@@ -17,24 +20,28 @@ class LegalDocumentPage extends StatelessWidget {
     final isEnglish = s.isEnglish;
     final title = type == LegalDocumentType.privacy ? s.signUpPrivacyLink : s.signUpTermsLink;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        actions: [
-          if (type == LegalDocumentType.terms)
-            TextButton(
-              onPressed: () => LegalNavigation.openPrivacy(context),
-              child: Text(s.signUpPrivacyLink, style: const TextStyle(fontSize: 13)),
-            )
-          else
-            TextButton(
-              onPressed: () => LegalNavigation.openTerms(context),
-              child: Text(s.signUpTermsLink, style: const TextStyle(fontSize: 13)),
-            ),
-        ],
-      ),
+    return ConsumerPageShell(
+      title: title,
+      onBack: () => Navigator.of(context).maybePop(),
+      actions: [
+        ConsumerHeaderTextButton(
+          label: type == LegalDocumentType.terms
+              ? s.signUpPrivacyLink
+              : s.signUpTermsLink,
+          onTap: () => type == LegalDocumentType.terms
+              ? LegalNavigation.openPrivacy(context)
+              : LegalNavigation.openTerms(context),
+        ),
+      ],
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+        padding: PageSafeInsets.padLTRB(
+          context,
+          left: LiLayout.pagePadding,
+          top: 12,
+          right: LiLayout.pagePadding,
+          bottom: 32,
+          addHomeIndicator: false,
+        ),
         children: [
           Text(
             LegalDocuments.header(type, isEnglish),

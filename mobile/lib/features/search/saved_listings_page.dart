@@ -7,6 +7,9 @@ import '../../models/listing_route_extra.dart';
 import '../../services/favorites_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/listing_card.dart';
+import '../../theme/li_layout.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class SavedListingsPage extends StatefulWidget {
   const SavedListingsPage({super.key});
@@ -37,8 +40,9 @@ class _SavedListingsPageState extends State<SavedListingsPage> {
     final all = DemoListingsFactory.cached;
     final saved = all.where((l) => ids.contains(l.id)).toList();
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.savedListingsTitle)),
+    return ConsumerPageShell(
+      title: s.savedListingsTitle,
+      safeBottomBody: false,
       body: saved.isEmpty
           ? Center(
               child: Padding(
@@ -63,7 +67,14 @@ class _SavedListingsPageState extends State<SavedListingsPage> {
               ),
             )
           : ListView.builder(
-              padding: const EdgeInsets.all(16),
+              padding: PageSafeInsets.padLTRB(
+                context,
+                left: LiLayout.pagePadding,
+                top: LiLayout.pagePadding,
+                right: LiLayout.pagePadding,
+                bottom: 16,
+                addHomeIndicator: false,
+              ),
               itemCount: saved.length,
               itemBuilder: (context, i) {
                 final item = saved[i];

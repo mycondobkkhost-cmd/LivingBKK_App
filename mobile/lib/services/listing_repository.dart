@@ -12,6 +12,16 @@ class ListingRepository {
   /// true = แสดงทรัพย์ตัวอย่างในแอป (Supabase ว่างหรือยังไม่ seed)
   static bool lastFetchUsedDemo = false;
 
+  Future<String?> resolveIdByCode(String listingCode) async {
+    if (!SupabaseService.isReady || listingCode.isEmpty) return null;
+    final row = await SupabaseService.client!
+        .from('listings')
+        .select('id')
+        .eq('listing_code', listingCode)
+        .maybeSingle();
+    return row?['id'] as String?;
+  }
+
   Future<List<ListingPublic>> fetchPublished({
     String? listingType,
     bool coAgentEligibleOnly = false,

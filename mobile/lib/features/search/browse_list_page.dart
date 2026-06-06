@@ -10,6 +10,8 @@ import '../../models/listing_transaction_types.dart';
 import '../../services/listing_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/li_layout.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 import '../../utils/listing_browse_sorter.dart';
 import '../../utils/listing_navigation.dart';
 import '../../widgets/listing_card.dart';
@@ -254,20 +256,28 @@ class _BrowseListPageState extends State<BrowseListPage> {
     final sections = _sections;
     final total = _filtered.length;
 
-    return Scaffold(
-      appBar: AppBar(
-        leading: BackButton(onPressed: () => context.pop()),
-        title: Text(widget.extra.title),
-        actions: [
-          IconButton(icon: const Icon(Icons.tune), onPressed: _openFilters),
-        ],
-      ),
+    return ConsumerPageShell(
+      title: widget.extra.title,
+      onBack: () => context.pop(),
+      actions: [
+        ConsumerHeaderIconButton(
+          icon: Icons.tune_rounded,
+          onTap: _openFilters,
+        ),
+      ],
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
-                padding: const EdgeInsets.all(LiLayout.pagePadding),
+                padding: PageSafeInsets.padLTRB(
+                  context,
+                  left: LiLayout.pagePadding,
+                  top: LiLayout.pagePadding,
+                  right: LiLayout.pagePadding,
+                  bottom: LiLayout.pagePadding,
+                  addHomeIndicator: false,
+                ),
                 children: [
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,

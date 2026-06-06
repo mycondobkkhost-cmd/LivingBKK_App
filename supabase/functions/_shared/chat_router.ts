@@ -1,21 +1,34 @@
-import { classifyChatIntentOpenAI } from "./chat_intent_openai.ts";
+import {
+  answerChatWithOpenAI,
+  type ListingDetail,
+} from "./chat_answer_openai.ts";
 import {
   aiSupportReply,
   BotReply,
+  classifySensitive,
+  containsThaiPhone,
   escalationReply,
   isExplicitStaffRequest,
-  isSensitive,
   isSmallTalk,
   ListingRow,
+  phoneReceivedAckReply,
+  sensitiveReply,
+  type SensitiveKind,
   softClarifyReply,
   staffAckReply,
 } from "./chat_logic.ts";
+import {
+  fuzzyIncludes,
+  fuzzyMatchScore,
+  normalizeChatText,
+} from "./chat_text_normalize.ts";
 
 export type FaqRule = {
   scope: string;
   patterns: string[];
   reply_text: string;
   priority: number;
+  escalate?: boolean;
 };
 
 export type RouteContext = {
@@ -28,6 +41,8 @@ export type RouteContext = {
   faqRules: FaqRule[];
   priorUserMessages: number;
   unclearStreak: number;
+  /** Full public listing row for RAG when in property thread */
+  currentListing?: ListingDetail | null;
 };
 
 export type RouteResult = {
@@ -73,7 +88,7 @@ const DISCOVERY_KEYS = [
 const PROJECT_OTHER_KEYS = ["ห้องอื่น", "ตัวอื่น", "ในโครงการ", "unit อื่น"];
 
 function normalize(text: string): string {
-  return text.toLowerCase().trim();
+  return normalizeChatText(text);
 }
 
 export function matchFaqRule(
@@ -81,17 +96,41 @@ export function matchFaqRule(
   rules: FaqRule[],
   scopes: string[],
 ): FaqRule | null {
-  const q = normalize(text);
   const eligible = rules
     .filter((r) => scopes.includes(r.scope))
     .sort((a, b) => a.priority - b.priority);
 
   for (const rule of eligible) {
-    if (rule.patterns.some((p) => q.includes(p.toLowerCase()))) {
+    if (rule.patterns.some((p) => fuzzyIncludes(text, p))) {
       return rule;
     }
   }
   return null;
+}
+
+/** FAQ rules partially matching user text — context for RAG (not auto-reply). */
+export function findRelatedFaqRules(
+  text: string,
+  rules: FaqRule[],
+  scopes: string[],
+  limit = 6,
+): FaqRule[] {
+  const scored: { rule: FaqRule; score: number }[] = [];
+
+  for (const rule of rules) {
+    if (!scopes.includes(rule.scope)) continue;
+    let best: number | null = null;
+    for (const p of rule.patterns) {
+      const s = fuzzyMatchScore(text, p);
+      if (s !== null && (best === null || s < best)) best = s;
+    }
+    if (best !== null) {
+      scored.push({ rule, score: best + rule.priority * 0.01 });
+    }
+  }
+
+  scored.sort((a, b) => a.score - b.score);
+  return scored.slice(0, limit).map((x) => x.rule);
 }
 
 export function isDiscoveryIntent(text: string): boolean {
@@ -103,6 +142,29 @@ export function isDiscoveryIntent(text: string): boolean {
 function wantsOtherUnitsInProject(text: string): boolean {
   const q = normalize(text);
   return PROJECT_OTHER_KEYS.some((k) => q.includes(k));
+}
+
+const DISCOVERY_ON_PROPERTY_KEYS = [
+  "นัดดู",
+  "ขอดู",
+  "view",
+  "ว่าง",
+  "viewing",
+  "เข้าชม",
+  "ดูห้อง",
+  "เห็นห้อง",
+  "นัดชม",
+  "ว่างวัน",
+  "ว่างเมื่อ",
+  "เข้าอยู่",
+  "cam fee",
+  "ค่าส่วนกลาง",
+  "common fee",
+];
+
+function isDiscoveryScopedOnProperty(text: string): boolean {
+  const q = normalize(text);
+  return DISCOVERY_ON_PROPERTY_KEYS.some((k) => q.includes(k));
 }
 
 function discoveryPool(
@@ -119,6 +181,21 @@ function discoveryPool(
     return listings.filter((l) => l.project_name === projectName);
   }
   return listings;
+}
+
+function faqRouteResult(
+  text: string,
+  rule: FaqRule,
+  listingCode: string | null,
+  category: string,
+  source: string,
+): RouteResult {
+  const reply = faqReply(text, rule, listingCode);
+  if (rule.escalate) {
+    reply.requires_admin = true;
+    return adminResult(reply, category, source, source);
+  }
+  return autoResult(reply, category, source);
 }
 
 function faqReply(text: string, rule: FaqRule, listingCode: string | null): BotReply {
@@ -168,6 +245,19 @@ function adminResult(
   };
 }
 
+function sensitiveRouteResult(text: string, kind: SensitiveKind): RouteResult {
+  const reply = sensitiveReply(kind, text);
+  const notifyAdmin =
+    kind === "negotiate" ||
+    kind === "commission" ||
+    (kind === "contact" && containsThaiPhone(text));
+
+  if (notifyAdmin) {
+    return adminResult(reply, "escalation", kind, `sensitive_${kind}`);
+  }
+  return autoResult(reply, "property_faq", `sensitive_${kind}`);
+}
+
 function softDeferResult(unclearStreak: number): RouteResult {
   return {
     reply: softClarifyReply(),
@@ -215,36 +305,48 @@ export async function routeChatMessage(ctx: RouteContext): Promise<RouteResult> 
     return adminResult(escalationReply(), "escalation", "staff_request", "staff_request");
   }
 
-  if (isSensitive(text)) {
-    return adminResult(escalationReply(), "escalation", "sensitive", "sensitive");
+  const sensitiveKind = classifySensitive(text);
+  if (sensitiveKind) {
+    return sensitiveRouteResult(text, sensitiveKind);
+  }
+
+  if (containsThaiPhone(text)) {
+    return adminResult(
+      phoneReceivedAckReply(),
+      "escalation",
+      "phone_provided",
+      "phone_provided",
+    );
   }
 
   if (isSmallTalk(text)) {
     const rule = matchFaqRule(text, faqRules, ["global"]);
     if (rule) {
-      return autoResult(faqReply(text, rule, listingCode), "property_faq", "faq_smalltalk");
+      return faqRouteResult(text, rule, listingCode, "property_faq", "faq_smalltalk");
     }
   }
 
   const globalFaq = matchFaqRule(text, faqRules, ["global"]);
   if (globalFaq) {
-    return autoResult(faqReply(text, globalFaq, listingCode), "property_faq", "faq_global");
+    return faqRouteResult(text, globalFaq, listingCode, "property_faq", "faq_global");
   }
 
   if (hasListing) {
     const propFaq = matchFaqRule(text, faqRules, ["property"]);
     if (propFaq) {
-      return autoResult(
-        faqReply(text, propFaq, listingCode),
-        "property_faq",
-        "faq_property",
-      );
+      return faqRouteResult(text, propFaq, listingCode, "property_faq", "faq_property");
     }
   }
 
   const discoveryFaq = matchFaqRule(text, faqRules, ["discovery"]);
-  if (discoveryFaq && (isDiscoveryThread || isDiscoveryIntent(text))) {
-    return autoResult(faqReply(text, discoveryFaq, listingCode), "discovery", "faq_discovery");
+  const discoveryOnProperty = hasListing && isDiscoveryScopedOnProperty(text);
+  if (
+    discoveryFaq &&
+    (isDiscoveryThread || isDiscoveryIntent(text) || discoveryOnProperty)
+  ) {
+    const cat = discoveryOnProperty ? "property_faq" : "discovery";
+    const src = discoveryOnProperty ? "faq_discovery_on_property" : "faq_discovery";
+    return faqRouteResult(text, discoveryFaq, listingCode, cat, src);
   }
 
   const shouldRunDiscovery =
@@ -252,6 +354,7 @@ export async function routeChatMessage(ctx: RouteContext): Promise<RouteResult> 
     isDiscoveryIntent(text) ||
     wantsOtherUnitsInProject(text);
 
+  let discoveryFallback: BotReply | null = null;
   if (shouldRunDiscovery) {
     const pool = discoveryPool(text, listings, projectName, listingId);
     const discovery = aiSupportReply(text, pool);
@@ -259,38 +362,59 @@ export async function routeChatMessage(ctx: RouteContext): Promise<RouteResult> 
       return autoResult(discovery, "discovery", "discovery_db");
     }
     if (isDiscoveryThread || isDiscoveryIntent(text)) {
-      return autoResult(discovery, "discovery", "discovery_empty");
+      discoveryFallback = discovery;
     }
   }
 
-  if (hasListing && !isDiscoveryIntent(text)) {
-    const llm = await classifyChatIntentOpenAI(text, true);
-    if (llm) {
-      if (llm.intent === "sensitive" || llm.needs_admin) {
-        return adminResult(escalationReply(), "escalation", "llm_gate", "llm_escalate");
-      }
-      if (llm.intent === "discovery" && llm.should_answer) {
-        const discovery = aiSupportReply(text, listings);
-        return autoResult(discovery, "discovery", "llm_discovery");
-      }
-      if (llm.intent === "property_faq" && llm.should_answer) {
-        return autoResult(
-          {
-            role: "ai",
-            text: llm.reason ??
-              "รับทราบครับ หากต้องการรายละเอียดเพิ่ม แจ้งในแชทได้เลยครับ",
-          },
-          "property_faq",
-          "llm_faq",
-        );
-      }
+  const ragScopes = hasListing
+    ? ["global", "property", "discovery"]
+    : isDiscoveryThread
+    ? ["global", "discovery"]
+    : ["global"];
+
+  const ragPool = shouldRunDiscovery
+    ? discoveryPool(text, listings, projectName, listingId)
+    : listings;
+
+  const rag = await answerChatWithOpenAI({
+    text,
+    normalizedText: normalizeChatText(text),
+    hasListing,
+    isDiscoveryThread,
+    listingCode,
+    projectName,
+    currentListing: ctx.currentListing ?? null,
+    listings: ragPool.slice(0, 8),
+    faqHints: findRelatedFaqRules(text, faqRules, ragScopes),
+  });
+
+  if (rag) {
+    if (rag.intent === "sensitive" || rag.needs_admin) {
+      return adminResult(
+        escalationReply(),
+        "escalation",
+        rag.reason ?? "llm_rag",
+        "llm_rag_escalate",
+      );
     }
-  } else if (isDiscoveryThread) {
-    const llm = await classifyChatIntentOpenAI(text, false);
-    if (llm?.intent === "discovery" && llm.should_answer) {
-      const discovery = aiSupportReply(text, listings);
-      return autoResult(discovery, "discovery", "llm_discovery");
+
+    if (rag.should_answer && rag.answer_text) {
+      const category = rag.intent === "discovery" ? "discovery" : "property_faq";
+      let reply: BotReply = { role: "ai", text: rag.answer_text };
+
+      if (rag.intent === "discovery") {
+        const discovery = aiSupportReply(text, ragPool);
+        if (discovery.links && discovery.links.length > 0) {
+          reply = { role: "ai", text: rag.answer_text, links: discovery.links };
+        }
+      }
+
+      return autoResult(reply, category, "llm_rag");
     }
+  }
+
+  if (discoveryFallback) {
+    return autoResult(discoveryFallback, "discovery", "discovery_empty");
   }
 
   // Lean: first unclear → bot asks to clarify; second → admin

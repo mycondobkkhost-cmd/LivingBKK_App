@@ -51,6 +51,7 @@ class DemandRepository {
     String? commissionNote,
     String? contactName,
     String? contactPhone,
+    String? customerPhoneLast4,
     String? externalUrl,
     String? demandPostCode,
     String? demandPostTitle,
@@ -87,6 +88,8 @@ class DemandRepository {
         'commission_note': commissionNote,
         'contact_name': contactName,
         'contact_phone': contactPhone,
+        if (customerPhoneLast4 != null)
+          'customer_phone_last4': customerPhoneLast4,
         'external_url': externalUrl,
       },
     );

@@ -16,6 +16,8 @@ import '../../services/search_service.dart';
 import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/li_layout.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 import '../../utils/geo_zone_match.dart';
 import '../../utils/listing_navigation.dart';
 import '../../utils/localized_content.dart';
@@ -465,35 +467,26 @@ class _SearchDiscoveryPageState extends State<SearchDiscoveryPage> {
     final s = AppStrings.of(context);
     final p = context.palette;
 
-    return Scaffold(
-      backgroundColor: p.background,
-      appBar: AppBar(
-        leading: BackButton(onPressed: () => context.pop()),
-        titleSpacing: 0,
-        title: Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: TextField(
-            controller: _query,
-            focusNode: _focus,
-            decoration: InputDecoration(
-              hintText: s.searchDiscoveryHint,
-              prefixIcon: Icon(Icons.search, color: p.primary),
-              filled: true,
-              fillColor: p.surfaceVariant,
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-                borderSide: BorderSide.none,
-              ),
-            ),
-            onChanged: (_) => _onQueryChanged(),
-            onSubmitted: (v) => _pickQuery(v.trim()),
-          ),
-        ),
+    return ConsumerPageShell(
+      title: s.navHome,
+      onBack: () => context.pop(),
+      headerBottom: ConsumerHeaderSearchField(
+        controller: _query,
+        focusNode: _focus,
+        hint: s.searchDiscoveryHint,
+        onChanged: (_) => _onQueryChanged(),
+        onSubmitted: (v) => _pickQuery(v.trim()),
       ),
       body: ListView(
         controller: _resultsScroll,
-        padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 24),
+        padding: PageSafeInsets.padLTRB(
+          context,
+          left: LiLayout.pagePadding,
+          top: 8,
+          right: LiLayout.pagePadding,
+          bottom: 24,
+          addHomeIndicator: false,
+        ),
         children: [
           if (_query.text.trim().length >= 2) ...[
             _PhSearchTabs(

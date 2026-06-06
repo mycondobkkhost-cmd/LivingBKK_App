@@ -8,6 +8,9 @@ import '../../services/demand_board_favorites_service.dart';
 import '../../services/demand_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/demand_inquiry_card.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class SavedDemandBoardPage extends StatefulWidget {
   const SavedDemandBoardPage({super.key});
@@ -81,9 +84,9 @@ class _SavedDemandBoardPageState extends State<SavedDemandBoardPage> {
     final s = AppStrings.of(context);
     final saved = DemandBoardFavoritesService.instance.resolvePosts(_feed);
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceWarm,
-      appBar: AppBar(title: Text(s.savedDemandBoardTitle)),
+    return ConsumerPageShell(
+      title: s.savedDemandBoardTitle,
+      onBack: () => Navigator.of(context).maybePop(),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : saved.isEmpty
@@ -121,7 +124,14 @@ class _SavedDemandBoardPageState extends State<SavedDemandBoardPage> {
                   onRefresh: _load,
                   child: ListView.separated(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 24),
+                    padding: PageSafeInsets.padLTRB(
+                      context,
+                      left: 12,
+                      top: 12,
+                      right: 12,
+                      bottom: 24,
+                      addHomeIndicator: false,
+                    ),
                     itemCount: saved.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (context, i) {

@@ -110,6 +110,7 @@ class TrialListingStore {
       'agent_exclusive': input.agentExclusive,
       'viewing_access': input.viewingAccess.toJson(),
       ...input.occupancy.toDbFields(salePrice: input.priceNet),
+      ...input.petPolicy.toDbFields(),
     });
     return id;
   }

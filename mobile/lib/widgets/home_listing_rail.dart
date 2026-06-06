@@ -17,6 +17,8 @@ class HomeListingRail extends StatefulWidget {
     required this.onViewAll,
     this.showCoAgentStrip = false,
     this.accentIndex = 0,
+    this.highlightRecommended = false,
+    this.topInset = 2,
   });
 
   final String title;
@@ -25,14 +27,24 @@ class HomeListingRail extends StatefulWidget {
   final VoidCallback onViewAll;
   final bool showCoAgentStrip;
   final int accentIndex;
+  final bool highlightRecommended;
+  /// ระยะบนก่อนหัวข้อ section — ใช้ 0 สำหรับ section ถัดไป
+  final double topInset;
 
-  static const cardWidth = 280.0;
-  static const cardGap = 12.0;
+  static const cardGap = 10.0;
 
-  /// รูป 16:9 + บล็อกข้อความ (ราคา + ชื่อโครงการ + ทำเล)
+  /// ~46% ความกว้างจอ — เห็นการ์ดถัดไปแบบ PropertyHub
+  static double cardWidthFor(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    return (w * 0.46).clamp(168.0, 200.0);
+  }
+
+  /// รูป 4:3 + body compact — สูงพอดีการ์ด ไม่เว้นช่องว่างล่าง
+  static double compactCardHeight(double cardWidth) => cardWidth * 3 / 4 + 88;
+
   static double railHeightFor(BuildContext context) {
-    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.35);
-    return (cardWidth * 9 / 16 + 76) * scale;
+    final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.3);
+    return compactCardHeight(cardWidthFor(context)) * scale;
   }
 
   @override
@@ -71,7 +83,7 @@ class _HomeListingRailState extends State<HomeListingRail> {
     final viewportWidth = MediaQuery.sizeOf(context).width;
     final viewportCenter = viewportWidth / 2;
     final offset = _scrollController.offset;
-    const w = HomeListingRail.cardWidth;
+    final w = HomeListingRail.cardWidthFor(context);
     const gap = HomeListingRail.cardGap;
     const pad = LiLayout.pagePadding;
 
@@ -99,28 +111,47 @@ class _HomeListingRailState extends State<HomeListingRail> {
     if (widget.items.isEmpty) return const SizedBox.shrink();
 
     final accent = AppTheme.sectionAccents[widget.accentIndex % AppTheme.sectionAccents.length];
+    final cardWidth = HomeListingRail.cardWidthFor(context);
     final railHeight = HomeListingRail.railHeightFor(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             LiLayout.pagePadding,
-            10,
+            widget.topInset.clamp(0, 48),
             LiLayout.pagePadding,
-            6,
+            2,
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Expanded(
-                child: Text(widget.title, style: Theme.of(context).textTheme.titleLarge),
+                child: Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        height: 1.1,
+                      ),
+                ),
               ),
               TextButton(
                 onPressed: widget.onViewAll,
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
                 child: Text(
                   s.viewAll,
-                  style: TextStyle(color: accent, fontWeight: FontWeight.w700),
+                  style: TextStyle(
+                    color: accent,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],
@@ -146,7 +177,7 @@ class _HomeListingRailState extends State<HomeListingRail> {
               itemBuilder: (context, i) {
                 if (i == widget.items.length) {
                   return _ViewAllCard(
-                    width: HomeListingRail.cardWidth * 0.42,
+                    width: cardWidth * 0.42,
                     label: s.viewAll,
                     count: widget.items.length,
                     accent: accent,
@@ -155,12 +186,12 @@ class _HomeListingRailState extends State<HomeListingRail> {
                 }
                 final item = widget.items[i];
                 return SizedBox(
-                  height: railHeight,
-                  width: HomeListingRail.cardWidth,
+                  width: cardWidth,
                   child: AppPropertyCard(
                     listing: item,
-                    width: HomeListingRail.cardWidth,
+                    width: cardWidth,
                     compactBody: true,
+                    highlightRecommended: widget.highlightRecommended,
                     showCoAgentStrip: widget.showCoAgentStrip,
                     enableImageSwipe: true,
                     railScrollController:

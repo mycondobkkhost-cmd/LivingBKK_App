@@ -299,10 +299,19 @@ class _BookViewingFormState extends State<_BookViewingForm> {
     final viewingSchedule = summary[s.summaryViewing];
 
     try {
+      final room = await ChatService.instance.ensurePersistedRoom(widget.room);
+
+      await ChatService.instance.appendViewingSummary(
+        room,
+        summary,
+        duplicatePhoneSuffix: duplicateSuffix,
+      );
+
       final outcome = await _repo.submit(
         LeadSubmission(
-          listingCode: widget.room.listingCode,
-          listingId: widget.room.listingId,
+          listingCode: room.listingCode,
+          listingId: room.listingId,
+          threadId: room.isPersisted ? room.id : null,
           seekerNickname: _nickname.text.trim(),
           seekerPhone: _phone.text.trim(),
           applicantType: _applicantType,
@@ -322,12 +331,6 @@ class _BookViewingFormState extends State<_BookViewingForm> {
           customerPhoneLast4: customerLast4,
           duplicatePhoneSuffix: duplicateSuffix,
         ),
-      );
-
-      await ChatService.instance.appendViewingSummary(
-        widget.room,
-        summary,
-        duplicatePhoneSuffix: duplicateSuffix,
       );
 
       if (!mounted) return;

@@ -1,4 +1,5 @@
 import '../data/demo_listings_factory.dart';
+import 'listing_pet_policy.dart';
 
 class ListingPublic {
   const ListingPublic({
@@ -16,6 +17,7 @@ class ListingPublic {
     this.propertyType = 'condo',
     this.areaSqm,
     this.bedrooms,
+    this.bathrooms,
     this.floorRange,
     this.floorRangeEn,
     this.yieldPercent,
@@ -23,6 +25,7 @@ class ListingPublic {
     this.investorCategory,
     this.coAgentEligible = false,
     this.petAllowed = false,
+    this.petPolicy = const ListingPetPolicyInput(),
     this.lat,
     this.lng,
     this.geoZoneSlug,
@@ -53,6 +56,7 @@ class ListingPublic {
   final String propertyType;
   final double? areaSqm;
   final int? bedrooms;
+  final int? bathrooms;
   final String? floorRange;
   final String? floorRangeEn;
   final double? yieldPercent;
@@ -60,6 +64,7 @@ class ListingPublic {
   final String? investorCategory;
   final bool coAgentEligible;
   final bool petAllowed;
+  final ListingPetPolicyInput petPolicy;
   final double? lat;
   final double? lng;
   final String? geoZoneSlug;
@@ -93,6 +98,7 @@ class ListingPublic {
       propertyType: json['property_type'] as String? ?? 'condo',
       areaSqm: (json['area_sqm'] as num?)?.toDouble(),
       bedrooms: json['bedrooms'] as int?,
+      bathrooms: json['bathrooms'] as int?,
       floorRange: json['floor_range'] as String?,
       floorRangeEn: json['floor_range_en'] as String?,
       yieldPercent: (json['yield_percent'] as num?)?.toDouble(),
@@ -100,6 +106,9 @@ class ListingPublic {
       investorCategory: json['investor_category'] as String?,
       coAgentEligible: json['co_agent_eligible'] as bool? ?? false,
       petAllowed: json['pet_allowed'] as bool? ?? false,
+      petPolicy: ListingPetPolicyInput.fromJson(
+        json['pet_policy'] as Map<String, dynamic>?,
+      ),
       lat: (json['lat'] as num?)?.toDouble(),
       lng: (json['lng'] as num?)?.toDouble(),
       geoZoneSlug: json['geo_zone_slug'] as String?,

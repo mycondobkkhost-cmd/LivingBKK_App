@@ -1,11 +1,18 @@
 /** PropertyHub.in.th — แหล่งข้อมูลโครงการเดียว (Path A) */
 
+import {
+  formatBtsField,
+  mergeNearbyTransitLabels,
+  transitAliases,
+} from "./transit_proximity.ts";
+
 export type PropertyHubParsedProject = {
   slug: string;
   nameTh: string;
   nameEn: string;
   district: string;
   btsStation: string | null;
+  nearbyTransit: string[];
   propertyType: string;
   lat: number;
   lng: number;
@@ -250,8 +257,9 @@ type CoreFields = {
 };
 
 function parseCoreFields(html: string): CoreFields | null {
+  // description อาจมี \u003c หรือ HTML — ห้ามใช้ [^\\]* เพราะจะ match ไม่ติด
   const escaped =
-    /\\"name\\":\\"([^\\]+)\\",\\"nameEnglish\\":\\"([^\\]+)\\",\\"description\\":\\"([^\\]*)\\",\\"address\\":\\"([^\\]*)\\",\\"location\\":\{\\"lat\\":([0-9.+-]+),\\"lng\\":([0-9.+-]+)\},\\"projectType\\":\\"([^\\]+)\\",\\"facilities\\":(\{[^}]+\})/;
+    /\\"name\\":\\"([^\\]+)\\",\\"nameEnglish\\":\\"([^\\]+)\\",\\"description\\":\\"((?:[^"\\]|\\.)*?)\\",\\"address\\":\\"([^\\]*)\\",\\"location\\":\{\\"lat\\":([0-9.+-]+),\\"lng\\":([0-9.+-]+)\},\\"projectType\\":\\"([^\\]+)\\",\\"facilities\\":(\{[^}]+\})/;
   let m = html.match(escaped);
   if (m) {
     const yearM = html.match(/completedYear\\":\\"(\d{4})\\"/);
@@ -281,7 +289,7 @@ function parseCoreFields(html: string): CoreFields | null {
   }
 
   const plain =
-    /"name":"([^"]+)","nameEnglish":"([^"]+)","description":"([^"]*)","address":"([^"]*)","location":\{"lat":([0-9.+-]+),"lng":([0-9.+-]+)\},"projectType":"([^"]*)"(?:,"facilities":(\[[^\]]*\]|\{[^}]+\}))?/;
+    /"name":"([^"]+)","nameEnglish":"([^"]+)","description":"((?:[^"\\]|\\.)*?)","address":"([^"]*)","location":\{"lat":([0-9.+-]+),"lng":([0-9.+-]+)\},"projectType":"([^"]*)"(?:,"facilities":(\[[^\]]*\]|\{[^}]+\}))?/;
   m = html.match(plain);
   if (!m) return null;
 
@@ -358,11 +366,22 @@ export function parsePropertyHubProjectHtml(
     )?.[0] ??
     null;
 
+  const nearbyTransit = mergeNearbyTransitLabels({
+    lat: core.lat,
+    lng: core.lng,
+    descriptionTh,
+    html,
+    existing: btsStation,
+    maxKm: 1.0,
+    limit: 5,
+  });
+  const btsResolved = formatBtsField(nearbyTransit) ?? btsStation;
+
   const aliases = buildAliases(
     core.nameTh,
     core.nameEn,
     slug,
-    core.aliasExtras,
+    [...core.aliasExtras, ...transitAliases(nearbyTransit)],
   );
 
   return {
@@ -370,7 +389,8 @@ export function parsePropertyHubProjectHtml(
     nameTh: core.nameTh,
     nameEn: core.nameEn,
     district,
-    btsStation,
+    btsStation: btsResolved,
+    nearbyTransit,
     propertyType: mapProjectType(core.projectType),
     lat: core.lat,
     lng: core.lng,

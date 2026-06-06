@@ -20,6 +20,7 @@
 | 10 | [docs/phase-10-push-notifications.md](docs/phase-10-push-notifications.md) | FCM push + ยกเลิก PM subscription |
 | 11 | [docs/phase-11-production-complete.md](docs/phase-11-production-complete.md) | Moderation + Lifecycle + Deploy ครบ |
 | 12 | [docs/phase-12-ai-and-security.md](docs/phase-12-ai-and-security.md) | AI Search + กัน self-admin |
+| 21 | [docs/phase-21-analytics-platform.md](docs/phase-21-analytics-platform.md) | Analytics platform — scale แสนคน |
 | 13 | [docs/phase-13-เปิดใช้บนมือถือ.md](docs/phase-13-เปิดใช้บนมือถือ.md) | เว็บมือถือ + ติดจอโฮม |
 | — | [docs/คู่มือ-ใช้แอปบนมือถือ.md](docs/คู่มือ-ใช้แอปบนมือถือ.md) | คู่มือภาษาไทย (ไม่ใช่โปรแกรมเมอร์) |
 | — | [docs/ROADMAP-REMAINING.md](docs/ROADMAP-REMAINING.md) | **สิ่งที่เหลือทั้งหมด** |

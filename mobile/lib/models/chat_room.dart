@@ -67,7 +67,9 @@ class ChatRoom {
   bool get isAiSupport => isDiscovery;
 
   bool get isStaffSupport =>
-      roomKind == 'staff_support' || id == ChatServiceIds.staffSupport;
+      (roomKind == 'staff_support' || id == ChatServiceIds.staffSupport) &&
+      !isCustomerRequirement &&
+      !isDemandOffer;
 
   bool get isDemandOffer => category == 'demand_offer';
 

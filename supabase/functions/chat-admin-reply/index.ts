@@ -16,9 +16,11 @@ Deno.serve(async (req) => {
     const thread_id = body.thread_id as string | undefined;
     const text = (body.text as string | undefined)?.trim();
     const resolve = Boolean(body.resolve);
+    const links = body.links as unknown[] | undefined;
 
-    if (!thread_id || !text) {
-      return jsonResponse({ error: "thread_id and text required" }, 400);
+    const hasLinks = Array.isArray(links) && links.length > 0;
+    if (!thread_id || (!text && !hasLinks)) {
+      return jsonResponse({ error: "thread_id and text or links required" }, 400);
     }
 
     const db = createClient(
@@ -49,7 +51,8 @@ Deno.serve(async (req) => {
       .insert({
         thread_id,
         role: "admin_notice",
-        text,
+        text: text || " ",
+        links: Array.isArray(links) ? links : [],
         sender_id: auth.userId,
       })
       .select("*")
@@ -80,11 +83,11 @@ Deno.serve(async (req) => {
     if (threadError) return jsonResponse({ error: threadError.message }, 400);
 
     const userId = existing.user_id as string | undefined;
-    const code = (existing.listing_code as string) || "LivingBKK";
+    const code = (existing.listing_code as string) || "PROPPITER";
     await sendFcmToUser(
       db,
       userId,
-      "LivingBKK — มีข้อความใหม่",
+      "PROPPITER — มีข้อความใหม่",
       `${code}: ${text.slice(0, 120)}`,
       { type: "chat_reply", thread_id },
     );

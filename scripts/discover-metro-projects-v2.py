@@ -12,13 +12,14 @@
   D — seed โครงการดัง + ลิงก์จากหน้าโครงการ + หน้า project-{slug}
   E — ค้นหาตามตัวอักษร/พยางค์ (?text=) ทุกจังหวัดปริมณฑล
 
-ผลลัพธ์: /tmp/ph-metro-slugs.json (+ /tmp/ph-all-slugs.json สำหรับ sync เดิม)
+ผลลัพธ์: data/ph-pipeline/ph-metro-slugs.json (หรือ PH_PIPELINE_DIR)
 """
 from __future__ import annotations
 
 import json
 import os
 import re
+import signal
 import sys
 import time
 import urllib.error
@@ -26,16 +27,25 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 UA = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
 )
 ROOT = Path(__file__).resolve().parents[1]
-OUT = Path("/tmp/ph-metro-slugs.json")
-LEGACY_OUT = Path("/tmp/ph-all-slugs.json")
-PROGRESS_OUT = Path("/tmp/ph-metro-discover-progress.json")
+PIPELINE_DIR = Path(os.environ.get("PH_PIPELINE_DIR", "/tmp"))
+OUT = PIPELINE_DIR / "ph-metro-slugs.json"
+LEGACY_OUT = PIPELINE_DIR / "ph-all-slugs.json"
+PROGRESS_OUT = PIPELINE_DIR / "ph-metro-discover-progress.json"
+LINKS_SNAPSHOT = PIPELINE_DIR / "ph-links-snapshot.json"
+BACKUP_DIR = PIPELINE_DIR / "backups"
+SAVE_EVERY_PAGES = int(os.environ.get("SAVE_EVERY_PAGES", "10"))
+BACKUP_EVERY_N_PROJECTS = int(os.environ.get("BACKUP_EVERY_N_PROJECTS", "250"))
+
+# สำหรับบันทึกฉุกเฉินเมื่อคอมดับ / SIGTERM
+_runtime: dict[str, Any] = {}
+_last_backup_count = 0
 
 METRO_PROVINCES = [
     "bangkok",
@@ -113,11 +123,19 @@ BOOTSTRAP_SEED_SLUGS = [
 ]
 
 MAX_PAGES_PER_SEED = int(os.environ.get("MAX_PAGES_PER_SEED", "0"))  # 0 = unlimited
-MAX_PAGES_PER_QUERY = int(os.environ.get("MAX_PAGES_PER_QUERY", "8"))  # ชั้น E
+# ชั้น E — COLLECT_ALL=1 ค่าเริ่มต้นไม่จำกัดหน้า (เก็บลิงก์ให้ครบก่อน)
+COLLECT_ALL = os.environ.get("COLLECT_ALL", "0") == "1"
+MAX_PAGES_PER_QUERY = int(
+    os.environ.get(
+        "MAX_PAGES_PER_QUERY",
+        "0" if COLLECT_ALL else "8",
+    )
+)
 DELAY_SEC = float(os.environ.get("DISCOVER_DELAY", "0.12"))
 SMOKE_TEST = os.environ.get("SMOKE_TEST", "0") == "1"
 RESUME = os.environ.get("RESUME", "1") == "1"
 LAYERS = os.environ.get("LAYERS", "A,B,C,D,E").upper().split(",")
+RAW_OUT = Path(os.environ.get("RAW_OUT", str(PIPELINE_DIR / "ph-all-links-raw.json")))
 TEXT_LISTING_TYPES = ("condo-for-rent", "condo-for-sale")
 
 
@@ -253,6 +271,9 @@ def build_search_queries() -> list[str]:
     for c in "abcdefghijklmnopqrstuvwxyz":
         add(c)
 
+    for d in "0123456789":
+        add(d)
+
     for bg in (
         "th", "hy", "he", "hi", "li", "lf", "no", "as", "vi", "ra", "su", "ka",
         "ba", "on", "ut", "la", "si", "kn", "ch", "pl", "ru", "pa", "id", "sk",
@@ -358,29 +379,126 @@ def load_state() -> tuple[dict[str, ProjectHit], set[str]]:
     return projects, done_seeds
 
 
-def save_state(projects: dict[str, ProjectHit], done_seeds: set[str]) -> None:
+def metro_slugs_from(projects: dict[str, ProjectHit]) -> list[str]:
+    out: list[str] = []
+    for p in sorted(projects.values(), key=lambda x: x.slug):
+        if is_metro_address(p.address):
+            out.append(p.slug)
+    return out
+
+
+def _atomic_write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+
+def _maybe_backup(payload: dict[str, Any]) -> None:
+    global _last_backup_count
+    count = int(payload.get("count") or 0)
+    if count < 1:
+        return
+    if count - _last_backup_count < BACKUP_EVERY_N_PROJECTS:
+        return
+    _last_backup_count = count
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    body = json.dumps(payload, ensure_ascii=False, indent=2)
+    _atomic_write(BACKUP_DIR / "latest.json", body)
+    _atomic_write(BACKUP_DIR / f"checkpoint-{stamp}-{count}.json", body)
+
+
+def save_state(
+    projects: dict[str, ProjectHit],
+    done_seeds: set[str],
+    *,
+    current_seed: str | None = None,
+    current_page: int | None = None,
+) -> None:
     ordered = sorted(projects.values(), key=lambda p: p.slug)
+    metro_slugs = metro_slugs_from(projects)
+    saved_at = time.strftime("%Y-%m-%dT%H:%M:%S")
     payload = {
         "count": len(ordered),
-        "scope": "bangkok_metro_only",
+        "metro_count": len(metro_slugs),
+        "scope": "collect_all" if COLLECT_ALL else "bangkok_metro_only",
         "method": "next_data_v2",
+        "collect_all": COLLECT_ALL,
+        "phase": "collect",
+        "saved_at": saved_at,
         "slugs": [p.slug for p in ordered],
+        "metro_slugs": metro_slugs,
         "projects": [p.to_dict() for p in ordered],
     }
-    OUT.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    LEGACY_OUT.write_text(
-        json.dumps({"count": payload["count"], "slugs": payload["slugs"]}, ensure_ascii=False),
-        encoding="utf-8",
+    body = json.dumps(payload, ensure_ascii=False, indent=2)
+    _atomic_write(OUT, body)
+    if COLLECT_ALL:
+        _atomic_write(RAW_OUT, body)
+    _atomic_write(
+        LEGACY_OUT,
+        json.dumps(
+            {
+                "count": payload["count"],
+                "slugs": payload["slugs"],
+                "metro_count": payload["metro_count"],
+                "metro_slugs": metro_slugs,
+                "saved_at": saved_at,
+            },
+            ensure_ascii=False,
+        ),
     )
-    PROGRESS_OUT.write_text(
-        json.dumps({"done_seeds": sorted(done_seeds), "project_count": len(ordered)}, ensure_ascii=False),
-        encoding="utf-8",
+    _atomic_write(
+        LINKS_SNAPSHOT,
+        json.dumps(
+            {
+                "count": payload["count"],
+                "slugs": payload["slugs"],
+                "saved_at": saved_at,
+                "current_seed": current_seed,
+                "current_page": current_page,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
     )
+    _atomic_write(
+        PROGRESS_OUT,
+        json.dumps(
+            {
+                "done_seeds": sorted(done_seeds),
+                "project_count": len(ordered),
+                "current_seed": current_seed,
+                "current_page": current_page,
+                "saved_at": saved_at,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+    )
+    _maybe_backup(payload)
+
+
+def _emergency_save(*_args: Any) -> None:
+    rt = _runtime
+    if not rt:
+        sys.exit(0)
+    try:
+        save_state(
+            rt["projects"],
+            rt["done_seeds"],
+            current_seed=rt.get("current_seed"),
+            current_page=rt.get("current_page"),
+        )
+        print(f"\n💾 บันทึกฉุกเฉิน {len(rt['projects'])} ลิงก์ → {OUT}", flush=True)
+    except Exception as e:
+        print(f"\n⚠️ บันทึกฉุกเฉินล้มเหลว: {e}", file=sys.stderr, flush=True)
+    sys.exit(0)
 
 
 def merge_hit(projects: dict[str, ProjectHit], hit: dict[str, str], source: str) -> None:
     slug = hit["slug"]
-    if not is_metro_address(hit.get("address", "")):
+    if not COLLECT_ALL and not is_metro_address(hit.get("address", "")):
         return
     existing = projects.get(slug)
     if existing is None:
@@ -408,6 +526,7 @@ def crawl_seed(
     *,
     text_query: str | None = None,
     max_pages: int | None = None,
+    on_checkpoint: Callable[[int], None] | None = None,
 ) -> int:
     q_suffix = f"?text={urllib.parse.quote(text_query)}" if text_query else ""
     source = f"{layer}:{path}{q_suffix}"
@@ -466,6 +585,8 @@ def crawl_seed(
                 f"    {path} page {page}/{cap} (+{len(projects) - before} รวม {len(projects)})",
                 flush=True,
             )
+        if on_checkpoint and (page % SAVE_EVERY_PAGES == 0 or page == cap):
+            on_checkpoint(page)
 
     added = len(projects) - before
     print(
@@ -520,12 +641,21 @@ def crawl_layer_d(projects: dict[str, ProjectHit]) -> None:
 
 
 def main() -> int:
+    global _last_backup_count
+    PIPELINE_DIR.mkdir(parents=True, exist_ok=True)
+    signal.signal(signal.SIGTERM, _emergency_save)
+    signal.signal(signal.SIGINT, _emergency_save)
+
     projects, done_seeds = load_state()
+    _last_backup_count = len(projects)
     seeds = build_seeds()
 
     text_seeds = build_text_search_seeds() if "E" in LAYERS else []
 
-    print("=== Property Hub — ค้นหาโครงการ กทม.+ปริมณฑล (v2) ===", flush=True)
+    print("=== Property Hub — ค้นหาโครงการ (v2) ===", flush=True)
+    print(f"บันทึกถาวร: {PIPELINE_DIR} (ทุก {SAVE_EVERY_PAGES} หน้า)", flush=True)
+    if COLLECT_ALL:
+        print("โหมด COLLECT_ALL — เก็บทุกลิงก์ก่อน คัดกรองทีหลัง", flush=True)
     print(
         f"ชั้น: {','.join(LAYERS)} | A-C seeds: {len(seeds)} | E คำค้น: {len(text_seeds)} | มีอยู่แล้ว: {len(projects)}",
         flush=True,
@@ -537,12 +667,25 @@ def main() -> int:
     if SMOKE_TEST:
         print("โหมด SMOKE_TEST — ทดสอบสั้นๆ", flush=True)
 
+    _runtime["projects"] = projects
+    _runtime["done_seeds"] = done_seeds
+
+    def make_checkpoint(key: str) -> Callable[[int], None]:
+        def checkpoint(page: int) -> None:
+            _runtime["current_seed"] = key
+            _runtime["current_page"] = page
+            save_state(projects, done_seeds, current_seed=key, current_page=page)
+
+        return checkpoint
+
     for layer, path in seeds:
         key = f"{layer}:{path}"
         if RESUME and key in done_seeds:
             continue
-        crawl_seed(layer, path, projects)
+        crawl_seed(layer, path, projects, on_checkpoint=make_checkpoint(key))
         done_seeds.add(key)
+        _runtime.pop("current_seed", None)
+        _runtime.pop("current_page", None)
         save_state(projects, done_seeds)
         time.sleep(DELAY_SEC)
 
@@ -550,8 +693,16 @@ def main() -> int:
         key = f"{layer}:{path}?text={query}"
         if RESUME and key in done_seeds:
             continue
-        crawl_seed(layer, path, projects, text_query=query)
+        crawl_seed(
+            layer,
+            path,
+            projects,
+            text_query=query,
+            on_checkpoint=make_checkpoint(key),
+        )
         done_seeds.add(key)
+        _runtime.pop("current_seed", None)
+        _runtime.pop("current_page", None)
         save_state(projects, done_seeds)
         time.sleep(DELAY_SEC)
 
@@ -560,11 +711,15 @@ def main() -> int:
         save_state(projects, done_seeds)
 
     save_state(projects, done_seeds)
+    _runtime.clear()
 
     # สรุปโครงการดัง
     famous = ["hyde-heritage-thonglor", "hyde-heritage", "ashton-asoke", "life-asoke-hype"]
     found_famous = [s for s in famous if s in projects]
-    print(f"\n✅ พบ {len(projects)} โครงการ (กทม.+ปริมณฑล) → {OUT}", flush=True)
+    metro_n = len(metro_slugs_from(projects))
+    print(f"\n✅ พบ {len(projects)} ลิงก์โครงการ (กรองกทม.+ปริมณฑลได้ {metro_n}) → {OUT}", flush=True)
+    if COLLECT_ALL:
+        print(f"   ไฟล์ดิบทั้งหมด → {RAW_OUT}", flush=True)
     if found_famous:
         print(f"   โครงการดังที่เจอ: {', '.join(found_famous)}", flush=True)
     else:

@@ -13,12 +13,15 @@ class ReferenceCodeChip extends StatelessWidget {
     required this.label,
     this.compact = false,
     this.onCopied,
+    this.onNavigate,
   });
 
   final String code;
   final String label;
   final bool compact;
   final VoidCallback? onCopied;
+  /// กดชิปเพื่อเปิดหน้าอื่น (เช่นรายละเอียดทรัพย์) — ไอคอนขวายังคัดลอกได้
+  final VoidCallback? onNavigate;
 
   Future<void> _copy(BuildContext context) async {
     if (code.isEmpty) return;
@@ -46,7 +49,7 @@ class ReferenceCodeChip extends StatelessWidget {
       color: AppTheme.primaryLight,
       borderRadius: BorderRadius.circular(compact ? 6 : 8),
       child: InkWell(
-        onTap: () => _copy(context),
+        onTap: onNavigate ?? () => _copy(context),
         borderRadius: BorderRadius.circular(compact ? 6 : 8),
         child: Padding(
           padding: EdgeInsets.symmetric(
@@ -68,10 +71,21 @@ class ReferenceCodeChip extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Icon(
-                Icons.copy,
+                onNavigate != null ? Icons.open_in_new : Icons.copy,
                 size: compact ? 12 : 14,
                 color: AppTheme.primary.withOpacity(0.7),
               ),
+              if (onNavigate != null) ...[
+                const SizedBox(width: 2),
+                GestureDetector(
+                  onTap: () => _copy(context),
+                  child: Icon(
+                    Icons.copy,
+                    size: compact ? 11 : 13,
+                    color: AppTheme.textSecondary,
+                  ),
+                ),
+              ],
             ],
           ),
         ),
@@ -88,12 +102,14 @@ class TransactionReferenceBar extends StatelessWidget {
     this.transactionRef,
     this.listingLabel,
     this.transactionLabel,
+    this.onListingNavigate,
   });
 
   final String? listingCode;
   final String? transactionRef;
   final String? listingLabel;
   final String? transactionLabel;
+  final VoidCallback? onListingNavigate;
 
   @override
   Widget build(BuildContext context) {
@@ -108,6 +124,7 @@ class TransactionReferenceBar extends StatelessWidget {
           code: listingCode!,
           label: listingLabel ?? s.propertyCodeLabel,
           compact: true,
+          onNavigate: onListingNavigate,
         ),
       );
     }

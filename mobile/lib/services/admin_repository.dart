@@ -1,11 +1,17 @@
 import '../config/env.dart';
 import '../models/admin_dashboard_overview.dart';
+import '../models/customer_requirement.dart';
 import '../models/platform_exclusive_settings.dart';
+import '../models/platform_watermark_settings.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/demand_offer_acceptance.dart';
 import 'auth_service.dart';
+import 'chat_repository.dart';
 import 'platform_settings_service.dart';
 import 'supabase_service.dart';
 import 'trial_listing_store.dart';
+import '../utils/phone_suffix_util.dart';
 
 class AdminRepository {
   bool get _ready => SupabaseService.isReady;
@@ -16,14 +22,8 @@ class AdminRepository {
     if (Env.trialMode) return true;
     if (!_ready) return false;
     try {
-      final uid = SupabaseService.client!.auth.currentUser?.id;
-      if (uid == null) return false;
-      final row = await SupabaseService.client!
-          .from('profiles')
-          .select('role')
-          .eq('id', uid)
-          .maybeSingle();
-      return row?['role'] == 'admin';
+      final role = await AuthService.instance.fetchProfileRole();
+      return role == 'admin';
     } catch (_) {
       return Env.trialMode;
     }
@@ -115,11 +115,13 @@ class AdminRepository {
     }
   }
 
-  Future<Map<String, dynamic>?> fetchListingMapPoint(String? listingId) async {
-    if (listingId == null) return null;
+  Future<Map<String, dynamic>?> fetchListingMapPoint(
+    String? listingId, {
+    String? listingCode,
+  }) async {
     if (!_ready) {
       return {
-        'listing_code': 'RENT-CD-2026-000001',
+        'listing_code': listingCode ?? 'RENT-CD-2026-000001',
         'title': 'ทรู ทองหล่อ',
         'lat': 13.7234,
         'lng': 100.5794,
@@ -128,20 +130,58 @@ class AdminRepository {
     }
 
     try {
-      final row = await SupabaseService.client!
+      var query = SupabaseService.client!
           .from('listings_public')
-          .select('listing_code, title, lat, lng, district, project_name')
-          .eq('id', listingId)
-          .maybeSingle();
-      return row;
+          .select('listing_code, title, lat, lng, district, project_name, price_net, listing_type');
+      if (listingId != null && listingId.isNotEmpty) {
+        final row = await query.eq('id', listingId).maybeSingle();
+        if (row != null) return row;
+      }
+      if (listingCode != null && listingCode.isNotEmpty) {
+        return await query.eq('listing_code', listingCode).maybeSingle();
+      }
+      return null;
     } catch (_) {
-      return {
-        'listing_code': 'RENT-CD-2026-000001',
-        'title': 'ทรู ทองหล่อ',
-        'lat': 13.7234,
-        'lng': 100.5794,
-        'district': 'วัฒนา',
-      };
+      return null;
+    }
+  }
+
+  Future<String?> resolveLeadThreadId(Map<String, dynamic> lead) async {
+    return ChatRepository().resolveThreadIdForLead(lead);
+  }
+
+  Future<Map<String, dynamic>?> fetchLeadByThreadId(String threadId) async {
+    if (threadId.isEmpty) return null;
+    if (!_ready) return null;
+    try {
+      final byThread = await SupabaseService.client!
+          .from('leads')
+          .select()
+          .eq('thread_id', threadId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      if (byThread != null) return byThread;
+
+      final thread = await SupabaseService.client!
+          .from('chat_threads')
+          .select('listing_code, user_id')
+          .eq('id', threadId)
+          .maybeSingle();
+      if (thread == null) return null;
+      final code = thread['listing_code']?.toString();
+      final seekerId = thread['user_id']?.toString();
+      if (code == null || code.isEmpty || seekerId == null) return null;
+      return await SupabaseService.client!
+          .from('leads')
+          .select()
+          .eq('listing_code', code)
+          .eq('seeker_id', seekerId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+    } catch (_) {
+      return null;
     }
   }
 
@@ -192,12 +232,21 @@ class AdminRepository {
     }
 
     try {
-      final data = await SupabaseService.client!
-          .from('platform_stats_daily')
+      dynamic data = await SupabaseService.client!
+          .from('analytics_platform_daily')
           .select()
           .order('stat_date', ascending: false)
           .limit(days);
-      return List<Map<String, dynamic>>.from(data as List);
+      var rows = List<Map<String, dynamic>>.from(data as List);
+      if (rows.isEmpty) {
+        data = await SupabaseService.client!
+            .from('platform_stats_daily')
+            .select()
+            .order('stat_date', ascending: false)
+            .limit(days);
+        rows = List<Map<String, dynamic>>.from(data as List);
+      }
+      return rows;
     } catch (_) {
       final today = DateTime.now();
       return List.generate(days.clamp(1, 14), (i) {
@@ -329,7 +378,25 @@ class AdminRepository {
           DateTime.now().add(const Duration(days: 30)).toUtc().toIso8601String(),
     }).eq('id', listingId);
     await _audit('listing.approve_publish', listingId);
+    await _watermarkPublishedImages(listingId);
     return true;
+  }
+
+  /// ฝังลายน้ำ PROPPITER ในไฟล์รูปหลังเผยแพร่ (Edge Function)
+  Future<Map<String, dynamic>?> _watermarkPublishedImages(String listingId) async {
+    if (!_ready) return null;
+    try {
+      final res = await SupabaseService.client!.functions.invoke(
+        'listing-watermark-images',
+        body: {'listing_id': listingId},
+      );
+      final data = res.data;
+      if (data is Map<String, dynamic>) return data;
+      if (data is Map) return Map<String, dynamic>.from(data);
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<bool> rejectListingToDraft(String listingId) async {
@@ -364,36 +431,182 @@ class AdminRepository {
     } catch (_) {}
   }
 
-  Future<void> createDemandPost({
+  Future<String?> createDemandPost({
     required String title,
     required String description,
     required String transactionType,
+    String propertyType = 'condo',
+    List<String> zones = const [],
     double? maxPriceNet,
     double? minAreaSqm,
     double? maxDistanceBtsKm,
     String acceptedOffererPolicy = 'owner_and_co_agent',
     String? leadSource,
+    String? customerRequirementId,
+    String? customerPhoneLast4,
     bool urgentRush = false,
   }) async {
-    if (AuthService.instance.trialSimulatesBackend) return;
+    if (AuthService.instance.trialSimulatesBackend) {
+      return 'demo-demand-${DateTime.now().millisecondsSinceEpoch}';
+    }
     final uid = SupabaseService.client!.auth.currentUser!.id;
-    await SupabaseService.client!.from('demand_posts').insert({
-      'created_by': uid,
-      'title': title,
-      'description': description,
-      'transaction_type': transactionType,
-      'property_type': 'condo',
-      'max_price_net': maxPriceNet,
-      'min_area_sqm': minAreaSqm,
-      'max_distance_bts_km': maxDistanceBtsKm,
-      'status': 'open',
-      'open_until': DateTime.now().add(const Duration(days: 30)).toUtc().toIso8601String(),
-      'extra_criteria': {
-        'accepted_offerer_policy': acceptedOffererPolicy,
-        if (leadSource != null) 'lead_source': leadSource,
-        if (urgentRush) DemandBoardPostMeta.urgentRushKey: true,
-      },
-    });
+    String? seekerUserId;
+    if (customerRequirementId != null) {
+      final req = await SupabaseService.client!
+          .from('customer_requirements')
+          .select('user_id')
+          .eq('id', customerRequirementId)
+          .maybeSingle();
+      seekerUserId = req?['user_id']?.toString();
+    }
+
+    final row = await SupabaseService.client!
+        .from('demand_posts')
+        .insert({
+          'created_by': uid,
+          if (seekerUserId != null) 'seeker_user_id': seekerUserId,
+          'title': title,
+          'description': description,
+          'transaction_type': transactionType,
+          'property_type': propertyType,
+          'zones': zones,
+          'max_price_net': maxPriceNet,
+          'min_area_sqm': minAreaSqm,
+          'max_distance_bts_km': maxDistanceBtsKm,
+          'status': 'open',
+          'open_until':
+              DateTime.now().add(const Duration(days: 30)).toUtc().toIso8601String(),
+          'extra_criteria': {
+            'accepted_offerer_policy': acceptedOffererPolicy,
+            if (leadSource != null) 'lead_source': leadSource,
+            if (customerRequirementId != null)
+              'customer_requirement_id': customerRequirementId,
+            if (customerPhoneLast4 != null)
+              DemandBoardPostMeta.customerPhoneLast4Key: customerPhoneLast4,
+            if (urgentRush) DemandBoardPostMeta.urgentRushKey: true,
+          },
+        })
+        .select('id, post_code')
+        .single();
+    return row['id']?.toString();
+  }
+
+  Future<List<CustomerRequirement>> listPendingCustomerRequirements() async {
+    if (!_ready) return [CustomerRequirement.demo()];
+    try {
+      final data = await SupabaseService.client!
+          .from('customer_requirements')
+          .select()
+          .eq('status', 'pending')
+          .order('created_at', ascending: false);
+      final rows = (data as List).cast<Map<String, dynamic>>();
+      if (rows.isEmpty) return [];
+      return rows.map(CustomerRequirement.fromRow).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<String?> publishCustomerRequirementAsBoard({
+    required String requirementId,
+    required String title,
+    required String description,
+    required String transactionType,
+    String propertyType = 'condo',
+    List<String> zones = const [],
+    double? maxPriceNet,
+    double? minAreaSqm,
+    double? maxDistanceBtsKm,
+    bool urgentRush = false,
+    String? requesterRole,
+    String? contactPhone,
+  }) async {
+    final isAgentLead = requesterRole == 'agent';
+    final phoneLast4 = PhoneSuffixUtil.last4(contactPhone);
+    final postId = await createDemandPost(
+      title: title,
+      description: description,
+      transactionType: transactionType,
+      propertyType: propertyType,
+      zones: zones,
+      maxPriceNet: maxPriceNet,
+      minAreaSqm: minAreaSqm,
+      maxDistanceBtsKm: maxDistanceBtsKm,
+      leadSource: isAgentLead ? 'co_agent_sourced' : 'customer_direct',
+      customerRequirementId: requirementId,
+      customerPhoneLast4: isAgentLead ? phoneLast4 : null,
+      urgentRush: urgentRush,
+    );
+    if (postId == null) return null;
+    if (!AuthService.instance.trialSimulatesBackend) {
+      await SupabaseService.client!.from('customer_requirements').update({
+        'status': 'published',
+        'demand_post_id': postId,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', requirementId);
+
+      try {
+        final post = await SupabaseService.client!
+            .from('demand_posts')
+            .select('post_code, title')
+            .eq('id', postId)
+            .single();
+        await SupabaseService.client!.functions.invoke(
+          'chat-notify-requirement-published',
+          body: {
+            'requirement_id': requirementId,
+            'post_code': post['post_code'],
+            'post_title': post['title'],
+          },
+        );
+      } catch (_) {
+        /* non-fatal */
+      }
+    }
+    return postId;
+  }
+
+  Future<List<Map<String, dynamic>>> listOffersForDemandPost(
+    String demandPostId,
+  ) async {
+    if (!_ready) return [];
+    try {
+      final data = await SupabaseService.client!
+          .from('demand_offers')
+          .select(
+            'id, offer_code, title, price_net, status, offerer_capacity, listing_id, created_at',
+          )
+          .eq('demand_post_id', demandPostId)
+          .order('created_at', ascending: false);
+      return List<Map<String, dynamic>>.from(data as List);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<Map<String, dynamic>?> promoteDemandOffer(String offerId) async {
+    if (!_ready) return null;
+    try {
+      final res = await SupabaseService.client!.functions.invoke(
+        'promote-demand-offer',
+        body: {'offer_id': offerId},
+      );
+      final data = res.data as Map<String, dynamic>?;
+      if (data == null || data['error'] != null) {
+        throw Exception(data?['error'] ?? 'promote failed');
+      }
+      return data;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> closeCustomerRequirement(String requirementId) async {
+    if (AuthService.instance.trialSimulatesBackend) return;
+    await SupabaseService.client!.from('customer_requirements').update({
+      'status': 'closed',
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', requirementId);
   }
 
   Future<List<Map<String, dynamic>>> listChatFaqRules() async {
@@ -457,6 +670,25 @@ class AdminRepository {
     }
   }
 
+  /// นับแชทรอรับงาน (ยังไม่มีผู้รับผิดชอบ)
+  Future<int> _countChatWaiting() async {
+    if (!_ready) return 0;
+    try {
+      final rows = await SupabaseService.client!
+          .from('chat_threads')
+          .select('id')
+          .eq('admin_reply_done', false)
+          .isFilter('assigned_admin_id', null)
+          .or(
+            'viewing_submitted.eq.true,admin_escalated.eq.true,status.eq.waiting_admin,'
+            'category.in.(escalation,viewing_request,demand_offer,discovery,staff_support,customer_requirement,booking_interest)',
+          );
+      return (rows as List).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+
   Future<AdminDashboardOverview> fetchDashboardOverview() async {
     if (!_ready) {
       return AdminDashboardOverview(
@@ -473,6 +705,7 @@ class AdminRepository {
         importsPending: 0,
         usersTotal: 48,
         demandPostsOpen: 6,
+        customerRequirementsPending: 2,
         updatedAt: DateTime.now(),
       );
     }
@@ -484,7 +717,7 @@ class AdminRepository {
         _countRows('listings'),
         _countRows('leads'),
         _countRows('leads', eq: {'status': 'new'}),
-        _countRows('chat_admin_inbox'),
+        _countChatWaiting(),
         _countRows('appointments', inColumn: 'status', inValues: ['pending', 'confirmed']),
         _countRows('demand_offers', eq: {'capacity_verified': 'pending'}),
         _countRows('listing_images', eq: {'moderation_status': 'pending'}),
@@ -492,6 +725,7 @@ class AdminRepository {
         _countRows('listing_imports', inColumn: 'status', inValues: ['queued', 'draft_ready', 'needs_fix']),
         _countRows('profiles'),
         _countRows('demand_posts', eq: {'status': 'open'}),
+        _countRows('customer_requirements', eq: {'status': 'pending'}),
       ]);
 
       return AdminDashboardOverview(
@@ -508,6 +742,7 @@ class AdminRepository {
         importsPending: results[10],
         usersTotal: results[11],
         demandPostsOpen: results[12],
+        customerRequirementsPending: results[13],
         updatedAt: DateTime.now(),
       );
     } catch (_) {
@@ -523,5 +758,101 @@ class AdminRepository {
     await SupabaseService.client!
         .from('app_platform_settings')
         .upsert({'id': 'default', ...settings.toUpdatePayload()});
+  }
+
+  Future<PlatformWatermarkSettings> fetchWatermarkSettings() async {
+    if (!_ready) return PlatformWatermarkSettings.defaults;
+    try {
+      final row = await SupabaseService.client!
+          .from('app_platform_settings')
+          .select(
+            'listing_watermark_enabled, listing_watermark_storage_path, '
+            'listing_watermark_public_url, listing_watermark_opacity, '
+            'listing_watermark_size_ratio',
+          )
+          .eq('id', 'default')
+          .maybeSingle();
+      if (row == null) return PlatformWatermarkSettings.defaults;
+      return PlatformWatermarkSettings.fromJson(row);
+    } catch (_) {
+      return PlatformWatermarkSettings.defaults;
+    }
+  }
+
+  Future<PlatformWatermarkSettings> uploadListingWatermark(XFile file) async {
+    if (!_ready) {
+      throw Exception('ต้องเชื่อม Supabase และล็อกอินแอดมิน');
+    }
+    final bytes = await file.readAsBytes();
+    final ext = file.name.contains('.')
+        ? file.name.split('.').last.toLowerCase()
+        : 'png';
+    final safeExt = {'png', 'jpg', 'jpeg', 'webp'}.contains(ext) ? ext : 'png';
+    final path = 'watermark/listing-watermark.$safeExt';
+
+    final mime = safeExt == 'png'
+        ? 'image/png'
+        : safeExt == 'webp'
+            ? 'image/webp'
+            : 'image/jpeg';
+    await SupabaseService.client!.storage.from('brand-assets').uploadBinary(
+          path,
+          bytes,
+          fileOptions: FileOptions(upsert: true, contentType: mime),
+        );
+
+    final publicUrl =
+        SupabaseService.client!.storage.from('brand-assets').getPublicUrl(path);
+
+    final current = await fetchWatermarkSettings();
+    final next = PlatformWatermarkSettings(
+      enabled: true,
+      storagePath: path,
+      publicUrl: publicUrl,
+      opacity: current.opacity,
+      sizeRatio: current.sizeRatio,
+    );
+
+    await SupabaseService.client!.from('app_platform_settings').upsert({
+      'id': 'default',
+      ...next.toUpdatePayload(),
+    });
+
+    PlatformSettingsService.instance.applyWatermark(next);
+    await _audit('settings.watermark_upload', 'default');
+    return next;
+  }
+
+  Future<PlatformWatermarkSettings> saveWatermarkSettings(
+    PlatformWatermarkSettings settings,
+  ) async {
+    if (!_ready) {
+      PlatformSettingsService.instance.applyWatermark(settings);
+      return settings;
+    }
+    await SupabaseService.client!.from('app_platform_settings').upsert({
+      'id': 'default',
+      ...settings.toUpdatePayload(),
+    });
+    PlatformSettingsService.instance.applyWatermark(settings);
+    await _audit('settings.watermark_save', 'default');
+    return settings;
+  }
+
+  Future<void> clearListingWatermark() async {
+    if (!_ready) return;
+    final current = await fetchWatermarkSettings();
+    await SupabaseService.client!.from('app_platform_settings').update({
+      'listing_watermark_storage_path': null,
+      'listing_watermark_public_url': null,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }).eq('id', 'default');
+    final next = PlatformWatermarkSettings(
+      enabled: current.enabled,
+      opacity: current.opacity,
+      sizeRatio: current.sizeRatio,
+    );
+    PlatformSettingsService.instance.applyWatermark(next);
+    await _audit('settings.watermark_clear', 'default');
   }
 }

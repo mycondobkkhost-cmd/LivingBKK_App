@@ -23,6 +23,10 @@ class BrandAssets {
   static const logoLockupCompactDark = '$_base/logo-lockup-compact-dark.png';
 
   static const logoMark = '$_base/logo-mark.png';
+  /// ตัว P ล้วน — หัวหน้าแอป (ไม่มีวงกลม / ไม่มี wordmark)
+  static const proppiterMarkP = '$_base/proppiter-mark-p.png';
+  /// P + PROPPITER — lockup หัวหน้าแอป (พื้นโปร่งใส)
+  static const proppiterHeaderLockup = '$_base/proppiter-header-lockup.png';
   static const logoStacked = '$_base/logo-stacked.png';
   static const logoStackedVertical = '$_base/logo-stacked-vertical.png';
 

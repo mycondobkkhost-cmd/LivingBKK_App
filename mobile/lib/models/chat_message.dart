@@ -1,24 +1,44 @@
+import '../l10n/app_strings.dart';
+
 enum ChatMessageRole { user, ai, system, adminNotice }
 
-enum ChatMessageLinkKind { listing, projectUnits }
+enum ChatMessageLinkKind {
+  listing,
+  projectUnits,
+  requirementForm,
+  viewingForm,
+}
 
 class ChatMessageLink {
   const ChatMessageLink({
     required this.label,
     required this.kind,
-    required this.listingId,
+    this.listingId = '',
     this.projectName,
   });
 
   factory ChatMessageLink.fromJson(Map<String, dynamic> json) {
-    final kindRaw = json['kind']?.toString() ?? 'listing';
     return ChatMessageLink(
       label: json['label']?.toString() ?? '',
-      kind: kindRaw == 'projectUnits'
-          ? ChatMessageLinkKind.projectUnits
-          : ChatMessageLinkKind.listing,
-      listingId: json['listingId']?.toString() ?? json['listing_id']?.toString() ?? '',
-      projectName: json['projectName']?.toString() ?? json['project_name']?.toString(),
+      kind: _kindFromString(json['kind']?.toString() ?? 'listing'),
+      listingId:
+          json['listingId']?.toString() ?? json['listing_id']?.toString() ?? '',
+      projectName:
+          json['projectName']?.toString() ?? json['project_name']?.toString(),
+    );
+  }
+
+  factory ChatMessageLink.requirementForm(AppStrings s) {
+    return ChatMessageLink(
+      label: s.chatLinkFillRequirement,
+      kind: ChatMessageLinkKind.requirementForm,
+    );
+  }
+
+  factory ChatMessageLink.viewingForm(AppStrings s) {
+    return ChatMessageLink(
+      label: s.chatLinkBookViewing,
+      kind: ChatMessageLinkKind.viewingForm,
     );
   }
 
@@ -26,6 +46,48 @@ class ChatMessageLink {
   final ChatMessageLinkKind kind;
   final String listingId;
   final String? projectName;
+
+  bool get isFormAction =>
+      kind == ChatMessageLinkKind.requirementForm ||
+      kind == ChatMessageLinkKind.viewingForm;
+
+  bool get isListingAction =>
+      kind == ChatMessageLinkKind.listing ||
+      kind == ChatMessageLinkKind.projectUnits;
+
+  Map<String, dynamic> toJson() => {
+        'label': label,
+        'kind': _kindToString(kind),
+        if (listingId.isNotEmpty) 'listingId': listingId,
+        if (projectName != null) 'projectName': projectName,
+      };
+
+  static ChatMessageLinkKind _kindFromString(String raw) {
+    switch (raw) {
+      case 'projectUnits':
+      case 'project_units':
+        return ChatMessageLinkKind.projectUnits;
+      case 'requirement_form':
+        return ChatMessageLinkKind.requirementForm;
+      case 'viewing_form':
+        return ChatMessageLinkKind.viewingForm;
+      default:
+        return ChatMessageLinkKind.listing;
+    }
+  }
+
+  static String _kindToString(ChatMessageLinkKind kind) {
+    switch (kind) {
+      case ChatMessageLinkKind.projectUnits:
+        return 'projectUnits';
+      case ChatMessageLinkKind.requirementForm:
+        return 'requirement_form';
+      case ChatMessageLinkKind.viewingForm:
+        return 'viewing_form';
+      case ChatMessageLinkKind.listing:
+        return 'listing';
+    }
+  }
 }
 
 class ChatMessage {

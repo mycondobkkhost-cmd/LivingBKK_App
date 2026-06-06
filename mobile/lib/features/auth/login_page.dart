@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../../config/env.dart';
 import '../../l10n/app_strings.dart';
@@ -9,14 +10,12 @@ import '../../state/locale_controller.dart';
 import '../../state/session_gate.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/li_layout.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../utils/admin_routing.dart';
 import '../../widgets/language_switch_button.dart';
-import '../../widgets/living_bkk_logo.dart';
 import 'auth_form_widgets.dart';
 
-/// หน้าเข้าสู่ระบบ — บังคับล็อกอิน/สมัคร (อ้างอิง AgentAble)
+/// หน้าเข้าสู่ระบบ — ธีมเดียวกับ header หน้าแรก
 class LoginPage extends StatefulWidget {
   const LoginPage({
     super.key,
@@ -154,223 +153,169 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final s = AppStrings.of(context);
+    return ListenableBuilder(
+      listenable: widget.localeController,
+      builder: (context, _) {
+        final s = AppStrings.of(context);
 
-    return Scaffold(
-      body: AuthSplashBackdrop(
-        child: SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return SingleChildScrollView(
-                  padding: const EdgeInsets.symmetric(horizontal: LiLayout.pagePadding),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: LanguageSwitchButton(
-                              controller: widget.localeController,
-                            ),
+        return AuthScreenShell(
+          trailing: Padding(
+            padding: const EdgeInsets.only(right: 18),
+            child: LanguageSwitchButton(
+              controller: widget.localeController,
+              light: true,
+              hero: true,
+            ),
+          ),
+          form: AuthCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  s.authWelcome,
+                  textAlign: TextAlign.center,
+                  style: authTitleTextStyle(),
+                ),
+            const SizedBox(height: 20),
+            if (!Env.isConfigured && !Env.allowPasswordlessLogin)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  s.configureSupabaseFirst,
+                  textAlign: TextAlign.center,
+                  style: authBodyTextStyle(),
+                ),
+              )
+            else ...[
+              AuthFormField(
+                controller: _email,
+                label: s.authEmailOrUsername,
+                hint: s.authEmailOrUsername,
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 14),
+              AuthFormField(
+                controller: _password,
+                label: s.authPassword,
+                hint: s.authPassword,
+                obscure: _obscurePassword,
+                suffix: IconButton(
+                  icon: Icon(
+                    _obscurePassword
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                    size: 20,
+                    color: AppTheme.textSecondary,
+                  ),
+                  onPressed: () => setState(
+                    () => _obscurePassword = !_obscurePassword,
+                  ),
+                ),
+              ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _loading ? null : _forgotPassword,
+                  child: Text(
+                    s.forgotPassword,
+                    style: authBodyTextStyle(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 48,
+                child: FilledButton(
+                  onPressed: _loading ? null : _submit,
+                  style: authPrimaryButtonStyle(),
+                  child: _loading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
                           ),
-                          const SizedBox(height: 20),
-                          Center(
-                            child: Column(
-                              children: [
-                                ListenableBuilder(
-                                  listenable: widget.localeController,
-                                  builder: (context, _) => LivingBkkLogo(
-                                    size: LivingBkkLogoSize.md,
-                                    showTagline: false,
-                                    onGradient: true,
-                                    isEnglish: widget.localeController.isEnglish,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                                const LoginSloganBlock(),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-                          AuthCard(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                Text(
-                                  s.authWelcome,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppTheme.textPrimary,
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                if (!Env.isConfigured && !Env.allowPasswordlessLogin)
-                                  Padding(
-                                    padding: const EdgeInsets.only(bottom: 16),
-                                    child: Text(
-                                      s.configureSupabaseFirst,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                    ),
-                                  )
-                                else ...[
-                                  AuthFormField(
-                                    controller: _email,
-                                    label: s.authEmailOrUsername,
-                                    hint: s.authEmailOrUsername,
-                                    keyboardType: TextInputType.emailAddress,
-                                  ),
-                                  const SizedBox(height: 14),
-                                  AuthFormField(
-                                    controller: _password,
-                                    label: s.authPassword,
-                                    hint: s.authPassword,
-                                    obscure: _obscurePassword,
-                                    suffix: IconButton(
-                                      icon: Icon(
-                                        _obscurePassword
-                                            ? Icons.visibility_off_outlined
-                                            : Icons.visibility_outlined,
-                                        size: 20,
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                      onPressed: () => setState(
-                                        () => _obscurePassword = !_obscurePassword,
-                                      ),
-                                    ),
-                                  ),
-                                  Align(
-                                    alignment: Alignment.centerRight,
-                                    child: TextButton(
-                                      onPressed: _loading ? null : _forgotPassword,
-                                      child: Text(
-                                        s.forgotPassword,
-                                        style: TextStyle(
-                                          fontSize: 13,
-                                          color: AppTheme.textSecondary,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  SizedBox(
-                                    height: 48,
-                                    child: FilledButton(
-                                      onPressed: _loading ? null : _submit,
-                                      style: authPrimaryButtonStyle(),
-                                      child: _loading
-                                          ? const SizedBox(
-                                              height: 22,
-                                              width: 22,
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                color: Colors.white,
-                                              ),
-                                            )
-                                          : Text(
-                                              s.signInTitle,
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                fontWeight: FontWeight.w700,
-                                              ),
-                                            ),
-                                    ),
-                                  ),
-                                  if (Env.allowPasswordlessLogin) ...[
-                                    const SizedBox(height: 10),
-                                    SizedBox(
-                                      height: 46,
-                                      child: OutlinedButton(
-                                        onPressed: _loading ? null : _enterTrial,
-                                        style: AppTheme.pillOutlined,
-                                        child: Text(
-                                          s.authQuickEntry,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                  const SizedBox(height: 20),
-                                  Text(
-                                    s.authOrLoginWith,
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      AuthSocialButton(
-                                        color: const Color(0xFF1877F2),
-                                        icon: Icons.facebook,
-                                        iconColor: Colors.white,
-                                        onTap: _loading
-                                            ? null
-                                            : () => _oauth(_auth.signInWithFacebook),
-                                      ),
-                                      const SizedBox(width: 16),
-                                      AuthSocialButton(
-                                        color: Colors.white,
-                                        border: AppTheme.border,
-                                        child: const GoogleLogoIcon(size: 24),
-                                        onTap: _loading
-                                            ? null
-                                            : () => _oauth(_auth.signInWithGoogle),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                                const SizedBox(height: 20),
-                                Wrap(
-                                  alignment: WrapAlignment.center,
-                                  crossAxisAlignment: WrapCrossAlignment.center,
-                                  children: [
-                                    Text(
-                                      s.authNoAccountYet,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppTheme.textSecondary,
-                                      ),
-                                    ),
-                                    TextButton(
-                                      onPressed: () => context.push('/signup'),
-                                      child: Text(
-                                        s.authSignUpFree,
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                          color: LivingBkkBrand.loginAccentPurple,
-                                          decoration: TextDecoration.underline,
-                                          decorationColor: LivingBkkBrand.loginAccentPurple,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
+                        )
+                      : Text(s.signInTitle),
+                ),
+              ),
+              if (Env.allowPasswordlessLogin) ...[
+                const SizedBox(height: 10),
+                SizedBox(
+                  height: 46,
+                  child: OutlinedButton(
+                    onPressed: _loading ? null : _enterTrial,
+                    style: AppTheme.pillOutlined.copyWith(
+                      side: MaterialStateProperty.all(
+                        BorderSide(color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.45)),
+                      ),
+                    ),
+                    child: Text(
+                      s.authQuickEntry,
+                      style: GoogleFonts.prompt(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: LivingBkkBrand.homeHeaderBlockColor,
+                      ),
                     ),
                   ),
-                );
-              },
+                ),
+              ],
+              const SizedBox(height: 20),
+              Text(
+                s.authOrLoginWith,
+                textAlign: TextAlign.center,
+                style: authBodyTextStyle(),
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  AuthSocialButton(
+                    color: const Color(0xFF1877F2),
+                    icon: Icons.facebook,
+                    iconColor: Colors.white,
+                    onTap: _loading ? null : () => _oauth(_auth.signInWithFacebook),
+                  ),
+                  const SizedBox(width: 16),
+                  AuthSocialButton(
+                    color: Colors.white,
+                    border: AppTheme.border,
+                    child: const GoogleLogoIcon(size: 24),
+                    onTap: _loading ? null : () => _oauth(_auth.signInWithGoogle),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 20),
+            Wrap(
+              alignment: WrapAlignment.center,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                Text(
+                  s.authNoAccountYet,
+                  style: authBodyTextStyle(),
+                ),
+                TextButton(
+                  onPressed: () => context.push('/signup'),
+                  child: Text(
+                    s.authSignUpFree,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: LivingBkkBrand.homeHeaderBlockColor,
+                      decoration: TextDecoration.underline,
+                      decorationColor: LivingBkkBrand.homeHeaderBlockColor,
+                    ),
+                  ),
+                ),
+              ],
             ),
-        ),
-      ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

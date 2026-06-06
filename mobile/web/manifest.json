@@ -1,11 +1,11 @@
 {
-    "name": "LivingBKK",
-    "short_name": "LivingBKK",
+    "name": "PROPPITER",
+    "short_name": "PROPPITER",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#12122B",
-    "theme_color": "#6C5DD3",
-    "description": "LivingBKK — ค้นหาเช่า-ซื้อ กรุงเทพและปริมณฑล",
+    "background_color": "#18104B",
+    "theme_color": "#583AD6",
+    "description": "PROPPITER — แพลตฟอร์มแมตช์อสังหาฯ ข้อมูลแม่นยำ ลงประกาศฟรี บริการครบวงจร กทม.และปริมณฑล",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

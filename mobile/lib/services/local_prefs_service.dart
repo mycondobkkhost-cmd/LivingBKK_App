@@ -85,6 +85,16 @@ class LocalPrefsService {
     await _prefs!.setString(key, value);
   }
 
+  Future<bool?> getBool(String key) async {
+    await init();
+    return _prefs!.getBool(key);
+  }
+
+  Future<void> setBool(String key, bool value) async {
+    await init();
+    await _prefs!.setBool(key, value);
+  }
+
   Future<void> remove(String key) async {
     await init();
     await _prefs!.remove(key);

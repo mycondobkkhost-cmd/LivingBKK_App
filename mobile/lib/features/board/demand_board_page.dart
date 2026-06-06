@@ -15,6 +15,9 @@ import '../../utils/demand_board_filter_apply.dart';
 import '../../utils/demand_search_match.dart';
 import '../../widgets/demand/demand_board_filter_sheet.dart';
 import '../../widgets/demand_inquiry_card.dart';
+import '../../theme/li_layout.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class DemandBoardPage extends StatefulWidget {
   const DemandBoardPage({super.key});
@@ -167,41 +170,33 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
     final hasActiveFilters =
         filterActive || _favoritesOnly || hasLocationQuery;
 
-    return Scaffold(
-      backgroundColor: AppTheme.surfaceWarm,
-      appBar: AppBar(
-        title: Text(s.demandBoardTitle),
-        actions: [
-          IconButton(
-            tooltip: s.demandFilterButton,
-            onPressed: _openFilterSheet,
-            icon: Badge(
-              isLabelVisible: filterActive,
-              label: Text('${_filters.activeCount}'),
-              child: const Icon(Icons.tune_rounded),
-            ),
+    return ConsumerPageShell(
+      title: s.demandBoardTitle,
+      safeBottomBody: false,
+      actions: [
+        ConsumerHeaderIconButton(
+          icon: Icons.tune_rounded,
+          onTap: _openFilterSheet,
+          showBadge: filterActive,
+          badgeLabel: filterActive ? Text('${_filters.activeCount}') : null,
+        ),
+        ConsumerHeaderIconButton(
+          icon: Icons.favorite_border_rounded,
+          onTap: () => DemandBoardNavigation.openSavedBoard(context),
+          showBadge: favCount > 0,
+          badgeLabel: favCount > 0 ? Text('$favCount') : null,
+        ),
+        if (hasActiveFilters)
+          ConsumerHeaderTextButton(
+            label: s.t('ล้าง', 'Clear'),
+            onTap: _clearFilters,
           ),
-          IconButton(
-            tooltip: s.savedDemandBoardTitle,
-            onPressed: () => DemandBoardNavigation.openSavedBoard(context),
-            icon: Badge(
-              isLabelVisible: favCount > 0,
-              label: Text('$favCount'),
-              child: const Icon(Icons.favorite_border),
-            ),
-          ),
-          if (hasActiveFilters)
-            TextButton(
-              onPressed: _clearFilters,
-              child: Text(s.t('ล้าง', 'Clear')),
-            ),
-        ],
-      ),
+      ],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 0),
             child: TextField(
               controller: _locationController,
               textInputAction: TextInputAction.search,
@@ -230,7 +225,7 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 0),
             child: Row(
               children: [
                 Expanded(
@@ -268,7 +263,7 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
             ),
           ),
           Container(
-            margin: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            margin: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 0),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -295,7 +290,7 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+            padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 0),
             child: SegmentedButton<bool>(
               style: SegmentedButton.styleFrom(
                 visualDensity: VisualDensity.compact,
@@ -345,7 +340,14 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
                         onRefresh: _load,
                         child: ListView.separated(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          padding: const EdgeInsets.fromLTRB(12, 8, 12, 20),
+                          padding: PageSafeInsets.padLTRB(
+                            context,
+                            left: 12,
+                            top: 8,
+                            right: 12,
+                            bottom: 16,
+                            addHomeIndicator: false,
+                          ),
                           itemCount: visible.length,
                           separatorBuilder: (_, __) => const SizedBox(height: 6),
                           itemBuilder: (context, i) {

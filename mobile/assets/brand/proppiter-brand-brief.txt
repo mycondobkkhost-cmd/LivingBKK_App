@@ -1,76 +1,45 @@
-# PROPPITER — Brand brief (from mockups 2026-06)
-# LivingBKK → PROPPITER rebrand | PropTech startup
+# PROPPITER — Brand Brief (Final)
+# LivingBKK → PROPPITER | PropTech | กทม.+ปริมณฑล
 
-## Brand name
-PROPPITER (all caps in UI; concept: Property + Piter)
+Brand Name: PROPPITER
+Brand Descriptor (EN): Real Estate Matching Platform
+Tagline TH: ข้อมูลแม่นยำ • ลงประกาศฟรี • บริการครบวงจร
+Tagline EN: Verified listings • Free to post • Full-service support
 
-## Tagline — Thai (official separator: •)
-โพสต์ฟรี • ปิดดีลไว • ไม่ต้องหาลูกค้าเอง
+## 1. Brand Identity
+แพลตฟอร์มตัวกลางอสังหาริมทรัพย์แบบครบวงจร (กทม.และปริมณฑล) ที่เชื่อมต่อผู้หา ทรัพย์ เจ้าของ และเอเจนต์ เข้าด้วยกัน
+โดยมีทีมงานดูแลให้ทุกขั้นตอนแบบ Zero-Effort จบปัญหาการหาห้องแล้วไม่ได้ห้อง
+ด้วยระบบจัดการสถานะทรัพย์ที่แม่นยำและโปร่งใสที่สุด
 
-## Tagline — English
-Post for free • Close deals faster • No chasing clients yourself
+## 2. Target Audience
+Primary: ผู้หาทรัพย์ — ต้องการข้อมูลอัปเดตจริง ไม่โดนหลอก ไม่เสียเวลาทักห้องที่ปล่อยไปแล้ว
+Secondary: เจ้าของทรัพย์ (หาลูกค้าโดยไม่มีค่าแอบแฝง), เอเจนต์ (Co-Broker 50/50)
 
-## Typography
-- Wordmark EN: geometric sans bold (Prompt SemiBold/Bold or equivalent)
-- Tagline TH/EN: Prompt Regular/Medium
-- Note: "PROP" solid navy; "PITER" pink/gradient accent on light backgrounds
+## 3. Core Differentiators
+- Verified Data & Availability — ทรัพย์ชัวร์ สถานะตรงความจริง
+- 100% Free Listing — โพสต์ฟรี ไม่ขายเครดิต (รายได้จาก Success Fee เท่านั้น)
+- Professional Managed Service — ทีมแอดมิน สกรีน พานัด e-Contract
 
-## Colors — extracted from latest mockups (light theme)
-# Source: horizontal + stacked lockups (sampled RGB from PNG)
+## 4. Tone of Voice
+Professional Startup Bold — น่าเชื่อถือ ฉับไว ทันสมัย แก้ปัญหาตรงจุด
 
-navy_wordmark     = #18104B   # "PROP" + tagline on white
-pink_accent       = #DB3D76   # "PITER" solid on light lockups
-purple_primary    = #583AD6   # icon gradient start / primary UI
-purple_mid        = #7B5CE8   # gradient mid (between sampled stops)
-pink_gradient_end = #E03E7A   # icon gradient end
-background_light  = #F7F8FB   # app shell (near mockup white #FFFFFF panels)
-background_white  = #FFFFFF
+## 5. Visual & Design System
+Colors: PROP Navy #18104B | PITER Pink #DB3D76 | Gradient mark #5634E3→#9B6DFF→#DB3D76
+UI: Canva-style — clean, pill-shape, พื้น #F9F9FB
 
-## Logo mark gradient (light UI & icons)
-gradient_start = #5634E3
-gradient_mid   = #9B6DFF
-gradient_end   = #DB3D76
-gradient_stops = 0.0, 0.55, 1.0
+## 6. Store Listing
+App Store Subtitle TH: แมตช์ทรัพย์แม่นยำ โพสต์ฟรี
+App Store Subtitle EN: Verified Property Matching
 
-## Legacy mapping (LivingBKK → PROPPITER)
-# Old primary #6C5DD3 → use purple_primary #583AD6
-# Old accent  #FF5B8A → use pink_accent #DB3D76
-# Old navy    #12122B → use navy_wordmark #18104B (slightly warmer)
+App Description TH:
+PROPPITER แพลตฟอร์มแมตช์อสังหาฯ ที่มอบข้อมูลแม่นยำและโปร่งใสที่สุด!
+ค้นหาห้องที่ใช่พร้อมบริการดูแลครบวงจรจากทีมงานมืออาชีพ หรือลงประกาศฟรี 100% ไร้ค่าใช้จ่ายแอบแฝง
 
-## Dark theme — recommended (inverted for readability, same concept)
-# Backgrounds
-dark_bg           = #0E0C18   # app / splash base
-dark_surface      = #16142A   # cards, sheets
-dark_surface_elev = #221E3C   # elevated chips, inputs
-dark_border       = #2E2948
+App Description EN:
+PROPPITER is a trusted real estate matching platform offering 100% verified availability.
+Discover your ideal property with our comprehensive end-to-end support, or list your property for free with zero hidden fees.
 
-# Logo / wordmark on dark (export lockup-dark.png with these rules)
-dark_prop_text    = #F5F3FF   # "PROP" — off-white, not pure #FFF
-dark_piter_text   = #FF6B9D   # "PITER" — lighter pink for contrast on navy
-dark_tagline_text = #B8B2D4   # tagline — muted lavender-gray
-dark_icon_gradient_start = #6E4AE8
-dark_icon_gradient_mid   = #A88BFF
-dark_icon_gradient_end   = #FF7AAB
-
-# UI accents on dark (buttons, links)
-dark_primary      = #7B5CE8
-dark_primary_hover= #6E4AE8
-dark_accent       = #FF6B9D
-
-## Asset filenames (replace LivingBKK set in this folder)
-logo-mark.png
-app-icon-gradient.png          # 1024×1024
-favicon-256.png                # 256×256
-logo-lockup-light.png
-logo-lockup-dark.png           # use dark_* colors above
-logo-lockup-compact-light.png
-logo-lockup-compact-dark.png
-logo-lockup.png                # = light
-logo-stacked-vertical.png
-proppiter-brand-guide.png
-
-## Export notes for designer
-- Tagline must use bullet • (U+2022), not |
-- lockup-light: navy PROP + pink PITER + navy tagline on transparent or white
-- lockup-dark: dark_prop / dark_piter / dark_tagline on transparent over #0E0C18 preview
-- compact variants: no tagline
+## Logo lockup (3 layers)
+1) PROPPITER
+2) Real Estate Matching Platform
+3) Tagline TH/EN (• separator only)

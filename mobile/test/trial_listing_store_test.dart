@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:livingbkk/models/listing_create_rules.dart';
-import 'package:livingbkk/models/listing_create_rules.dart';
+import 'package:livingbkk/models/listing_pet_policy.dart';
 import 'package:livingbkk/models/offer_commission_scheme.dart';
 import 'package:livingbkk/services/listing_create_repository.dart';
 import 'package:livingbkk/services/trial_listing_store.dart';
@@ -15,7 +15,10 @@ ListingCreateInput _sampleInput({String title = 'ทดสอบออฟไล�
     posterRole: ListingPosterRole.owner,
     description: 'รายละเอียดทดสอบ',
     promoPriceNet: 22000,
-    petAllowed: true,
+    petPolicy: const ListingPetPolicyInput(
+      allowed: true,
+      dogsAllowed: true,
+    ),
     commissionScheme: OfferCommissionScheme.ownerRent1MoPer1Yr,
   );
 }

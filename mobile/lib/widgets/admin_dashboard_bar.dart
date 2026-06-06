@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/app_strings.dart';
 import '../models/admin_dashboard_overview.dart';
+import '../theme/admin_theme.dart';
 import '../theme/app_theme.dart';
 import '../theme/living_bkk_brand.dart';
 
@@ -22,7 +23,7 @@ class AdminDashboardBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final s = context.s;
     final tiles = [
-      _Tile(s.adminDashProjects, data.projects, 9, Icons.apartment_outlined),
+      _Tile(s.adminDashProjects, data.projects, 10, Icons.apartment_outlined),
       _Tile(s.adminDashListings, data.listingsPublished, -1, Icons.home_work_outlined,
           subtitle: s.adminDashListingsSub(data.listingsTotal)),
       _Tile(s.adminDashLeads, data.leadsNew, 3, Icons.support_agent_outlined,
@@ -37,13 +38,16 @@ class AdminDashboardBar extends StatelessWidget {
           Icons.shield_outlined,
           subtitle: s.adminDashModerationSub(data.moderationImages, data.moderationFlags),
           alert: data.moderationImages + data.moderationFlags > 0),
-      _Tile(s.adminDashImports, data.importsPending, 8, Icons.cloud_download_outlined,
+      _Tile(s.adminDashImports, data.importsPending, 9, Icons.cloud_download_outlined,
           alert: data.importsPending > 0),
+      _Tile(s.adminDashRequirements, data.customerRequirementsPending, 8,
+          Icons.assignment_outlined,
+          alert: data.customerRequirementsPending > 0),
     ];
 
     return Material(
-      color: LivingBkkBrand.adminBg,
-      elevation: 1,
+      color: AdminTheme.surface,
+      elevation: 0,
       child: Padding(
         padding: EdgeInsets.fromLTRB(12, compact ? 8 : 12, 12, compact ? 8 : 10),
         child: Column(
@@ -51,12 +55,9 @@ class AdminDashboardBar extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.dashboard_outlined, size: 18, color: AppTheme.primary),
+                Icon(Icons.dashboard_outlined, size: 18, color: LivingBkkBrand.purplePrimary),
                 const SizedBox(width: 6),
-                Text(
-                  s.adminDashboardBarTitle,
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
-                ),
+                Text(s.adminDashboardBarTitle, style: AdminTheme.section),
                 const Spacer(),
                 if (data.attentionTotal > 0)
                   Container(
@@ -135,10 +136,10 @@ class _KpiChip extends StatelessWidget {
       child: Ink(
         width: 118,
         decoration: BoxDecoration(
-          color: alert ? AppTheme.error.withOpacity(0.06) : Colors.white,
+          color: alert ? const Color(0xFFFFF1F2) : AdminTheme.surface,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: alert ? AppTheme.error.withOpacity(0.35) : AppTheme.border,
+            color: alert ? const Color(0xFFFECACA) : AdminTheme.border,
           ),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -147,14 +148,14 @@ class _KpiChip extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, size: 14, color: alert ? AppTheme.error : AppTheme.primary),
+                Icon(icon, size: 14, color: alert ? AppTheme.error : LivingBkkBrand.purplePrimary),
                 const Spacer(),
                 Text(
                   '$value',
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 18,
-                    color: alert ? AppTheme.error : AppTheme.textPrimary,
+                    color: alert ? AppTheme.error : AdminTheme.text,
                   ),
                 ),
               ],
@@ -164,14 +165,14 @@ class _KpiChip extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, color: AppTheme.textSecondary),
+              style: AdminTheme.caption,
             ),
             if (subtitle != null)
               Text(
                 subtitle!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 10, color: AppTheme.textSecondary.withOpacity(0.85)),
+                style: AdminTheme.caption.copyWith(fontSize: 10),
               ),
           ],
         ),

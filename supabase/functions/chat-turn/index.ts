@@ -1,6 +1,7 @@
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { ensureChatThread } from "../_shared/chat_db.ts";
+import type { ListingDetail } from "../_shared/chat_answer_openai.ts";
 import { FaqRule, routeChatMessage } from "../_shared/chat_router.ts";
 
 type ThreadRow = {
@@ -77,10 +78,25 @@ async function insertMessage(
 async function loadFaqRules(db: SupabaseClient): Promise<FaqRule[]> {
   const { data } = await db
     .from("chat_faq_rules")
-    .select("scope, patterns, reply_text, priority")
+    .select("scope, patterns, reply_text, priority, escalate")
     .eq("is_active", true)
     .order("priority", { ascending: true });
   return (data ?? []) as FaqRule[];
+}
+
+async function loadCurrentListing(
+  db: SupabaseClient,
+  listingId: string | null,
+): Promise<ListingDetail | null> {
+  if (!listingId) return null;
+  const { data } = await db
+    .from("listings_public")
+    .select(
+      "id, listing_code, title, project_name, listing_type, price_net, property_type, district, subdistrict, description_public, pet_allowed, furnished, bedrooms, bathrooms, area_sqm, floor_range, max_distance_bts_km",
+    )
+    .eq("id", listingId)
+    .maybeSingle();
+  return (data as ListingDetail | null) ?? null;
 }
 
 async function notifyEscalation(thread: ThreadRow, reason: string, preview?: string) {
@@ -133,7 +149,47 @@ Deno.serve(async (req) => {
       sender_id: userId,
     });
 
-    const [faqRules, listingsResult] = await Promise.all([
+    const humanOnlyCategories = new Set([
+      "customer_requirement",
+      "demand_offer",
+    ]);
+    if (humanOnlyCategories.has(thread.category)) {
+      const ackText =
+        "ได้รับข้อความแล้วครับ ทีมงานจะตอบกลับในแชทนี้";
+      const reply = await insertMessage(db, thread.id, "admin_notice", ackText);
+
+      const { data: updated, error: updateError } = await db
+        .from("chat_threads")
+        .update({
+          admin_reply_done: false,
+          admin_escalated: true,
+          status: "waiting_admin",
+          unclear_streak: 0,
+          last_message_at: new Date().toISOString(),
+        })
+        .eq("id", thread.id)
+        .select("*")
+        .single();
+
+      if (updateError) {
+        return jsonResponse({ error: updateError.message }, 400);
+      }
+
+      await notifyEscalation(
+        { ...thread, ...updated } as ThreadRow,
+        thread.category,
+        text,
+      );
+
+      return jsonResponse({
+        thread: updated,
+        user_message: userMsg,
+        replies: [reply],
+        route_source: "human_only_thread",
+      });
+    }
+
+    const [faqRules, listingsResult, currentListing] = await Promise.all([
       loadFaqRules(db),
       db
         .from("listings_public")
@@ -141,6 +197,7 @@ Deno.serve(async (req) => {
           "id, listing_code, title, project_name, listing_type, price_net, property_type, district",
         )
         .limit(200),
+      loadCurrentListing(db, thread.listing_id),
     ]);
 
     const routed = await routeChatMessage({
@@ -153,6 +210,7 @@ Deno.serve(async (req) => {
       faqRules,
       priorUserMessages: priorUserMessages ?? 0,
       unclearStreak: (thread.unclear_streak as number) ?? 0,
+      currentListing,
     });
 
     const reply = await insertMessage(db, thread.id, routed.reply.role, routed.reply.text, {

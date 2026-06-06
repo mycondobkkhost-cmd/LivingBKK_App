@@ -44,24 +44,24 @@ class AppPalette {
   final Color navShadow;
 
   static const light = AppPalette(
-    background: Color(0xFFF9F9FB),
+    background: Color(0xFFF8F9FA),
     surface: Color(0xFFFFFFFF),
-    surfaceVariant: Color(0xFFFAF9FF),
+    surfaceVariant: Color(0xFFF3F4F6),
     surfaceElevated: Color(0xFFFFFFFF),
-    textPrimary: Color(0xFF18104B),
+    textPrimary: Color(0xFF1A1B41),
     textSecondary: Color(0xFF6B7280),
-    primary: Color(0xFF583AD6),
-    primaryLight: Color(0xFFEDE9FE),
-    accent: Color(0xFFDB3D76),
-    border: Color(0xFFE8EAEF),
-    divider: Color(0xFFE8EAEF),
+    primary: Color(0xFF4E2A84),
+    primaryLight: Color(0xFFF3E8FF),
+    accent: Color(0xFFFF6B00),
+    border: Color(0xFFE5E7EB),
+    divider: Color(0xFFE5E7EB),
     inputFill: Color(0xFFFFFFFF),
     success: Color(0xFF10B981),
     warning: Color(0xFFF59E0B),
     error: Color(0xFFEF4444),
     onPrimary: Colors.white,
-    cardShadow: Color(0x14583AD6),
-    navShadow: Color(0x1A000000),
+    cardShadow: Color(0x0F1A1B41),
+    navShadow: Color(0x0A000000),
   );
 
   static const dark = AppPalette(

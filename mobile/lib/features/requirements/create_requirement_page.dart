@@ -12,11 +12,18 @@ import '../../theme/app_theme.dart';
 import '../../utils/price_slider_scale.dart';
 import '../../widgets/budget_range_slider.dart';
 import '../../widgets/property_type_more_sheet.dart';
+import '../../widgets/demand/requirement_serious_use_notice.dart';
 import '../../widgets/demand/requirement_urgent_rush_toggle.dart';
 import '../../widgets/requirement_location_picker.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class CreateRequirementPage extends StatefulWidget {
-  const CreateRequirementPage({super.key});
+  const CreateRequirementPage({super.key, this.sourceThreadId});
+
+  /// แชทที่แอดมินส่งปุ่มฟอร์มมา — หลังส่งจะแจ้งกลับใน thread นี้
+  final String? sourceThreadId;
 
   @override
   State<CreateRequirementPage> createState() => _CreateRequirementPageState();
@@ -144,6 +151,38 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
       final room = await ChatService.instance.recordRequirement(outcome.requirement);
       if (!mounted) return;
 
+      final sourceThreadId = widget.sourceThreadId?.trim();
+      if (sourceThreadId != null && sourceThreadId.isNotEmpty) {
+        await ChatService.instance.loadThreadIfMissing(sourceThreadId);
+        final source = ChatService.instance.roomById(sourceThreadId);
+        if (source != null) {
+          await ChatService.instance.sendUserMessage(
+            source,
+            s.requirementSubmittedInThreadAck(outcome.requirement.localizedTitle(s.isEnglish)),
+          );
+        }
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(s.requirementSubmitSuccessTitle),
+            action: SnackBarAction(
+              label: s.requirementOpenChat,
+              onPressed: () {
+                Navigator.of(context, rootNavigator: true).push<void>(
+                  MaterialPageRoute<void>(
+                    builder: (_) => PropertyChatPage(room: room),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
+        }
+        return;
+      }
+
       await Navigator.of(context, rootNavigator: true).push<void>(
         MaterialPageRoute<void>(
           builder: (_) => PropertyChatPage(room: room),
@@ -216,6 +255,8 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  const RequirementSeriousUseNotice(compact: true),
+                  const SizedBox(height: 12),
                   Text(
                     s.requirementConfirmIntro,
                     style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
@@ -270,18 +311,28 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
     final s = AppStrings.of(context);
     final dateFmt = DateFormat.yMMMd(s.isEnglish ? 'en' : 'th');
 
-    return Scaffold(
-      appBar: AppBar(title: Text(s.requirementCreateTitle)),
+    return ConsumerPageShell(
+      title: s.requirementCreateTitle,
+      onBack: () => Navigator.of(context).maybePop(),
       body: Form(
         key: _formKey,
         child: ListView(
           controller: _scroll,
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
+          padding: PageSafeInsets.padLTRB(
+            context,
+            left: LiLayout.pagePadding,
+            top: LiLayout.pagePadding,
+            right: LiLayout.pagePadding,
+            bottom: 28,
+            addHomeIndicator: false,
+          ),
           children: [
             Text(
               s.requirementCreateIntro,
               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.45),
             ),
+            const SizedBox(height: 14),
+            const RequirementSeriousUseNotice(),
             const SizedBox(height: 14),
             RequirementUrgentRushToggle(
               value: _urgentRush,
@@ -501,7 +552,9 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
               maxLines: 3,
               minLines: 2,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
+            const RequirementSeriousUseNotice(compact: true),
+            const SizedBox(height: 14),
             SizedBox(
               height: 48,
               child: FilledButton(

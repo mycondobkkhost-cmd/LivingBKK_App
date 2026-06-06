@@ -5,9 +5,13 @@ import 'package:intl/intl.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../services/listing_import_repository.dart';
+import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/admin_mobile_layout.dart';
+import '../../utils/listing_import_url.dart';
+import 'admin_import_review_sheet.dart';
 
-/// แถบงานนำเข้าทรัพย์จาก LI — วางลิงก์ · ดึงอัตโนมัติ · อนุมัติ
+/// แถบงานนำเข้าทรัพย์จาก LI — ลิงก์เดียว · ดึง · ตรวจแก้ · เผยแพร่
 class AdminImportTab extends StatefulWidget {
   const AdminImportTab({super.key});
 
@@ -16,11 +20,8 @@ class AdminImportTab extends StatefulWidget {
 }
 
 class _AdminImportTabState extends State<AdminImportTab> {
-  static const _slotCount = 8;
-
   final _repo = ListingImportRepository.instance;
-  final _slots = List.generate(_slotCount, (_) => TextEditingController());
-  final _bulk = TextEditingController();
+  final _url = TextEditingController();
 
   List<ListingImportRow> _rows = [];
   bool _loading = true;
@@ -35,10 +36,7 @@ class _AdminImportTabState extends State<AdminImportTab> {
 
   @override
   void dispose() {
-    for (final c in _slots) {
-      c.dispose();
-    }
-    _bulk.dispose();
+    _url.dispose();
     super.dispose();
   }
 
@@ -52,103 +50,74 @@ class _AdminImportTabState extends State<AdminImportTab> {
     if (mounted) setState(() => _loading = false);
   }
 
-  List<String> _collectUrls() {
-    final urls = <String>{};
-    for (final c in _slots) {
-      final t = c.text.trim();
-      if (t.isNotEmpty) urls.add(t);
-    }
-    for (final line in _bulk.text.split('\n')) {
-      final t = line.trim();
-      if (t.isNotEmpty) urls.add(t);
-    }
-    return urls.toList();
+  Future<void> _pasteClipboard() async {
+    final data = await Clipboard.getData('text/plain');
+    final text = data?.text?.trim();
+    if (text == null || text.isEmpty) return;
+    _url.text = text;
+    setState(() {});
   }
 
-  Future<void> _fetchAll() async {
-    final urls = _collectUrls();
+  Future<void> _openReview(String importId) async {
+    await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.92,
+        minChildSize: 0.5,
+        maxChildSize: 0.96,
+        builder: (_, scrollController) => AdminImportReviewSheet(
+          importId: importId,
+          scrollController: scrollController,
+          onChanged: _refresh,
+        ),
+      ),
+    );
+    await _refresh();
+  }
+
+  Future<void> _fetchOne() async {
     final s = context.s;
-    if (urls.isEmpty) {
+    final url = ListingImportUrl.normalize(_url.text);
+    final source = ListingImportUrl.detect(url);
+    if (url.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.adminImportNeedUrl)),
       );
       return;
     }
+    if (source == ListingImportSource.invalid) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminImportUnsupportedUrl)),
+      );
+      return;
+    }
 
     setState(() => _busy = true);
-    var ok = 0;
-    var fail = 0;
-    for (final url in urls) {
-      try {
-        await _repo.fetchUrl(url);
-        ok++;
-      } catch (_) {
-        fail++;
+    try {
+      final row = await _repo.fetchUrl(url);
+      _url.clear();
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminImportFetchedFor(s.adminImportSourceLabel(row.sourcePlatform)))),
+      );
+      await _openReview(row.id);
+    } on ListingImportFetchException catch (e) {
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
+      );
+      if (e.importId != null) {
+        await _openReview(e.importId!);
       }
-    }
-    for (final c in _slots) {
-      c.clear();
-    }
-    _bulk.clear();
-    await _refresh();
-    if (!mounted) return;
-    setState(() => _busy = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(s.adminImportBatchDone(ok, fail))),
-    );
-  }
-
-  Future<void> _pasteClipboard() async {
-    final data = await Clipboard.getData('text/plain');
-    final text = data?.text?.trim();
-    if (text == null || text.isEmpty) return;
-    _bulk.text = text;
-    setState(() {});
-  }
-
-  Future<void> _approve(ListingImportRow row) async {
-    setState(() => _busy = true);
-    try {
-      await _repo.approve(row.id);
-      await _refresh();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(context.s.adminImportApproved)),
-      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _archive(ListingImportRow row) async {
-    setState(() => _busy = true);
-    try {
-      await _repo.archive(row.id);
-      await _refresh();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
-      );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _retry(ListingImportRow row) async {
-    setState(() => _busy = true);
-    try {
-      await _repo.retry(row.id);
-      await _refresh();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('$e')),
+        SnackBar(content: Text(ListingImportRepository.friendlyError(e))),
       );
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -168,75 +137,52 @@ class _AdminImportTabState extends State<AdminImportTab> {
       child: ListView(
         padding: const EdgeInsets.all(12),
         children: [
-          Card(
-            color: AppTheme.primaryLight,
-            child: Padding(
-              padding: const EdgeInsets.all(14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    s.adminImportIntro,
-                    style: TextStyle(fontSize: 13, height: 1.45),
+          Container(
+            decoration: AdminTheme.card(),
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AdminNote(s.adminImportIntro),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: _url,
+                  enabled: !_busy,
+                  decoration: InputDecoration(
+                    labelText: s.adminImportSingleUrlLabel,
+                    hintText: s.adminImportBulkHint,
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: _busy
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.download_outlined),
+                      onPressed: _busy ? null : _fetchOne,
+                      tooltip: s.adminImportFetchOne,
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      OutlinedButton.icon(
-                        onPressed: _busy ? null : _pasteClipboard,
-                        icon: const Icon(Icons.content_paste, size: 18),
-                        label: Text(s.adminImportPaste),
-                      ),
-                      FilledButton.icon(
-                        onPressed: _busy ? null : _fetchAll,
-                        icon: _busy
-                            ? const SizedBox(
-                                width: 16,
-                                height: 16,
-                                child: CircularProgressIndicator(strokeWidth: 2),
-                              )
-                            : const Icon(Icons.cloud_download_outlined, size: 18),
-                        label: Text(s.adminImportFetchAll),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            s.adminImportSlotsTitle,
-            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          ...List.generate(_slotCount, (i) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: TextField(
-                controller: _slots[i],
-                enabled: !_busy,
-                decoration: InputDecoration(
-                  hintText: s.adminImportUrlHint(i + 1),
-                  prefixIcon: const Icon(Icons.link, size: 20),
-                  isDense: true,
-                  border: const OutlineInputBorder(),
                 ),
-              ),
-            );
-          }),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _bulk,
-            enabled: !_busy,
-            minLines: 2,
-            maxLines: 5,
-            decoration: InputDecoration(
-              labelText: s.adminImportBulkLabel,
-              hintText: s.adminImportBulkHint,
-              border: const OutlineInputBorder(),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _pasteClipboard,
+                      icon: const Icon(Icons.content_paste, size: 18),
+                      label: Text(s.adminImportPaste),
+                    ),
+                    FilledButton.icon(
+                      onPressed: _busy ? null : _fetchOne,
+                      icon: const Icon(Icons.cloud_download_outlined, size: 18),
+                      label: Text(s.adminImportFetchOne),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -245,7 +191,7 @@ class _AdminImportTabState extends State<AdminImportTab> {
               Expanded(
                 child: Text(
                   s.adminImportQueueTitle(_rows.length),
-                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                  style: AdminTheme.section.copyWith(fontSize: 16),
                 ),
               ),
               FilterChip(
@@ -271,16 +217,14 @@ class _AdminImportTabState extends State<AdminImportTab> {
               child: Text(
                 s.adminImportEmpty,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: AppTheme.textSecondary),
+                style: AdminTheme.hint,
               ),
             )
           else
             ..._rows.map((row) => _ImportRowCard(
                   row: row,
                   busy: _busy,
-                  onApprove: () => _approve(row),
-                  onArchive: () => _archive(row),
-                  onRetry: () => _retry(row),
+                  onReview: () => _openReview(row.id),
                 )),
         ],
       ),
@@ -292,16 +236,12 @@ class _ImportRowCard extends StatelessWidget {
   const _ImportRowCard({
     required this.row,
     required this.busy,
-    required this.onApprove,
-    required this.onArchive,
-    required this.onRetry,
+    required this.onReview,
   });
 
   final ListingImportRow row;
   final bool busy;
-  final VoidCallback onApprove;
-  final VoidCallback onArchive;
-  final VoidCallback onRetry;
+  final VoidCallback onReview;
 
   Color _statusColor(String status) {
     switch (status) {
@@ -334,95 +274,90 @@ class _ImportRowCard extends StatelessWidget {
             .format(row.pricePreview)
         : '—';
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: busy ? null : onReview,
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: AdminTheme.card(
+              alert: row.status == 'failed' || row.status == 'needs_fix',
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        row.titlePreview ?? row.sourceUrl,
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            row.titlePreview ?? row.sourceUrl,
+                            style: AdminTheme.body.copyWith(fontWeight: FontWeight.w700),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            row.sourceUrl,
+                            style: AdminTheme.caption,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        row.sourceUrl,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppTheme.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+                    ),
+                    _StatusChip(
+                      label: s.adminImportStatus(row.status),
+                      color: _statusColor(row.status),
+                    ),
+                  ],
                 ),
-                _StatusChip(
-                  label: s.adminImportStatus(row.status),
-                  color: _statusColor(row.status),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    if (row.projectPreview != null)
+                      _MiniChip(label: row.projectPreview!, icon: Icons.apartment),
+                    _MiniChip(label: price, icon: Icons.payments_outlined),
+                    _MiniChip(
+                      label: s.adminImportImages(row.imageCount),
+                      icon: Icons.photo_library_outlined,
+                    ),
+                    _MiniChip(
+                      label: s.adminImportSourceLabel(row.sourcePlatform),
+                      icon: Icons.public,
+                    ),
+                    if (row.sourceExternalId != null)
+                      _MiniChip(label: row.sourceExternalId!, icon: Icons.tag),
+                    if (time.isNotEmpty)
+                      _MiniChip(label: time, icon: Icons.schedule),
+                  ],
+                ),
+                if (row.errorMessage != null && row.errorMessage!.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(row.errorMessage!, style: TextStyle(fontSize: 12, color: AppTheme.error)),
+                ],
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: busy ? null : onReview,
+                    icon: const Icon(Icons.edit_note_outlined, size: 18),
+                    label: Text(
+                      row.canReview ? s.adminImportReviewOpen : s.adminImportView,
+                    ),
+                  ),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 4,
-              children: [
-                if (row.projectPreview != null)
-                  _MiniChip(label: row.projectPreview!, icon: Icons.apartment),
-                _MiniChip(label: price, icon: Icons.payments_outlined),
-                _MiniChip(
-                  label: s.adminImportImages(row.imageCount),
-                  icon: Icons.photo_library_outlined,
-                ),
-                if (row.sourceExternalId != null)
-                  _MiniChip(label: 'LI ${row.sourceExternalId}', icon: Icons.tag),
-                if (time.isNotEmpty)
-                  _MiniChip(label: time, icon: Icons.schedule),
-              ],
-            ),
-            if (row.errorMessage != null && row.errorMessage!.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                row.errorMessage!,
-                style: TextStyle(fontSize: 12, color: AppTheme.error),
-              ),
-            ],
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              children: [
-                if (row.canApprove)
-                  FilledButton(
-                    onPressed: busy ? null : onApprove,
-                    child: Text(s.adminImportApprove),
-                  ),
-                if (row.canRetry)
-                  OutlinedButton(
-                    onPressed: busy ? null : onRetry,
-                    child: Text(s.adminImportRetry),
-                  ),
-                if (!row.isArchived)
-                  TextButton(
-                    onPressed: busy ? null : onArchive,
-                    child: Text(s.adminImportArchive),
-                  ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -446,11 +381,7 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: color,
-        ),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }
@@ -469,7 +400,7 @@ class _MiniChip extends StatelessWidget {
       children: [
         Icon(icon, size: 14, color: AppTheme.textSecondary),
         const SizedBox(width: 4),
-        Text(label, style: TextStyle(fontSize: 12)),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
@@ -482,8 +413,10 @@ class AdminImportPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.s;
-    return Scaffold(
-      appBar: AppBar(
+    return AdminMobileLayout.scaffold(
+      context: context,
+      appBar: AdminMobileLayout.appBar(
+        context: context,
         title: Text(s.adminImportTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),

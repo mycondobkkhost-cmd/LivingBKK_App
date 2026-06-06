@@ -8,21 +8,25 @@ class LivingBkkBrand {
   static const String nameTh = 'PROPPITER';
   static const String nameEn = 'PROPPITER';
 
-  /// สโลแกนแอป (คงเดิม — ไม่ใช่ tagline บนโลโก้ FIND. LIVE. INVEST.)
-  /// สโลแกนรองใต้โลโก้ (ตาม brand guide)
+  /// กำกับใต้ชื่อแบรนด์ (แยกจากสโลแกน)
+  static const String descriptorEn = 'Real Estate Matching Platform';
+
+  /// สโลแกนบนโลโก้ / ใต้ชื่อ (brand brief final)
   static const String taglineTh =
-      'โพสต์ฟรี • ปิดดีลไว • ไม่ต้องหาลูกค้าเอง';
+      'ข้อมูลแม่นยำ • ลงประกาศฟรี • บริการครบวงจร';
   static const String taglineEn =
-      'Post for free • Close deals faster • No chasing clients yourself';
+      'Verified listings • Free to post • Full-service support';
 
-  static const String loginMainSloganTh = 'แอปอสังหาที่ครบเครื่องที่สุดในไทย';
+  static const String storeSubtitleTh = 'แมตช์ทรัพย์แม่นยำ โพสต์ฟรี';
+  static const String storeSubtitleEn = 'Verified Property Matching';
+
+  static const String loginMainSloganTh =
+      'แพลตฟอร์มแมตช์อสังหาฯ ข้อมูลแม่นยำ โพสต์ฟรี';
   static const String loginMainSloganEn =
-      "Thailand's most complete property app";
+      'Verified property matching — list for free';
 
-  static const String loginSubSloganLineTh =
-      'ครบทุกดีลอสังหา · ลงประกาศฟรี · อัปเดตสถานะตลอดเวลา';
-  static const String loginSubSloganLineEn =
-      'All deals in one place · Free listing · Real-time updates';
+  static const String loginSubSloganLineTh = taglineTh;
+  static const String loginSubSloganLineEn = taglineEn;
 
   static const Color loginSubSloganColor = Color(0xFFE84393);
 
@@ -32,30 +36,42 @@ class LivingBkkBrand {
   static String loginMainSlogan(Locale locale) =>
       locale.languageCode == 'th' ? loginMainSloganTh : loginMainSloganEn;
 
-  /// กำกับใต้ชื่อแบรนด์ (แยกจากสโลแกน)
-  static const String descriptorEn = 'Real Estate Agent Platform';
+  // ── Robinhood TH–inspired palette (PROP purple · PITER orange/yellow) ──
+  static const Color propPurple = Color(0xFF4E2A84);
+  static const Color piterOrange = Color(0xFFFF6B00);
+  static const Color accentYellow = Color(0xFFFFCB05);
+  static const Color accentOrange = Color(0xFFFF8A00);
+  static const Color propNavy = Color(0xFF1A1B41);
+  static const Color piterPink = piterOrange;
+  static const Color pageBackground = Color(0xFFF8F9FA);
+
+  static const Color robinhoodPurple = propPurple;
+  static const Color robinhoodPurpleDark = Color(0xFF3A1F66);
+  static const Color robinhoodPurpleMid = Color(0xFF6B3FA0);
+  static const Color robinhoodPurpleLight = Color(0xFFF3E8FF);
 
   // ── PROPPITER palette (brand brief 2026) ──
-  static const Color purplePrimary = Color(0xFF583AD6);
+  static const Color purplePrimary = propNavy;
   static const Color purpleLight = Color(0xFF9B6DFF);
   static const Color purpleMid = Color(0xFF7B5CE8);
-  static const Color pink = Color(0xFFDB3D76);
-  static const Color navy = Color(0xFF18104B);
-  static const Color offWhite = Color(0xFFF9F9FB);
+  static const Color pink = piterPink;
+  static const Color navy = propNavy;
+  static const Color offWhite = Color(0xFFFFFFFF);
   static const Color surfaceWhite = Color(0xFFFFFFFF);
   static const Color sidebarTint = Color(0xFFFAF9FF);
 
   static const Map<String, String> colorTokens = {
-    'purple': '#583AD6',
+    'purple': '#4E2A84',
     'purple_light': '#9B6DFF',
-    'pink': '#DB3D76',
-    'navy': '#18104B',
-    'off_white': '#F9F9FB',
+    'yellow': '#FFCB05',
+    'orange': '#FF6B00',
+    'navy': '#1A1B41',
+    'off_white': '#F8F9FA',
   };
 
-  /// Canva-style hero gradient (cyan → lavender) — home / auth light surfaces
-  static const Color headerGradientStart = Color(0xFFECF5FC);
-  static const Color headerGradientEnd = Color(0xFFE3E3FD);
+  /// Robinhood header — solid purple
+  static const Color headerGradientStart = robinhoodPurple;
+  static const Color headerGradientEnd = robinhoodPurpleDark;
 
   // ── Dark UI surfaces (PROPPITER brief) ──
   static const Color navyMid = Color(0xFF16142A);
@@ -79,22 +95,54 @@ class LivingBkkBrand {
   static const Color live = Color(0xFFFF5252);
   static const Color peach = Color(0xFFFFB74D);
   static const Color peachLight = Color(0xFF3D3020);
-  static const Color adminBg = Color(0xFF141428);
+  /// พื้นหลังศูนย์แอดมิน — โทนสว่าง (อ่านง่าย ไม่กลืนกับข้อความเทา)
+  static const Color adminBg = offWhite;
 
   static const LinearGradient logoGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF5634E3), purpleLight, pink],
+    colors: [propPurple, purpleLight, accentYellow, accentOrange],
+    stops: [0.0, 0.4, 0.72, 1.0],
+  );
+
+  static const LinearGradient robinhoodHeaderGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [robinhoodPurple, robinhoodPurpleMid, accentOrange],
     stops: [0.0, 0.55, 1.0],
   );
 
-  /// Light hero — โทนเดียวกับ Canva AI home (ฟ้าอ่อน → ม่วงอ่อน)
-  static const LinearGradient canvaHeroGradient = LinearGradient(
+  /// บล็อก header หน้าแรก — ม่วงสว่าง ไล่เฉดนุ่ม (safe area → ค้นหา)
+  static const Color homeHeaderBlockColor = Color(0xFF6E4EC4);
+
+  static const LinearGradient homeHeaderBlockGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [headerGradientStart, headerGradientEnd, offWhite],
-    stops: [0.0, 0.45, 1.0],
+    colors: [
+      Color(0xFF5E42B0),
+      Color(0xFF7254C8),
+      Color(0xFF9178E0),
+      Color(0xFFA888F0),
+    ],
+    stops: [0.0, 0.38, 0.72, 1.0],
   );
+
+  /// หน้าแรก — deep purple → orange fade (Robinhood delivery feel)
+  static const LinearGradient homeHeaderGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      robinhoodPurple,
+      robinhoodPurpleMid,
+      Color(0xFFB85CE8),
+      accentOrange,
+      pageBackground,
+      Color(0xFFFFFFFF),
+    ],
+    stops: [0.0, 0.28, 0.48, 0.68, 0.9, 1.0],
+  );
+
+  static const LinearGradient canvaHeroGradient = robinhoodHeaderGradient;
 
   static const LinearGradient loginSoftGradient = canvaHeroGradient;
 

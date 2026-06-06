@@ -17,6 +17,7 @@ import '../../widgets/listing_card.dart';
 import '../../widgets/listings_map.dart';
 import '../../widgets/search_filter_sheet.dart';
 import '../../widgets/smart_search_bar.dart';
+import '../../widgets/app_mobile_scaffold.dart';
 
 /// แท็บแผนที่ — ค้นหาทรัพย์บนแผนที่โดยเฉพาะ
 class MapSearchPage extends StatefulWidget {
@@ -112,7 +113,7 @@ class _MapSearchPageState extends State<MapSearchPage> {
       ]),
       builder: (context, _) {
         final s = AppStrings.of(context);
-        return Scaffold(
+        return AppMobileScaffold(
           backgroundColor: AppTheme.backgroundAlt,
           body: Stack(
             children: [

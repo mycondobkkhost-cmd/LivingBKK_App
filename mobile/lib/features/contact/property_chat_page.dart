@@ -15,9 +15,12 @@ import '../../services/chat_repository.dart';
 import '../../services/chat_service.dart';
 import '../../services/listing_repository.dart';
 import '../../theme/app_theme.dart';
+import '../../navigation/demand_board_navigation.dart';
+import '../../utils/chat_room_display.dart';
 import '../../widgets/reference_code_chip.dart';
 import 'book_viewing_form_sheet.dart';
 import 'viewing_submitted_dialog.dart';
+import '../../widgets/app_mobile_scaffold.dart';
 
 void openPropertyChat(
   BuildContext context,
@@ -84,6 +87,7 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
   ChatRoom get _room =>
       ChatService.instance.roomById(widget.room.id) ??
       ChatService.instance.roomForListing(widget.room.listingId) ??
+      ChatService.instance.roomForListing(widget.room.listingCode) ??
       widget.room;
 
   bool get _showViewingButton =>
@@ -95,6 +99,8 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
   @override
   void initState() {
     super.initState();
+    ChatService.instance.markThreadRead(_room.id);
+    ChatService.instance.ensureCustomerInboxRealtime();
     _realtimeChannel = ChatService.instance.subscribeToThread(_room, () {
       if (mounted) setState(() {});
       _scrollToBottom();
@@ -132,6 +138,10 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
 
   Future<void> _openViewingForm() async {
     if (!_showViewingButton || _room.viewingSubmitted) return;
+    await _openViewingFormFromLink();
+  }
+
+  Future<void> _openViewingFormFromLink() async {
     final result = await showBookViewingFormSheet(context, room: _room);
     if (!mounted || result == null) return;
     setState(() {});
@@ -144,6 +154,39 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
       chatRef: _room.effectiveTransactionRef,
       leadRef: result.leadTransactionRef,
     );
+  }
+
+  Future<void> _handleActionLink(ChatMessageLink link) async {
+    switch (link.kind) {
+      case ChatMessageLinkKind.requirementForm:
+        DemandBoardNavigation.openCreateRequirement(
+          context,
+          sourceThreadId: _room.id,
+        );
+        break;
+      case ChatMessageLinkKind.viewingForm:
+        await _openViewingFormFromLink();
+        break;
+      case ChatMessageLinkKind.listing:
+      case ChatMessageLinkKind.projectUnits:
+        break;
+    }
+  }
+
+  Future<void> _askListing(ChatMessageLink link) async {
+    List<ListingPublic> all;
+    try {
+      all = await _listingRepo.fetchPublished();
+    } catch (_) {
+      all = DemoListingsFactory.cached;
+    }
+
+    final listing = all.cast<ListingPublic?>().firstWhere(
+          (l) => l?.id == link.listingId,
+          orElse: () => null,
+        );
+    if (listing == null || !mounted) return;
+    openPropertyChat(context, listing);
   }
 
   Future<void> _openLink(ChatMessageLink link) async {
@@ -194,20 +237,21 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
         final s = context.s;
         final room = _room;
         final showAiNote = !room.isStaffSupport;
-        final quickReplies = s.propertyChatQuickReplies;
+        final quickReplies = room.isDiscovery
+            ? s.discoveryChatQuickReplies
+            : room.isCustomerRequirement
+                ? s.requirementChatQuickReplies
+                : s.propertyChatQuickReplies;
 
-        return Scaffold(
+        return AppMobileScaffold(
+      safeBottomBody: false,
       backgroundColor: AppTheme.surfaceWarm,
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              room.isStaffSupport
-                  ? s.chatAdminInquiry
-                  : room.isDiscovery
-                      ? s.chatDiscoveryTitle
-                      : s.chatPropertyTitle,
+              room.chatScreenTitle(s),
               style: TextStyle(fontSize: 16),
             ),
             Text(
@@ -255,6 +299,8 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
               itemBuilder: (context, i) => _Bubble(
                 message: room.messages[i],
                 onLinkTap: _openLink,
+                onAskListing: _askListing,
+                onActionLinkTap: _handleActionLink,
               ),
             ),
           ),
@@ -347,10 +393,14 @@ class _Bubble extends StatelessWidget {
   const _Bubble({
     required this.message,
     required this.onLinkTap,
+    required this.onAskListing,
+    required this.onActionLinkTap,
   });
 
   final ChatMessage message;
   final ValueChanged<ChatMessageLink> onLinkTap;
+  final ValueChanged<ChatMessageLink> onAskListing;
+  final ValueChanged<ChatMessageLink> onActionLinkTap;
 
   @override
   Widget build(BuildContext context) {
@@ -417,18 +467,83 @@ class _Bubble extends StatelessWidget {
               ...message.links.map(
                 (link) => Padding(
                   padding: const EdgeInsets.only(bottom: 6),
-                  child: OutlinedButton(
-                    onPressed: () => onLinkTap(link),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.primary,
-                      backgroundColor: Colors.white,
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    ),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(link.label, style: TextStyle(fontSize: 12)),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        link.label,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      if (link.isFormAction)
+                        FilledButton.icon(
+                          onPressed: () => onActionLinkTap(link),
+                          icon: Icon(
+                            link.kind == ChatMessageLinkKind.requirementForm
+                                ? Icons.edit_note_outlined
+                                : Icons.event_available_outlined,
+                            size: 18,
+                          ),
+                          label: Text(link.label),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppTheme.primary,
+                            visualDensity: VisualDensity.compact,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                          ),
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => onLinkTap(link),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.primary,
+                                  backgroundColor: Colors.white,
+                                  visualDensity: VisualDensity.compact,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                ),
+                                child: Text(
+                                  context.s.chatLinkViewListing,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                              ),
+                            ),
+                            if (link.kind == ChatMessageLinkKind.listing) ...[
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: OutlinedButton(
+                                  onPressed: () => onAskListing(link),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: AppTheme.accentDeep,
+                                    backgroundColor: Colors.white,
+                                    visualDensity: VisualDensity.compact,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    context.s.chatLinkAskListing,
+                                    style: const TextStyle(fontSize: 11),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                    ],
                   ),
                 ),
               ),

@@ -54,7 +54,7 @@ class ProjectCatalog extends ChangeNotifier {
     final rows = await SupabaseService.client!
         .from('property_projects')
         .select(
-          'id, slug, name_th, name_en, district, bts_station, property_type, '
+          'id, slug, name_th, name_en, district, bts_station, nearby_transit, property_type, '
           'lat, lng, aliases, year_built, facilities, geo_zone_id',
         )
         .eq('is_active', true)
@@ -198,6 +198,16 @@ class ProjectCatalog extends ChangeNotifier {
   BangkokProject _fromRow(Map<String, dynamic> row) {
     final aliasesRaw = row['aliases'];
     final facilitiesRaw = row['facilities'];
+    final nearbyRaw = row['nearby_transit'];
+    final nearby = nearbyRaw is List
+        ? nearbyRaw.map((e) => e.toString()).toList()
+        : <String>[];
+    final aliases = aliasesRaw is List
+        ? aliasesRaw.map((e) => e.toString()).toList()
+        : <String>[];
+    final mergedAliases = <String>{...aliases, ...nearby}.toList();
+    final bts = row['bts_station']?.toString() ??
+        (nearby.isEmpty ? null : nearby.join(' · '));
     return BangkokProject(
       slug: row['slug']?.toString() ?? '',
       id: row['id']?.toString(),
@@ -207,11 +217,9 @@ class ProjectCatalog extends ChangeNotifier {
       district: row['district']?.toString() ?? '',
       lat: (row['lat'] as num?)?.toDouble() ?? 13.7563,
       lng: (row['lng'] as num?)?.toDouble() ?? 100.5018,
-      bts: row['bts_station']?.toString(),
+      bts: bts,
       propertyType: row['property_type']?.toString() ?? 'condo',
-      aliases: aliasesRaw is List
-          ? aliasesRaw.map((e) => e.toString()).toList()
-          : const [],
+      aliases: mergedAliases,
       yearBuilt: (row['year_built'] as num?)?.toInt(),
       facilities: facilitiesRaw is List
           ? facilitiesRaw.map((e) => e.toString()).toList()

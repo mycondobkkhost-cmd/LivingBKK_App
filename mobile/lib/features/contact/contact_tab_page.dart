@@ -5,8 +5,12 @@ import '../../l10n/app_strings.dart';
 import '../../models/chat_room.dart';
 import '../../services/chat_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/chat_room_display.dart';
 import '../../widgets/appointments_section.dart';
 import 'property_chat_page.dart';
+import '../../theme/li_layout.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 class ContactTabPage extends StatefulWidget {
   const ContactTabPage({
@@ -27,13 +31,14 @@ class _ContactTabPageState extends State<ContactTabPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ChatService.instance.refreshMyThreads();
+      ChatService.instance.ensureCustomerInboxRealtime();
     });
   }
 
   void _refresh() => setState(() {});
 
   void _openRoom(ChatRoom room) {
+    ChatService.instance.markThreadRead(room.id);
     Navigator.push(
       context,
       MaterialPageRoute<void>(
@@ -51,33 +56,112 @@ class _ContactTabPageState extends State<ContactTabPage> {
     _openRoom(room);
   }
 
+  Future<void> _openDiscovery() async {
+    final room = await ChatService.instance.openDiscoveryRoom();
+    if (!mounted) return;
+    _openRoom(room);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final chat = ChatService.instance;
 
     return ListenableBuilder(
-      listenable: ChatService.instance,
+      listenable: chat,
       builder: (context, _) {
-        final rooms = ChatService.instance.listRooms();
+        final rooms = chat.listMyRooms();
+        final totalUnread = chat.totalUnreadChats;
 
-        return Scaffold(
-          backgroundColor: AppTheme.surfaceWarm,
-          appBar: AppBar(
-            title: Text(s.messagesTitle),
-            backgroundColor: AppTheme.headerTint,
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.refresh),
-                onPressed: () async {
-                  await ChatService.instance.refreshMyThreads();
-                  _refresh();
-                },
+        return ConsumerPageShell(
+          title: s.messagesTitle,
+          safeBottomBody: false,
+          actions: [
+            if (totalUnread > 0)
+              Padding(
+                padding: const EdgeInsets.only(left: 6),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                    child: Text(
+                      s.chatUnreadCount(totalUnread),
+                      style: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ],
-          ),
+            ConsumerHeaderIconButton(
+              icon: Icons.refresh_rounded,
+              onTap: () async {
+                await chat.refreshMyThreads();
+                _refresh();
+              },
+            ),
+          ],
           body: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 24),
+            padding: PageSafeInsets.padLTRB(
+              context,
+              left: LiLayout.pagePadding,
+              top: 12,
+              right: LiLayout.pagePadding,
+              bottom: 16,
+              addHomeIndicator: false,
+            ),
             children: [
+              Material(
+                color: AppTheme.accentDeepLight,
+                borderRadius: BorderRadius.circular(14),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: _openDiscovery,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: AppTheme.accentDeep,
+                          child: Icon(Icons.travel_explore, color: Colors.white),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                s.chatDiscovery,
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 15,
+                                  color: AppTheme.accentDeep,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                s.chatDiscoveryEntryHint,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppTheme.textSecondary,
+                                  height: 1.35,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.chevron_right, color: AppTheme.accentDeep),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
               Material(
                 color: AppTheme.primaryLight,
                 borderRadius: BorderRadius.circular(14),
@@ -132,6 +216,16 @@ class _ContactTabPageState extends State<ContactTabPage> {
                     s.chatHistory,
                     style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
                   ),
+                  const Spacer(),
+                  if (totalUnread > 0)
+                    Text(
+                      s.chatUnreadCount(totalUnread),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.error,
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 8),
@@ -155,76 +249,11 @@ class _ContactTabPageState extends State<ContactTabPage> {
                   ),
                 )
               else
-                ...rooms.map((room) {
-                  final last = room.lastMessage;
-                  final time = DateFormat('d MMM HH:mm', 'th').format(room.updatedAt);
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    color: room.isSupportRoom
-                        ? AppTheme.accentSoftLight
-                        : AppTheme.cardTint,
-                    child: ListTile(
-                      dense: true,
-                      leading: CircleAvatar(
-                        radius: 18,
-                        backgroundColor: room.isSupportRoom
-                            ? AppTheme.accentMidLight
-                            : AppTheme.primaryLight,
-                        child: Icon(
-                          room.adminEscalated ? Icons.support_agent : Icons.chat_bubble_outline,
-                          color: room.isSupportRoom
-                              ? AppTheme.accentMid
-                              : AppTheme.primary,
-                          size: 18,
-                        ),
-                      ),
-                      title: Text(
-                        room.isStaffSupport ? s.chatAdminInquiry : room.displayTitle,
-                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${s.transactionRefLabel}: ${room.effectiveTransactionRef}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: AppTheme.primary,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            last?.text ?? '',
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
-                      ),
-                      trailing: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            time,
-                            style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
-                          ),
-                          if (room.viewingSubmitted)
-                            Padding(
-                              padding: const EdgeInsets.only(top: 2),
-                              child: Text(
-                                s.viewingSubmittedBadge,
-                                style: TextStyle(fontSize: 10, color: AppTheme.accentDeep),
-                              ),
-                            ),
-                        ],
-                      ),
+                ...rooms.map((room) => _ChatHistoryTile(
+                      room: room,
+                      unread: chat.unreadForThread(room.id),
                       onTap: () => _openRoom(room),
-                    ),
-                  );
-                }),
+                    )),
               const Divider(height: 28),
               AppointmentsSection(
                 isAgent: widget.isAgent,
@@ -234,6 +263,222 @@ class _ContactTabPageState extends State<ContactTabPage> {
           ),
         );
       },
+    );
+  }
+}
+
+class _ChatHistoryTile extends StatelessWidget {
+  const _ChatHistoryTile({
+    required this.room,
+    required this.unread,
+    required this.onTap,
+  });
+
+  final ChatRoom room;
+  final int unread;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = AppStrings.of(context);
+    final time = DateFormat('d MMM HH:mm', 'th').format(room.updatedAt);
+    final teamReply = room.lastTeamReply;
+    final hasUnread = unread > 0;
+    final preview = room.inboxPreviewText(s);
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 8),
+      elevation: hasUnread ? 2 : 0,
+      color: hasUnread
+          ? AppTheme.primaryLight
+          : room.isSupportRoom
+              ? AppTheme.accentSoftLight
+              : AppTheme.cardTint,
+      shape: hasUnread
+          ? RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: AppTheme.primary.withOpacity(0.45), width: 1.5),
+            )
+          : null,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: hasUnread
+                        ? AppTheme.primary
+                        : room.isSupportRoom
+                            ? AppTheme.accentMidLight
+                            : AppTheme.primaryLight,
+                    child: Icon(
+                      room.historyIcon,
+                      color: hasUnread
+                          ? Colors.white
+                          : room.isSupportRoom
+                              ? AppTheme.accentMid
+                              : AppTheme.primary,
+                      size: 20,
+                    ),
+                  ),
+                  if (hasUnread)
+                    Positioned(
+                      right: -4,
+                      top: -4,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppTheme.error,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 1.5),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Text(
+                          unread > 9 ? '9+' : '$unread',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w800,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            room.historyListTitle(s),
+                            style: TextStyle(
+                              fontWeight: hasUnread ? FontWeight.w800 : FontWeight.w600,
+                              fontSize: 14,
+                              color: hasUnread ? AppTheme.primary : AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          time,
+                          style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${s.transactionRefLabel}: ${room.effectiveTransactionRef}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.primary.withOpacity(0.85),
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    if (teamReply != null) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: hasUnread
+                              ? Colors.white
+                              : AppTheme.accentMidLight.withOpacity(0.55),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: hasUnread
+                                ? AppTheme.primary.withOpacity(0.35)
+                                : AppTheme.border.withOpacity(0.4),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              room.hasTeamFormLink
+                                  ? Icons.edit_note_outlined
+                                  : Icons.support_agent,
+                              size: 16,
+                              color: AppTheme.accentMid,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    hasUnread
+                                        ? s.chatTeamReplyWaiting
+                                        : s.chatTeamLivingBkk,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: AppTheme.accentMid,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    preview.replaceFirst('${s.chatTeamLivingBkk}: ', ''),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight:
+                                          hasUnread ? FontWeight.w600 : FontWeight.w400,
+                                      color: AppTheme.textPrimary,
+                                      height: 1.35,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        preview,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                    if (room.viewingSubmitted)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          s.viewingSubmittedBadge,
+                          style: TextStyle(fontSize: 10, color: AppTheme.accentDeep),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right,
+                color: hasUnread ? AppTheme.primary : AppTheme.textSecondary,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

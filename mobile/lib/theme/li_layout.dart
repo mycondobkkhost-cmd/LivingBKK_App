@@ -37,12 +37,21 @@ abstract final class LiLayout {
         shape: BoxShape.circle,
       );
 
+  /// LINE MAN–style home typography scale
+  static const double homeHeroHeadline = 20;
+  static const double homeCardTitle = 15;
+  static const double homeCardSubtitle = 12;
+  static const double homePromoTag = 13;
+  static const double homeSectionTitleSize = 18;
+
   static TextStyle get sectionTitle => TextStyle(
-        fontSize: 18,
+        fontSize: homeSectionTitleSize,
         fontWeight: FontWeight.w700,
         color: AppTheme.textPrimary,
         letterSpacing: -0.2,
       );
+
+  static TextStyle get homeSectionTitle => sectionTitle;
 
   static TextStyle get priceOnCard => TextStyle(
         fontSize: 20,

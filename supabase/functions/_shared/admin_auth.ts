@@ -1,5 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { jsonResponse } from "./cors.ts";
+import { createUserClient } from "./supabase_env.ts";
 
 export async function requireAdmin(
   req: Request,
@@ -7,11 +7,15 @@ export async function requireAdmin(
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) return jsonResponse({ error: "Unauthorized" }, 401);
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_ANON_KEY")!,
-    { global: { headers: { Authorization: authHeader } } },
-  );
+  let supabase;
+  try {
+    supabase = createUserClient(authHeader);
+  } catch (e) {
+    const code = String(e).includes("edge_config_missing")
+      ? "edge_config_missing"
+      : "edge_config_error";
+    return jsonResponse({ error: code, detail: String(e) }, 500);
+  }
 
   const { data: userData, error: userError } = await supabase.auth.getUser();
   if (userError || !userData.user) {

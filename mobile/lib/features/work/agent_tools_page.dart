@@ -3,6 +3,9 @@ import 'package:intl/intl.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../theme/li_layout.dart';
+import '../../widgets/consumer/consumer_page_shell.dart';
 
 /// เครื่องมือเอเจนท์ — คำนวณค่าใช้จ่าย ณ วันโอน (แบบ LI AgentTool)
 class AgentToolsPage extends StatefulWidget {
@@ -49,10 +52,18 @@ class _AgentToolsPageState extends State<AgentToolsPage> {
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
     final fmt = NumberFormat.currency(locale: 'th_TH', symbol: '฿', decimalDigits: 0);
-    return Scaffold(
-      appBar: AppBar(title: Text(s.agentTools)),
+    return ConsumerPageShell(
+      title: s.agentTools,
+      onBack: () => Navigator.of(context).maybePop(),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: PageSafeInsets.padLTRB(
+          context,
+          left: LiLayout.pagePadding,
+          top: LiLayout.pagePadding,
+          right: LiLayout.pagePadding,
+          bottom: 16,
+          addHomeIndicator: false,
+        ),
         children: [
           Text(
             s.transferCostTitle,

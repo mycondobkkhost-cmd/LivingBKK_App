@@ -11,6 +11,8 @@ export function thaiInboxLabel(category: string, viewingSubmitted: boolean): str
       return "ค้นหาทรัพย์";
     case "demand_offer":
       return "เสนอทรัพย์";
+    case "customer_requirement":
+      return "ความต้องการหาทรัพย์";
     default:
       return "แชททรัพย์";
   }
@@ -88,6 +90,7 @@ export function thaiEscalationBody(
     staff_room: "เปิดแชทเจ้าหน้าที่",
     viewing: "ส่งฟอร์มนัดดู",
     demand_offer: "เสนอทรัพย์",
+    customer_requirement: "ความต้องการหาทรัพย์",
     unclear: "ถามซ้ำไม่ชัด",
   };
   const label = reasonTh[reason] ?? reason;

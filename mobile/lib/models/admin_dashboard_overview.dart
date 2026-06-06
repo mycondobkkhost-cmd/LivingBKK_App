@@ -13,6 +13,7 @@ class AdminDashboardOverview {
     this.importsPending = 0,
     this.usersTotal = 0,
     this.demandPostsOpen = 0,
+    this.customerRequirementsPending = 0,
     this.updatedAt,
   });
 
@@ -29,6 +30,7 @@ class AdminDashboardOverview {
   final int importsPending;
   final int usersTotal;
   final int demandPostsOpen;
+  final int customerRequirementsPending;
   final DateTime? updatedAt;
 
   int get attentionTotal =>
@@ -38,5 +40,6 @@ class AdminDashboardOverview {
       offersPending +
       moderationImages +
       moderationFlags +
-      importsPending;
+      importsPending +
+      customerRequirementsPending;
 }
