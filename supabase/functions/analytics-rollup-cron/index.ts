@@ -9,12 +9,15 @@ Deno.serve(async (req) => {
   try {
     const cronSecret = Deno.env.get("CRON_SECRET");
     const auth = req.headers.get("Authorization") ?? "";
-    if (cronSecret && auth !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
       return jsonResponse({ error: "forbidden" }, 403);
     }
 
     const url = new URL(req.url);
-    const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get("days") ?? "30", 10)));
+    const days = Math.min(
+      90,
+      Math.max(1, parseInt(url.searchParams.get("days") ?? "30", 10)),
+    );
 
     const service = createClient(
       Deno.env.get("SUPABASE_URL")!,

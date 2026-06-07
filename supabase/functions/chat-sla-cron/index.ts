@@ -25,7 +25,9 @@ type ThreadRow = {
 };
 
 function slaMinutes(thread: ThreadRow): number {
-  if (thread.viewing_submitted || thread.category === "viewing_request") return 30;
+  if (thread.viewing_submitted || thread.category === "viewing_request") {
+    return 30;
+  }
   if (thread.priority === "high") return 30;
   if (thread.category === "staff_support") return 120;
   if (thread.category === "escalation") return 60;
@@ -40,7 +42,7 @@ Deno.serve(async (req) => {
   try {
     const cronSecret = Deno.env.get("CRON_SECRET");
     const auth = req.headers.get("Authorization") ?? "";
-    if (cronSecret && auth !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
       return jsonResponse({ error: "unauthorized" }, 401);
     }
 

@@ -1,4 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { sendFcmToUser } from "../_shared/notify.ts";
 
@@ -32,7 +35,7 @@ function activityAnchor(row: ListingRow): Date {
 
 /** แจ้งเตือนทุก 7 วัน (FCM) จนกว่าจะ bump หรือครบ 30 วัน */
 async function sendBumpReminders(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, any, any>,
 ): Promise<{ checked: number; sent: number }> {
   const { data, error } = await supabase
     .from("listings")
@@ -54,14 +57,15 @@ async function sendBumpReminders(
     const daysSinceBump = daysBetween(anchor, now);
     if (daysSinceBump < 7 || daysSinceBump >= 30) continue;
 
-    const lastRem = row.last_reminder_at ? new Date(row.last_reminder_at) : null;
+    const lastRem = row.last_reminder_at
+      ? new Date(row.last_reminder_at)
+      : null;
     const daysSinceRem = lastRem ? daysBetween(lastRem, now) : 999;
     if (daysSinceRem < 7) continue;
 
     const daysLeft = 30 - daysSinceBump;
     const title = "LivingBKK — ยืนยันว่าง";
-    const body =
-      `${row.listing_code} · ${row.title}\n` +
+    const body = `${row.listing_code} · ${row.title}\n` +
       `กดอัปเดตว่าทรัพย์ยังว่าง — เหลือ ${daysLeft} วันก่อนเก็บประกาศอัตโนมัติ`;
 
     const fcm = await sendFcmToUser(supabase, row.owner_id, title, body, {
@@ -83,7 +87,7 @@ async function sendBumpReminders(
 
 /** แจ้ง owner เมื่อระบบเก็บประกาศอัตโนมัติ (ครบ 30 วัน) */
 async function notifyAutoArchived(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, any, any>,
   archivedIds: string[],
 ): Promise<number> {
   if (archivedIds.length === 0) return 0;
@@ -98,8 +102,7 @@ async function notifyAutoArchived(
   let sent = 0;
   for (const row of data as ArchivedRow[]) {
     const title = "LivingBKK — เก็บประกาศแล้ว";
-    const body =
-      `${row.listing_code} · ${row.title}\n` +
+    const body = `${row.listing_code} · ${row.title}\n` +
       "เก็บอัตโนมัติ — ไม่ได้ยืนยันว่างครบ 30 วัน";
     const fcm = await sendFcmToUser(supabase, row.owner_id, title, body, {
       type: "listing_archived",
@@ -118,7 +121,7 @@ Deno.serve(async (req) => {
   try {
     const cronSecret = Deno.env.get("CRON_SECRET");
     const auth = req.headers.get("Authorization") ?? "";
-    if (cronSecret && auth !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
       return jsonResponse({ error: "unauthorized" }, 401);
     }
 
