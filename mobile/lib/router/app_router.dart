@@ -180,7 +180,9 @@ class AppRouter {
         ),
         GoRoute(
           path: '/admin',
-          builder: (context, state) => const AdminHomePage(),
+          builder: (context, state) => AdminHomePage(
+            roleController: roleController,
+          ),
         ),
         GoRoute(
           path: '/admin/import',

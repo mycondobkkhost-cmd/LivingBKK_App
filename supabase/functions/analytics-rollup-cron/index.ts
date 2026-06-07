@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   try {
     const cronSecret = Deno.env.get("CRON_SECRET");
     const auth = req.headers.get("Authorization") ?? "";
-    if (cronSecret && auth !== `Bearer ${cronSecret}`) {
+    if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
       return jsonResponse({ error: "forbidden" }, 403);
     }
 

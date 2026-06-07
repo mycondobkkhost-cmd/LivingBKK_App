@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../config/env.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/admin_dashboard_overview.dart';
+import '../../models/app_perspective.dart';
 import '../../services/admin_repository.dart';
 import '../../services/auth_service.dart';
 import '../../services/chat_service.dart';
@@ -15,6 +16,7 @@ import '../../services/realtime_service.dart';
 import '../../services/supabase_service.dart';
 import '../../utils/admin_listing_nav.dart';
 import '../../state/session_gate.dart';
+import '../../state/user_role_controller.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/admin_dashboard_bar.dart';
@@ -32,13 +34,16 @@ import 'admin_reports_tab.dart';
 import 'admin_watermark_tab.dart';
 
 class AdminHomePage extends StatefulWidget {
-  const AdminHomePage({super.key});
+  const AdminHomePage({super.key, required this.roleController});
+
+  final UserRoleController roleController;
 
   @override
   State<AdminHomePage> createState() => _AdminHomePageState();
 }
 
-class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProviderStateMixin {
+class _AdminHomePageState extends State<AdminHomePage>
+    with SingleTickerProviderStateMixin {
   final _admin = AdminRepository();
   late final TabController _tabs;
   bool _allowed = false;
@@ -133,6 +138,8 @@ class _AdminHomePageState extends State<AdminHomePage> with SingleTickerProvider
 
   Future<void> _signOut() async {
     await AuthService.instance.signOut();
+    widget.roleController.setPerspective(AppPerspective.customer);
+    widget.roleController.setPlatformAdmin(false);
     await SessionGate.instance?.resetToWelcome();
     if (!mounted) return;
     context.go('/login');
