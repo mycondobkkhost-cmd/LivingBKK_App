@@ -14,7 +14,10 @@ Deno.serve(async (req) => {
     }
 
     const url = new URL(req.url);
-    const days = Math.min(90, Math.max(1, parseInt(url.searchParams.get("days") ?? "30", 10)));
+    const days = Math.min(
+      90,
+      Math.max(1, parseInt(url.searchParams.get("days") ?? "30", 10)),
+    );
 
     const service = createClient(
       Deno.env.get("SUPABASE_URL")!,

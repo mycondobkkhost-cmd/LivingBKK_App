@@ -57,14 +57,15 @@ async function sendBumpReminders(
     const daysSinceBump = daysBetween(anchor, now);
     if (daysSinceBump < 7 || daysSinceBump >= 30) continue;
 
-    const lastRem = row.last_reminder_at ? new Date(row.last_reminder_at) : null;
+    const lastRem = row.last_reminder_at
+      ? new Date(row.last_reminder_at)
+      : null;
     const daysSinceRem = lastRem ? daysBetween(lastRem, now) : 999;
     if (daysSinceRem < 7) continue;
 
     const daysLeft = 30 - daysSinceBump;
     const title = "LivingBKK — ยืนยันว่าง";
-    const body =
-      `${row.listing_code} · ${row.title}\n` +
+    const body = `${row.listing_code} · ${row.title}\n` +
       `กดอัปเดตว่าทรัพย์ยังว่าง — เหลือ ${daysLeft} วันก่อนเก็บประกาศอัตโนมัติ`;
 
     const fcm = await sendFcmToUser(supabase, row.owner_id, title, body, {
@@ -101,8 +102,7 @@ async function notifyAutoArchived(
   let sent = 0;
   for (const row of data as ArchivedRow[]) {
     const title = "LivingBKK — เก็บประกาศแล้ว";
-    const body =
-      `${row.listing_code} · ${row.title}\n` +
+    const body = `${row.listing_code} · ${row.title}\n` +
       "เก็บอัตโนมัติ — ไม่ได้ยืนยันว่างครบ 30 วัน";
     const fcm = await sendFcmToUser(supabase, row.owner_id, title, body, {
       type: "listing_archived",
