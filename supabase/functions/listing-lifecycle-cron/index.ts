@@ -1,4 +1,7 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  createClient,
+  type SupabaseClient,
+} from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { sendFcmToUser } from "../_shared/notify.ts";
 
@@ -32,7 +35,7 @@ function activityAnchor(row: ListingRow): Date {
 
 /** แจ้งเตือนทุก 7 วัน (FCM) จนกว่าจะ bump หรือครบ 30 วัน */
 async function sendBumpReminders(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, any, any>,
 ): Promise<{ checked: number; sent: number }> {
   const { data, error } = await supabase
     .from("listings")
@@ -83,7 +86,7 @@ async function sendBumpReminders(
 
 /** แจ้ง owner เมื่อระบบเก็บประกาศอัตโนมัติ (ครบ 30 วัน) */
 async function notifyAutoArchived(
-  supabase: ReturnType<typeof createClient>,
+  supabase: SupabaseClient<any, any, any>,
   archivedIds: string[],
 ): Promise<number> {
   if (archivedIds.length === 0) return 0;
