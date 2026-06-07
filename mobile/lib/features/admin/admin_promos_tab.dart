@@ -10,6 +10,7 @@ import '../../services/home_promo_repository.dart';
 import '../../services/home_promo_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/promo_image_util.dart';
 import '../../utils/promo_slug_util.dart';
 import '../../widgets/home/home_promo_carousel.dart';
 import '../../widgets/admin_mobile_layout.dart';
@@ -526,17 +527,7 @@ class _PromoEditorSheetState extends State<_PromoEditorSheet> {
   Future<void> _pickImage() async {
     final s = context.s;
     try {
-      if (kIsWeb) {
-        await Future<void>.delayed(const Duration(milliseconds: 80));
-      }
-      var file = await _picker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 90,
-      );
-      if (file == null) {
-        final multi = await _picker.pickMultiImage(imageQuality: 90);
-        if (multi.isNotEmpty) file = multi.first;
-      }
+      final file = await PromoImageUtil.pickPromoImage(_picker);
       if (file == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

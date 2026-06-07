@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/home_promo_config.dart';
 import '../models/home_promo_banner_row.dart';
+import '../utils/promo_image_util.dart';
 import 'auth_service.dart';
 import 'supabase_service.dart';
 
@@ -110,23 +111,23 @@ class HomePromoRepository {
     required XFile file,
   }) async {
     if (!_ready) throw Exception('ต้องเชื่อมต่อ Supabase และล็อกอินแอดมิน');
-    final ext = _extension(file);
+    final ext = PromoImageUtil.extension(file);
+    if (!PromoImageUtil.allowedExtensions.contains(ext)) {
+      throw Exception('รองรับเฉพาะ JPEG, PNG, WebP หรือ GIF');
+    }
     final path = '$slug/${DateTime.now().millisecondsSinceEpoch}.$ext';
     final bytes = await file.readAsBytes();
     await SupabaseService.client!.storage.from('home-promo').uploadBinary(
           path,
           bytes,
-          fileOptions: const FileOptions(upsert: true),
+          fileOptions: FileOptions(
+            upsert: true,
+            contentType: PromoImageUtil.mimeTypeForExtension(ext),
+          ),
         );
     final url =
         SupabaseService.client!.storage.from('home-promo').getPublicUrl(path);
     return (url: url, path: path);
-  }
-
-  String _extension(XFile file) {
-    final parts = file.name.split('.');
-    if (parts.length > 1) return parts.last.toLowerCase();
-    return 'jpg';
   }
 
   static String friendlyError(Object e) {

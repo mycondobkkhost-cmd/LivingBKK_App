@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 
 import '../../config/home_promo_config.dart';
+import '../../utils/promo_image_util.dart';
 
 /// รูปโฆษณา — รองรับ URL จากหลังบ้านหรือ asset ในแอป
 class HomePromoImage extends StatelessWidget {
@@ -23,12 +24,18 @@ class HomePromoImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final animated = PromoImageUtil.isAnimatedPromo(
+      memoryBytes: memoryBytes,
+      imageUrl: promo.imageUrl,
+    );
+
     if (memoryBytes != null && memoryBytes!.isNotEmpty) {
       return Image.memory(
         memoryBytes!,
         fit: fit,
         width: width,
         height: height,
+        gaplessPlayback: animated,
         errorBuilder: (_, __, ___) => _fallback(),
       );
     }
@@ -38,6 +45,7 @@ class HomePromoImage extends StatelessWidget {
         fit: fit,
         width: width,
         height: height,
+        gaplessPlayback: animated,
         errorBuilder: (_, __, ___) => _fallback(),
       );
     }
