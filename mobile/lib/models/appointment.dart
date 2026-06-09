@@ -1,4 +1,5 @@
-import '../utils/reference_codes.dart';
+import '../data/demo_calendar_scenarios.dart';
+import 'viewing_report.dart';
 
 class Appointment {
   const Appointment({
@@ -17,6 +18,7 @@ class Appointment {
     this.adminNotes,
     this.assignedTo,
     this.transactionRef,
+    this.viewingReport,
   });
 
   final String id;
@@ -34,6 +36,32 @@ class Appointment {
   final String? adminNotes;
   final String? assignedTo;
   final String? transactionRef;
+  final ViewingReport? viewingReport;
+
+  static ViewingReport? _parseViewingReport(Map<String, dynamic> json) {
+    final raw = json['follow_up'];
+    if (raw is! Map) return null;
+    final m = Map<String, dynamic>.from(raw);
+    final apptId = json['id']?.toString() ?? '';
+    if (m['outcome'] != null && m['outcome'].toString().isNotEmpty) {
+      return ViewingReport.fromJson({
+        ...m,
+        if (m['id'] == null) 'id': 'report-$apptId',
+        'appointment_id': m['appointment_id'] ?? apptId,
+      });
+    }
+    if (m['decision'] != null && m['decision'].toString().isNotEmpty) {
+      return ViewingReport.fromLegacyFollowUp(
+        m,
+        appointmentId: apptId,
+        leadId: json['lead_id'] as String?,
+        listingCode: json['listing_code'] as String?,
+        viewedDate: DateTime.tryParse(json['scheduled_date']?.toString() ?? ''),
+        timeSlot: json['time_slot']?.toString(),
+      );
+    }
+    return null;
+  }
 
   factory Appointment.fromJson(Map<String, dynamic> json) {
     final dateStr = json['scheduled_date'] as String;
@@ -51,25 +79,11 @@ class Appointment {
       lat: (json['lat'] as num?)?.toDouble(),
       lng: (json['lng'] as num?)?.toDouble(),
       adminNotes: json['admin_notes'] as String?,
-      assignedTo: json['assigned_to'] as String?,
+      assignedTo: (json['guide_staff_id'] ?? json['assigned_to'])?.toString(),
       transactionRef: json['transaction_ref'] as String?,
+      viewingReport: _parseViewingReport(json),
     );
   }
 
-  static List<Appointment> demo() => [
-        Appointment(
-          id: 'demo-appt-1',
-          leadId: 'demo-lead-1',
-          listingCode: 'RENT-CD-2026-000001',
-          transactionRef: ReferenceCodes.demoApptRef('demo-appt-1'),
-          seekerNickname: 'น้องบี',
-          seekerPhone: '0812345678',
-          scheduledDate: DateTime.now().add(const Duration(days: 2)),
-          timeSlot: '15:00 – 18:00 น.',
-          status: 'pending',
-          locationLabel: 'โซน BTS ทองหล่อ (โดยประมาณ)',
-          lat: 13.7234,
-          lng: 100.5794,
-        ),
-      ];
+  static List<Appointment> demo() => DemoCalendarScenarios.buildAppointments();
 }

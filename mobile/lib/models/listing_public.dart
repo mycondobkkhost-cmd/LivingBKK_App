@@ -8,6 +8,9 @@ class ListingPublic {
     required this.listingType,
     required this.title,
     required this.priceNet,
+    this.priceSaleNet,
+    this.promoPriceNet,
+    this.promoSalePriceNet,
     this.titleEn,
     this.district,
     this.districtEn,
@@ -29,6 +32,9 @@ class ListingPublic {
     this.lat,
     this.lng,
     this.geoZoneSlug,
+    this.projectGeoZoneSlug,
+    this.projectSearchTags = const [],
+    this.projectNearbyTransit = const [],
     this.imageUrls = const [],
     this.description,
     this.descriptionEn,
@@ -48,6 +54,10 @@ class ListingPublic {
   final String title;
   final String? titleEn;
   final double priceNet;
+  /// ราคาขาย — ใช้เมื่อ listing_type = rent_and_sale
+  final double? priceSaleNet;
+  final double? promoPriceNet;
+  final double? promoSalePriceNet;
   final String? district;
   final String? districtEn;
   final String? projectName;
@@ -68,6 +78,9 @@ class ListingPublic {
   final double? lat;
   final double? lng;
   final String? geoZoneSlug;
+  final String? projectGeoZoneSlug;
+  final List<String> projectSearchTags;
+  final List<String> projectNearbyTransit;
   final List<String> imageUrls;
   final String? description;
   final String? descriptionEn;
@@ -90,6 +103,9 @@ class ListingPublic {
       title: json['title'] as String? ?? '',
       titleEn: json['title_en'] as String?,
       priceNet: (json['price_net'] as num).toDouble(),
+      priceSaleNet: (json['price_sale_net'] as num?)?.toDouble(),
+      promoPriceNet: (json['price_internal'] as num?)?.toDouble(),
+      promoSalePriceNet: (json['price_sale_promo_net'] as num?)?.toDouble(),
       district: json['district'] as String?,
       districtEn: json['district_en'] as String?,
       projectName: json['project_name'] as String?,
@@ -112,6 +128,9 @@ class ListingPublic {
       lat: (json['lat'] as num?)?.toDouble(),
       lng: (json['lng'] as num?)?.toDouble(),
       geoZoneSlug: json['geo_zone_slug'] as String?,
+      projectGeoZoneSlug: json['project_geo_zone_slug'] as String?,
+      projectSearchTags: _parseStringList(json['project_search_tags']),
+      projectNearbyTransit: _parseStringList(json['project_nearby_transit']),
       imageUrls: _parseImageUrls(json['image_urls']),
       description: json['description'] as String?,
       descriptionEn: json['description_en'] as String?,
@@ -139,6 +158,14 @@ class ListingPublic {
   }
 
   static List<ListingPublic> demo() => DemoListingsFactory.cached;
+
+  static List<String> _parseStringList(dynamic raw) {
+    if (raw == null) return const [];
+    if (raw is List) {
+      return raw.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+    }
+    return const [];
+  }
 
   static List<String> _parseImageUrls(dynamic raw) {
     if (raw == null) return const [];

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/in_app_notification_hub.dart';
 import '../services/notification_center_repository.dart';
+import '../services/property_care_notification_service.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_theme.dart';
 
@@ -25,6 +26,7 @@ class NotificationBellButton extends StatelessWidget {
       listenable: Listenable.merge([
         InAppNotificationHub.instance,
         NotificationCenterRepository.instance,
+        PropertyCareNotificationService.instance,
       ]),
       builder: (context, _) {
         final hub = InAppNotificationHub.instance.unreadChatCount;

@@ -17,12 +17,14 @@ class DemandInquiryCard extends StatelessWidget {
     required this.onTap,
     required this.onOffer,
     this.myStockMatchScore,
+    this.selectionMode = false,
   });
 
   final DemandPost post;
   final String timeLabel;
   final VoidCallback onTap;
   final VoidCallback onOffer;
+  final bool selectionMode;
   /// คะแนนจับคู่ MyStock (≥ 42) — แสดงป้ายเมื่อมีค่า
   final int? myStockMatchScore;
 
@@ -102,8 +104,10 @@ class DemandInquiryCard extends StatelessWidget {
                     ),
                   ],
                   const Spacer(),
-                  DemandPostFavoriteButton(post: post, iconSize: 18),
-                  const SizedBox(width: 2),
+                  if (!selectionMode) ...[
+                    DemandPostFavoriteButton(post: post, iconSize: 18),
+                    const SizedBox(width: 2),
+                  ],
                   Text(
                     timeLabel,
                     style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
@@ -163,47 +167,49 @@ class DemandInquiryCard extends StatelessWidget {
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 6),
-              Divider(height: 1, color: AppTheme.divider),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 10,
-                    backgroundColor: AppTheme.primaryLight,
-                    child: Text(
-                      'LB',
-                      style: TextStyle(
-                        fontSize: 7,
-                        fontWeight: FontWeight.w800,
-                        color: AppTheme.primary,
+              if (!selectionMode) ...[
+                const SizedBox(height: 6),
+                Divider(height: 1, color: AppTheme.divider),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 10,
+                      backgroundColor: AppTheme.primaryLight,
+                      child: Text(
+                        'LB',
+                        style: TextStyle(
+                          fontSize: 7,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.primary,
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      s.demandLeadSourceFootnote(post.leadSource),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        s.demandLeadSourceFootnote(post.leadSource),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+                      ),
                     ),
-                  ),
-                  FilledButton(
-                    onPressed: onOffer,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppTheme.primary,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size(0, 28),
-                      padding: const EdgeInsets.symmetric(horizontal: 10),
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      visualDensity: VisualDensity.compact,
-                      textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                    FilledButton(
+                      onPressed: onOffer,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(0, 28),
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                      child: Text(s.demandSubmitOffer),
                     ),
-                    child: Text(s.demandSubmitOffer),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

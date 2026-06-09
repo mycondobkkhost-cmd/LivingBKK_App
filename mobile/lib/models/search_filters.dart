@@ -1,4 +1,11 @@
+import '../data/property_catalog.dart';
 import 'listing_transaction_types.dart';
+import '../utils/search_filter_match.dart';
+
+/// Default / min / max radius (km) for map pin search — 500 m … 10 km.
+const double kSearchPinRadiusDefaultKm = 0.5;
+const double kSearchPinRadiusMinKm = 0.5;
+const double kSearchPinRadiusMaxKm = 10;
 
 class SearchFilters {
   const SearchFilters({
@@ -10,6 +17,12 @@ class SearchFilters {
     this.bedrooms,
     this.projectName,
     this.geoZoneSlugs,
+    this.transitSlugs,
+    this.projectSlugs,
+    this.educationSlugs,
+    this.pinLatitude,
+    this.pinLongitude,
+    this.radiusKm,
     this.petAllowed,
     this.coAgentEligibleOnly,
     this.investorCategory,
@@ -24,12 +37,32 @@ class SearchFilters {
   final int? bedrooms;
   final String? projectName;
   final List<String>? geoZoneSlugs;
+  final List<String>? transitSlugs;
+  final List<String>? projectSlugs;
+  final List<String>? educationSlugs;
+  /// Map pin search — listings within [radiusKm] of this point (AND with tag filters).
+  final double? pinLatitude;
+  final double? pinLongitude;
+  final double? radiusKm;
   final bool? petAllowed;
   /// Killer filter: เปิดรับโคเอเจนซี่
   final bool? coAgentEligibleOnly;
   /// `with_tenant` | `bmv` | null = ไม่กรอง
   final String? investorCategory;
   final double? minYield;
+
+  bool get hasPinRadius =>
+      pinLatitude != null && pinLongitude != null && radiusKm != null;
+
+  bool get hasZoneFilters =>
+      (geoZoneSlugs?.isNotEmpty ?? false) ||
+      (transitSlugs?.isNotEmpty ?? false) ||
+      (educationSlugs?.isNotEmpty ?? false);
+
+  int get zoneFilterCount =>
+      (geoZoneSlugs?.length ?? 0) +
+      (transitSlugs?.length ?? 0) +
+      (educationSlugs?.length ?? 0);
 
   SearchFilters copyWith({
     String? query,
@@ -40,6 +73,12 @@ class SearchFilters {
     int? bedrooms,
     String? projectName,
     List<String>? geoZoneSlugs,
+    List<String>? transitSlugs,
+    List<String>? projectSlugs,
+    List<String>? educationSlugs,
+    double? pinLatitude,
+    double? pinLongitude,
+    double? radiusKm,
     bool? petAllowed,
     bool? coAgentEligibleOnly,
     String? investorCategory,
@@ -50,6 +89,10 @@ class SearchFilters {
     bool clearBedrooms = false,
     bool clearProject = false,
     bool clearGeoZones = false,
+    bool clearTransit = false,
+    bool clearProjectSlugs = false,
+    bool clearEducation = false,
+    bool clearPin = false,
     bool clearCoAgent = false,
     bool clearInvestor = false,
     bool clearMinYield = false,
@@ -63,6 +106,14 @@ class SearchFilters {
       bedrooms: clearBedrooms ? null : (bedrooms ?? this.bedrooms),
       projectName: clearProject ? null : (projectName ?? this.projectName),
       geoZoneSlugs: clearGeoZones ? null : (geoZoneSlugs ?? this.geoZoneSlugs),
+      transitSlugs: clearTransit ? null : (transitSlugs ?? this.transitSlugs),
+      projectSlugs:
+          clearProjectSlugs ? null : (projectSlugs ?? this.projectSlugs),
+      educationSlugs:
+          clearEducation ? null : (educationSlugs ?? this.educationSlugs),
+      pinLatitude: clearPin ? null : (pinLatitude ?? this.pinLatitude),
+      pinLongitude: clearPin ? null : (pinLongitude ?? this.pinLongitude),
+      radiusKm: clearPin ? null : (radiusKm ?? this.radiusKm),
       petAllowed: petAllowed ?? this.petAllowed,
       coAgentEligibleOnly:
           clearCoAgent ? null : (coAgentEligibleOnly ?? this.coAgentEligibleOnly),
@@ -79,7 +130,8 @@ class SearchFilters {
       maxPrice != null ||
       bedrooms != null ||
       projectName != null ||
-      (geoZoneSlugs != null && geoZoneSlugs!.isNotEmpty) ||
+      hasZoneFilters ||
+      hasPinRadius ||
       petAllowed == true ||
       investorCategory != null ||
       minYield != null;
@@ -93,6 +145,12 @@ class SearchFilters {
         if (bedrooms != null) 'bedrooms': bedrooms,
         if (projectName != null) 'project_name': projectName,
         if (geoZoneSlugs != null) 'geo_zone_slugs': geoZoneSlugs,
+        if (transitSlugs != null) 'transit_slugs': transitSlugs,
+        if (projectSlugs != null) 'project_slugs': projectSlugs,
+        if (educationSlugs != null) 'education_slugs': educationSlugs,
+        if (pinLatitude != null) 'pin_latitude': pinLatitude,
+        if (pinLongitude != null) 'pin_longitude': pinLongitude,
+        if (radiusKm != null) 'radius_km': radiusKm,
         if (petAllowed != null) 'pet_allowed': petAllowed,
         if (coAgentEligibleOnly != null) 'co_agent_eligible_only': coAgentEligibleOnly,
         if (investorCategory != null) 'investor_category': investorCategory,
@@ -109,6 +167,12 @@ class SearchFilters {
       bedrooms: json['bedrooms'] as int?,
       projectName: json['project_name'] as String?,
       geoZoneSlugs: (json['geo_zone_slugs'] as List?)?.cast<String>(),
+      transitSlugs: (json['transit_slugs'] as List?)?.cast<String>(),
+      projectSlugs: (json['project_slugs'] as List?)?.cast<String>(),
+      educationSlugs: (json['education_slugs'] as List?)?.cast<String>(),
+      pinLatitude: (json['pin_latitude'] as num?)?.toDouble(),
+      pinLongitude: (json['pin_longitude'] as num?)?.toDouble(),
+      radiusKm: (json['radius_km'] as num?)?.toDouble(),
       petAllowed: json['pet_allowed'] as bool?,
       coAgentEligibleOnly: json['co_agent_eligible_only'] as bool?,
       investorCategory: json['investor_category'] as String?,
@@ -123,10 +187,18 @@ class SearchFilters {
     if (listingType == 'sale_installment') parts.add('ขายฝาก');
     if (propertyType != null) parts.add(propertyType!);
     if (maxPrice != null) parts.add('≤${maxPrice!.toInt()}');
-    if (geoZoneSlugs != null && geoZoneSlugs!.isNotEmpty) {
-      parts.add(geoZoneSlugs!.join(', '));
+    if (hasZoneFilters) parts.add('$zoneFilterCount ทำเล');
+    if (hasPinRadius) {
+      final km = radiusKm!;
+      if (km < 1) {
+        parts.add('รัศมี ${(km * 1000).round()} ม.');
+      } else {
+        parts.add('รัศมี ${km.toStringAsFixed(km == km.roundToDouble() ? 0 : 1)} กม.');
+      }
     }
     if (coAgentEligibleOnly == true) parts.add('โคนายหน้า');
+    if (investorCategory == 'with_tenant') parts.add('ขายพร้อมผู้เช่า');
+    if (investorCategory == 'bmv') parts.add('BMV');
     return parts.isEmpty ? 'ทั้งหมด' : parts.join(' · ');
   }
 
@@ -136,6 +208,7 @@ class SearchFilters {
     double? priceNet;
     int? bedrooms;
     String? projectName;
+    String? projectSlug;
     String? district;
     String? title;
     bool? coAgentEligible;
@@ -143,6 +216,8 @@ class SearchFilters {
     String? investorCategory;
     double? yieldPercent;
     String? geoZoneSlug;
+    double? lat;
+    double? lng;
 
     if (listing is Map) {
       listingType = listing['listing_type'] as String?;
@@ -150,6 +225,7 @@ class SearchFilters {
       priceNet = (listing['price_net'] as num?)?.toDouble();
       bedrooms = listing['bedrooms'] as int?;
       projectName = listing['project_name'] as String?;
+      projectSlug = listing['project_slug'] as String?;
       district = listing['district'] as String?;
       title = listing['title'] as String?;
       coAgentEligible = listing['co_agent_eligible'] as bool?;
@@ -157,6 +233,8 @@ class SearchFilters {
       investorCategory = listing['investor_category'] as String?;
       yieldPercent = (listing['yield_percent'] as num?)?.toDouble();
       geoZoneSlug = listing['geo_zone_slug'] as String?;
+      lat = (listing['lat'] as num?)?.toDouble();
+      lng = (listing['lng'] as num?)?.toDouble();
     } else {
       try {
         final l = listing as dynamic;
@@ -165,6 +243,7 @@ class SearchFilters {
         priceNet = l.priceNet as double?;
         bedrooms = l.bedrooms as int?;
         projectName = l.projectName as String?;
+        projectSlug = l.projectSlug as String?;
         district = l.district as String?;
         title = l.title as String?;
         coAgentEligible = l.coAgentEligible as bool?;
@@ -172,6 +251,8 @@ class SearchFilters {
         investorCategory = l.investorCategory as String?;
         yieldPercent = l.yieldPercent as double?;
         geoZoneSlug = l.geoZoneSlug as String?;
+        lat = l.lat as double?;
+        lng = l.lng as double?;
       } catch (_) {
         return false;
       }
@@ -183,9 +264,28 @@ class SearchFilters {
         return false;
       }
     }
-    if (this.propertyType != null && propertyType != this.propertyType) return false;
-    if (minPrice != null && (priceNet == null || priceNet < minPrice!)) return false;
-    if (maxPrice != null && (priceNet == null || priceNet > maxPrice!)) return false;
+    if (this.propertyType != null) {
+      final wantDb =
+          PropertyCatalog.dbValueForSlug(this.propertyType!) ?? this.propertyType!;
+      if (propertyType != wantDb && propertyType != this.propertyType) {
+        return false;
+      }
+    }
+    final effectivePrice = _effectivePriceForFilter(
+      listingType: listingType,
+      priceNet: priceNet,
+      priceSaleNet: listing is Map
+          ? (listing['price_sale_net'] as num?)?.toDouble()
+          : _priceSaleNetFromDynamic(listing),
+    );
+    if (minPrice != null &&
+        (effectivePrice == null || effectivePrice < minPrice!)) {
+      return false;
+    }
+    if (maxPrice != null &&
+        (effectivePrice == null || effectivePrice > maxPrice!)) {
+      return false;
+    }
     if (bedrooms != null && bedrooms != this.bedrooms) return false;
     if (this.projectName != null &&
         !(projectName?.contains(this.projectName!) == true ||
@@ -200,14 +300,45 @@ class SearchFilters {
     if (minYield != null && (yieldPercent == null || yieldPercent < minYield!)) {
       return false;
     }
-    if (geoZoneSlugs != null && geoZoneSlugs!.isNotEmpty) {
-      final slug = geoZoneSlug;
-      if (slug == null || !geoZoneSlugs!.contains(slug)) {
-        final hay = '${district ?? ''} ${projectName ?? ''} ${title ?? ''}'.toLowerCase();
-        final ok = geoZoneSlugs!.any((s) => hay.contains(s.replaceAll('-', ' ')));
-        if (!ok) return false;
-      }
+    if (hasZoneFilters &&
+        !matchesZoneFilters(
+          this,
+          geoZoneSlug: geoZoneSlug,
+          district: district,
+          projectName: projectName,
+          projectSlug: projectSlug,
+          title: title,
+          lat: lat,
+          lng: lng,
+        )) {
+      return false;
+    }
+    if (hasPinRadius && !matchesPinRadiusFilter(this, lat: lat, lng: lng)) {
+      return false;
     }
     return true;
+  }
+
+  static double? _priceSaleNetFromDynamic(dynamic listing) {
+    try {
+      return listing.priceSaleNet as double?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  double? _effectivePriceForFilter({
+    required String? listingType,
+    required double? priceNet,
+    required double? priceSaleNet,
+  }) {
+    if (priceNet == null) return null;
+    if (ListingTransactionTypes.isRentAndSale(listingType)) {
+      if (this.listingType == ListingTransactionTypes.sale) {
+        return priceSaleNet ?? priceNet;
+      }
+      return priceNet;
+    }
+    return priceNet;
   }
 }

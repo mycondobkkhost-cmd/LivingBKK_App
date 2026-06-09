@@ -7,6 +7,10 @@ enum ChatMessageLinkKind {
   projectUnits,
   requirementForm,
   viewingForm,
+  profileTag,
+  viewingRequest,
+  viewingLocation,
+  viewingAppointment,
 }
 
 class ChatMessageLink {
@@ -15,6 +19,7 @@ class ChatMessageLink {
     required this.kind,
     this.listingId = '',
     this.projectName,
+    this.refCode = '',
   });
 
   factory ChatMessageLink.fromJson(Map<String, dynamic> json) {
@@ -25,6 +30,19 @@ class ChatMessageLink {
           json['listingId']?.toString() ?? json['listing_id']?.toString() ?? '',
       projectName:
           json['projectName']?.toString() ?? json['project_name']?.toString(),
+      refCode: json['refCode']?.toString() ?? json['ref_code']?.toString() ?? '',
+    );
+  }
+
+  factory ChatMessageLink.profileTag(String code, String label) {
+    return ChatMessageLink(label: label, kind: ChatMessageLinkKind.profileTag, refCode: code);
+  }
+
+  factory ChatMessageLink.viewingRequest(String code, String label) {
+    return ChatMessageLink(
+      label: label,
+      kind: ChatMessageLinkKind.viewingRequest,
+      refCode: code,
     );
   }
 
@@ -42,10 +60,33 @@ class ChatMessageLink {
     );
   }
 
+  factory ChatMessageLink.viewingLocation({
+    required String label,
+    required String mapsUrl,
+  }) {
+    return ChatMessageLink(
+      label: label,
+      kind: ChatMessageLinkKind.viewingLocation,
+      refCode: mapsUrl,
+    );
+  }
+
+  factory ChatMessageLink.viewingAppointment({
+    required String label,
+    required String appointmentId,
+  }) {
+    return ChatMessageLink(
+      label: label,
+      kind: ChatMessageLinkKind.viewingAppointment,
+      refCode: appointmentId,
+    );
+  }
+
   final String label;
   final ChatMessageLinkKind kind;
   final String listingId;
   final String? projectName;
+  final String refCode;
 
   bool get isFormAction =>
       kind == ChatMessageLinkKind.requirementForm ||
@@ -60,6 +101,7 @@ class ChatMessageLink {
         'kind': _kindToString(kind),
         if (listingId.isNotEmpty) 'listingId': listingId,
         if (projectName != null) 'projectName': projectName,
+        if (refCode.isNotEmpty) 'refCode': refCode,
       };
 
   static ChatMessageLinkKind _kindFromString(String raw) {
@@ -71,6 +113,14 @@ class ChatMessageLink {
         return ChatMessageLinkKind.requirementForm;
       case 'viewing_form':
         return ChatMessageLinkKind.viewingForm;
+      case 'profile_tag':
+        return ChatMessageLinkKind.profileTag;
+      case 'viewing_request':
+        return ChatMessageLinkKind.viewingRequest;
+      case 'viewing_location':
+        return ChatMessageLinkKind.viewingLocation;
+      case 'viewing_appointment':
+        return ChatMessageLinkKind.viewingAppointment;
       default:
         return ChatMessageLinkKind.listing;
     }
@@ -84,6 +134,14 @@ class ChatMessageLink {
         return 'requirement_form';
       case ChatMessageLinkKind.viewingForm:
         return 'viewing_form';
+      case ChatMessageLinkKind.profileTag:
+        return 'profile_tag';
+      case ChatMessageLinkKind.viewingRequest:
+        return 'viewing_request';
+      case ChatMessageLinkKind.viewingLocation:
+        return 'viewing_location';
+      case ChatMessageLinkKind.viewingAppointment:
+        return 'viewing_appointment';
       case ChatMessageLinkKind.listing:
         return 'listing';
     }
@@ -91,6 +149,9 @@ class ChatMessageLink {
 }
 
 class ChatMessage {
+  /// โน้ตภายในแอดมิน — ลูกค้าไม่เห็น (ใช้กับ role admin_notice)
+  static const adminInternalPrefix = '🔒[โน้ตแอดมิน] ';
+
   ChatMessage({
     required this.id,
     required this.role,
@@ -99,6 +160,21 @@ class ChatMessage {
     this.requiresAdmin = false,
     this.links = const [],
   }) : createdAt = createdAt ?? DateTime.now();
+
+  /// โน้ตบันทึกผลพาชม — แสดงเฉพาะแอดมิน
+  bool get isAdminInternal =>
+      role == ChatMessageRole.adminNotice &&
+      text.startsWith(adminInternalPrefix);
+
+  String get displayText =>
+      isAdminInternal ? text.substring(adminInternalPrefix.length) : text;
+
+  /// ข้อความระบบสรุปผลนัดดู — ลูกค้า+แอดมินเห็นและนับเป็น「ยังไม่อ่าน」
+  static bool isViewingFollowUpSystemNotice(String text) {
+    final t = text.trim();
+    return t.startsWith('ผลการนัดดูวันนี้') ||
+        t.startsWith('Post-viewing result today');
+  }
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     final linksRaw = json['links'];

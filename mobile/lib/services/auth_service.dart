@@ -1,4 +1,9 @@
+import 'dart:convert';
+import 'dart:math';
+
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/env.dart';
@@ -48,6 +53,9 @@ class AuthService extends ChangeNotifier {
 
   bool get isRealSupabaseSession => currentUser != null && !isTrialSignedIn;
 
+  /// ลงประกาศจริง — ต้องมีบัญชี Supabase (โหมดทดลองไม่พอ)
+  bool get canCreateListing => isRealSupabaseSession;
+
   void bindAuthListener() {
     final c = _client;
     if (c == null) return;
@@ -68,7 +76,8 @@ class AuthService extends ChangeNotifier {
       await _client?.auth.signOut();
     }
     _trial = persona;
-    notifyListeners();
+    // รอให้ผู้เรียกตั้ง role + navigate ก่อน — กัน router เด้งไป `/` ก่อนสิทธิ์แอดมินพร้อม
+    Future.microtask(notifyListeners);
   }
 
   Future<void> signIn({required String email, required String password}) async {
@@ -146,6 +155,65 @@ class AuthService extends ChangeNotifier {
     );
   }
 
+  static bool get _isNativeIos =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+
+  static String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
+  }
+
+  static String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    return sha256.convert(bytes).toString();
+  }
+
+  /// Native iOS: Sign in with Apple + `signInWithIdToken`.
+  /// Web/Android: Supabase OAuth redirect.
+  /// Returns `true` when a session is established in-process (native iOS).
+  Future<bool> signInWithApple() async {
+    if (_client == null) {
+      throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
+    }
+    _trial = null;
+
+    if (_isNativeIos) {
+      final rawNonce = _generateNonce();
+      final hashedNonce = _sha256ofString(rawNonce);
+      final credential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: hashedNonce,
+      );
+      final idToken = credential.identityToken;
+      if (idToken == null || idToken.isEmpty) {
+        throw Exception('Apple Sign In — ไม่ได้รับ identity token');
+      }
+      await _client!.auth.signInWithIdToken(
+        provider: OAuthProvider.apple,
+        idToken: idToken,
+        nonce: rawNonce,
+      );
+      await _syncProfileRole();
+      await NotificationService.instance.registerIfPossible();
+      notifyListeners();
+      return true;
+    }
+
+    await _client!.auth.signInWithOAuth(
+      OAuthProvider.apple,
+      redirectTo: _oauthRedirect,
+    );
+    return false;
+  }
+
   Future<void> resetPassword(String email) async {
     if (_client == null) {
       throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
@@ -167,28 +235,75 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// ลบบัญชีถาวร (Apple Guideline 5.1.1) — เรียก Edge Function delete-account
+  Future<void> deleteAccount() async {
+    if (_client == null || currentUser == null) {
+      throw Exception('ต้องล็อกอินก่อนลบบัญชี');
+    }
+    if (isTrialSignedIn) {
+      throw Exception('โหมดทดลอง — ไม่มีบัญชีจริงให้ลบ');
+    }
+
+    final res = await _client!.functions.invoke(
+      'delete-account',
+      body: {'confirm': true},
+    );
+    final data = res.data;
+    if (data is Map<String, dynamic>) {
+      if (data['ok'] == true) {
+        await NotificationService.instance.clearOnSignOut();
+        await _client!.auth.signOut();
+        notifyListeners();
+        return;
+      }
+      final err = data['error']?.toString() ?? 'delete_failed';
+      throw Exception(err);
+    }
+    throw Exception('delete_failed');
+  }
+
   Future<String?> fetchProfileRole() async {
-    if (isTrialSignedIn) return trialRole;
-    if (_client == null || currentUser == null) return null;
+    final access = await fetchProfileAccess();
+    return access.role;
+  }
+
+  Future<({String? role, String? staffSlug})> fetchProfileAccess() async {
+    if (isTrialSignedIn) {
+      return (role: trialRole, staffSlug: null);
+    }
+    if (_client == null || currentUser == null) {
+      return (role: null, staffSlug: null);
+    }
 
     String? metaRole;
     final rawMeta = currentUser!.userMetadata?['role'];
     if (rawMeta is String && rawMeta.isNotEmpty) metaRole = rawMeta;
 
+    String? metaSlug;
+    final rawSlug = currentUser!.userMetadata?['staff_slug'];
+    if (rawSlug is String && rawSlug.isNotEmpty) metaSlug = rawSlug;
+
     try {
       final row = await _client!
           .from('profiles')
-          .select('role')
+          .select('role, staff_slug')
           .eq('id', currentUser!.id)
           .maybeSingle();
       final dbRole = row?['role'] as String?;
-      if (dbRole == 'admin') return dbRole;
-      if (metaRole == 'admin') return metaRole;
-      if (dbRole != null && dbRole.isNotEmpty) return dbRole;
+      final dbSlug = row?['staff_slug'] as String?;
+      if (dbRole == 'admin') {
+        return (role: dbRole, staffSlug: dbSlug ?? metaSlug);
+      }
+      if (metaRole == 'admin') {
+        return (role: metaRole, staffSlug: dbSlug ?? metaSlug);
+      }
+      if (dbRole != null && dbRole.isNotEmpty) {
+        return (role: dbRole, staffSlug: dbSlug ?? metaSlug);
+      }
     } catch (_) {
-      return metaRole;
+      return (role: metaRole, staffSlug: metaSlug);
     }
-    return metaRole;
+    return (role: metaRole, staffSlug: metaSlug);
   }
 
   /// เฉพาะแอดมินระบบ — มุมมองลูกค้า/เอเจนซี่/เจ้าของสลับที่หน้าแรก ไม่เขียน DB
@@ -232,6 +347,15 @@ class AuthService extends ChangeNotifier {
     }
     if (msg.contains('ตั้งค่า supabase')) {
       return 'ยังไม่ต่อระบบหลังบ้าน — ดู docs/เข้าใจ-ทดลอง-vs-ใช้จริง.md';
+    }
+    if (msg.contains('admin_delete_blocked')) {
+      return 'บัญชีผู้ดูแลระบบ — ติดต่อทีมเพื่อลบบัญชี';
+    }
+    if (msg.contains('confirmation_required')) {
+      return 'ต้องยืนยันการลบบัญชี';
+    }
+    if (msg.contains('delete_failed') || msg.contains('delete-account')) {
+      return 'ลบบัญชีไม่สำเร็จ — ลองใหม่หรือติดต่อ support';
     }
     return 'เข้าสู่ระบบไม่สำเร็จ: $error';
   }

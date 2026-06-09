@@ -73,8 +73,13 @@ abstract final class OfferCommissionScheme {
   static bool isSaleListing(String? listingType) =>
       listingType == 'sale' || listingType == 'sale_installment';
 
-  static String transactionForListing(String listingType) =>
-      isSaleListing(listingType) ? 'sale' : listingType;
+  static bool isDualListing(String? listingType) =>
+      listingType == 'rent_and_sale';
+
+  static String transactionForListing(String listingType) {
+    if (isDualListing(listingType)) return 'sale';
+    return isSaleListing(listingType) ? 'sale' : listingType;
+  }
 
   static String capacityForPoster({required bool isAgentPoster}) =>
       isAgentPoster ? 'co_agent_50_50' : 'owner_direct_100';

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../data/property_catalog.dart';
@@ -13,10 +16,13 @@ import '../../state/user_role_controller.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/li_layout.dart';
 import '../../widgets/home_search_strip.dart';
-import '../../widgets/listing_card.dart';
+import '../../widgets/listing_grid.dart';
 import '../../widgets/listings_map.dart';
-import '../../widgets/search_filter_sheet.dart';
+import '../../widgets/map_pin_radius_bar.dart';
 import '../../widgets/smart_search_bar.dart';
+import '../../utils/geo_distance.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/admin_mobile_layout.dart';
 import '../../widgets/app_mobile_scaffold.dart';
 
 /// แท็บแผนที่ — ค้นหาทรัพย์บนแผนที่โดยเฉพาะ
@@ -40,13 +46,22 @@ class _MapSearchPageState extends State<MapSearchPage> {
   List<ListingPublic> _listings = [];
   bool _loading = true;
   String? _selectedId;
+  bool _focusNearMeOnMap = true;
+  bool _pinPlacementMode = false;
+  double? _userLat;
+  double? _userLng;
 
   @override
   void initState() {
     super.initState();
     widget.searchSession.addListener(_load);
     widget.roleController.addListener(_load);
-    _load();
+    unawaited(_bootstrapNearMe());
+  }
+
+  Future<void> _bootstrapNearMe() async {
+    await _loadUserLocation();
+    await _load();
   }
 
   @override
@@ -72,6 +87,25 @@ class _MapSearchPageState extends State<MapSearchPage> {
     return f;
   }
 
+  Future<void> _loadUserLocation() async {
+    try {
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition();
+      if (!mounted) return;
+      setState(() {
+        _userLat = pos.latitude;
+        _userLng = pos.longitude;
+      });
+    } catch (_) {}
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     _searchService.invalidateCache();
@@ -89,6 +123,34 @@ class _MapSearchPageState extends State<MapSearchPage> {
     }
   }
 
+  ListingPublic? get _selected {
+    if (_selectedId == null) return null;
+    for (final l in _listings) {
+      if (l.id == _selectedId) return l;
+    }
+    return null;
+  }
+
+  List<ListingPublic> _sheetListings({ListingPublic? anchor}) {
+    if (anchor != null && anchor.lat != null && anchor.lng != null) {
+      return sortByProximityThenPrice(
+        _listings,
+        lat: anchor.lat!,
+        lng: anchor.lng!,
+        referencePrice: anchor.priceNet,
+        excludeId: anchor.id,
+      );
+    }
+    if (_userLat != null && _userLng != null) {
+      return sortByProximityThenPrice(
+        _listings,
+        lat: _userLat!,
+        lng: _userLng!,
+      );
+    }
+    return _listings;
+  }
+
   void _openListing(ListingPublic item) {
     context.push(
       '/listing/${item.id}',
@@ -96,12 +158,17 @@ class _MapSearchPageState extends State<MapSearchPage> {
     );
   }
 
-  Future<void> _openFilters() async {
-    final result = await showSearchFilterSheet(
-      context,
-      initial: _effectiveFilters(),
+  void _onPinPlaced(double lat, double lng) {
+    final f = widget.searchSession.filters;
+    final radius = f.radiusKm ?? kSearchPinRadiusDefaultKm;
+    widget.searchSession.setFilters(
+      f.copyWith(
+        pinLatitude: lat,
+        pinLongitude: lng,
+        radiusKm: radius,
+      ),
     );
-    if (result != null) widget.searchSession.setFilters(result);
+    setState(() => _pinPlacementMode = false);
   }
 
   @override
@@ -113,9 +180,18 @@ class _MapSearchPageState extends State<MapSearchPage> {
       ]),
       builder: (context, _) {
         final s = AppStrings.of(context);
+        final topInset = PageSafeInsets.top(context);
+        final selected = _selected;
+        final filters = widget.searchSession.filters;
+        final sheetListings = _sheetListings(anchor: selected);
+        final headerTitle = s.mapListingCount(sheetListings.length);
+
         return AppMobileScaffold(
+          safeBottomBody: false,
           backgroundColor: AppTheme.backgroundAlt,
-          body: Stack(
+          body: AdminMobileLayout.withInsets(
+            context,
+            Stack(
             children: [
               Positioned.fill(
                 child: _loading
@@ -124,10 +200,15 @@ class _MapSearchPageState extends State<MapSearchPage> {
                         listings: _listings,
                         selectedId: _selectedId,
                         showPriceOnMarker: true,
-                        onListingTap: (l) {
-                          setState(() => _selectedId = l.id);
-                          _openListing(l);
-                        },
+                        fullBleed: true,
+                        focusUserOnStart: _focusNearMeOnMap,
+                        fabBottomPadding: 160,
+                        pinLatitude: filters.pinLatitude,
+                        pinLongitude: filters.pinLongitude,
+                        radiusKm: filters.radiusKm,
+                        pinPlacementMode: _pinPlacementMode,
+                        onPinPlaced: _onPinPlaced,
+                        onListingTap: (l) => setState(() => _selectedId = l.id),
                       ),
               ),
               Positioned(
@@ -137,8 +218,8 @@ class _MapSearchPageState extends State<MapSearchPage> {
                 child: Material(
                   elevation: 2,
                   color: Colors.white,
-                  child: SafeArea(
-                    bottom: false,
+                  child: Padding(
+                    padding: EdgeInsets.only(top: topInset),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -160,21 +241,42 @@ class _MapSearchPageState extends State<MapSearchPage> {
                           onCategoryTap: (_) => _load(),
                         ),
                         Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            LiLayout.pagePadding,
+                            0,
+                            LiLayout.pagePadding,
+                            4,
+                          ),
+                          child: MapPinRadiusBar(
+                            filters: filters,
+                            pinPlacementMode: _pinPlacementMode,
+                            onPinPlacementModeChanged: (v) =>
+                                setState(() => _pinPlacementMode = v),
+                            onFiltersChanged: widget.searchSession.setFilters,
+                          ),
+                        ),
+                        Padding(
                           padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                           child: Row(
                             children: [
-                              Text(
-                                s.mapListingCount(_listings.length),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13,
+                              Expanded(
+                                child: Text(
+                                  headerTitle,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
                                 ),
                               ),
-                              const Spacer(),
-                              TextButton.icon(
-                                onPressed: _openFilters,
-                                icon: const Icon(Icons.tune, size: 18),
-                                label: Text(s.filters, style: TextStyle(fontSize: 12)),
+                              IconButton(
+                                onPressed: () {
+                                  setState(() => _focusNearMeOnMap = true);
+                                  unawaited(_bootstrapNearMe());
+                                },
+                                tooltip: s.searchNearByTitle,
+                                icon: const Icon(Icons.near_me_outlined, size: 22),
                               ),
                             ],
                           ),
@@ -202,24 +304,27 @@ class _MapSearchPageState extends State<MapSearchPage> {
                           ),
                         ],
                       ),
-                      child: ListView.builder(
-                        controller: scrollController,
-                        padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
-                        itemCount: _listings.length.clamp(0, 20),
-                        itemBuilder: (context, i) {
-                          final item = _listings[i];
-                          return ListingCard(
-                            listing: item,
-                            style: ListingCardStyle.list,
-                            showCoAgentStrip: _isAgent,
-                            onTap: () => _openListing(item),
-                          );
-                        },
+                      child: ListingGrid(
+                        scrollController: scrollController,
+                        items: sheetListings.take(20).toList(),
+                        horizontalPadding: 12,
+                        shrinkWrap: false,
+                        physics: const ClampingScrollPhysics(),
+                        padding: EdgeInsets.fromLTRB(
+                          12,
+                          8,
+                          12,
+                          24 + PageSafeInsets.bottom(context),
+                        ),
+                        showCoAgentStrip: _isAgent,
+                        onTapListing: _openListing,
                       ),
                     );
                   },
                 ),
             ],
+            ),
+            bleedBottom: true,
           ),
         );
       },

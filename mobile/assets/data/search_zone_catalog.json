@@ -1,0 +1,169 @@
+{
+  "education": [
+    {
+      "id": "edu-chula",
+      "title_th": "จุฬาลงกรณ์มหาวิทยาลัย",
+      "title_en": "Chulalongkorn University",
+      "lat": 13.7367,
+      "lng": 100.5331,
+      "match_radius_km": 2.5,
+      "aliases": ["จุฬา", "chula", "chulalongkorn"]
+    },
+    {
+      "id": "edu-thammasat",
+      "title_th": "มหาวิทยาลัยธรรมศาสตร์",
+      "title_en": "Thammasat University",
+      "lat": 13.7563,
+      "lng": 100.4918,
+      "match_radius_km": 2.0,
+      "aliases": ["ธรรมศาสตร์", "thammasat"]
+    },
+    {
+      "id": "edu-mahidol-salaya",
+      "title_th": "มหาวิทยาลัยมหิดล วิทยาเขตศalaya",
+      "title_en": "Mahidol University Salaya",
+      "lat": 13.7937,
+      "lng": 100.3228,
+      "match_radius_km": 3.0,
+      "aliases": ["มหิดล", "mahidol", "salaya"]
+    },
+    {
+      "id": "edu-kasetsart",
+      "title_th": "มหาวิทยาลัยเกษตรศาสตร์",
+      "title_en": "Kasetsart University",
+      "lat": 13.8460,
+      "lng": 100.5695,
+      "match_radius_km": 2.5,
+      "aliases": ["เกษตร", "kasetsart"]
+    },
+    {
+      "id": "edu-bangkok-uni",
+      "title_th": "มหาวิทยาลัยกรุงเทพ",
+      "title_en": "Bangkok University",
+      "lat": 13.7270,
+      "lng": 100.5240,
+      "match_radius_km": 2.0,
+      "aliases": ["ม.กรุงเทพ", "bangkok university"]
+    },
+    {
+      "id": "edu-srinakharinwirot",
+      "title_th": "ม.ศรีนครินทรวิโรฒ",
+      "title_en": "Srinakharinwirot University",
+      "lat": 13.7455,
+      "lng": 100.5652,
+      "match_radius_km": 2.0,
+      "aliases": ["ศรีนครินทร", "swu"]
+    },
+    {
+      "id": "edu-ramkhamhaeng",
+      "title_th": "ม.รามคำแหง",
+      "title_en": "Ramkhamhaeng University",
+      "lat": 13.7578,
+      "lng": 100.6198,
+      "match_radius_km": 2.5,
+      "aliases": ["รามคำแหง", "ramkhamhaeng"]
+    },
+    {
+      "id": "edu-shrewsbury-riverside",
+      "title_th": "Shrewsbury Riverside",
+      "title_en": "Shrewsbury International School Riverside",
+      "lat": 13.7128,
+      "lng": 100.5145,
+      "match_radius_km": 2.0,
+      "aliases": ["shrewsbury", "riverside"]
+    },
+    {
+      "id": "edu-nist",
+      "title_th": "NIST International School",
+      "title_en": "NIST International School",
+      "lat": 13.7395,
+      "lng": 100.5688,
+      "match_radius_km": 1.8,
+      "aliases": ["nist"]
+    },
+    {
+      "id": "edu-harrow",
+      "title_th": "Harrow International Bangkok",
+      "title_en": "Harrow International Bangkok",
+      "lat": 13.8910,
+      "lng": 100.5920,
+      "match_radius_km": 2.5,
+      "aliases": ["harrow"]
+    },
+    {
+      "id": "edu-isb",
+      "title_th": "International School Bangkok",
+      "title_en": "International School Bangkok",
+      "lat": 13.7465,
+      "lng": 100.6012,
+      "match_radius_km": 2.0,
+      "aliases": ["isb"]
+    },
+    {
+      "id": "edu-ekamai-intl",
+      "title_th": "Ekamai International School",
+      "title_en": "Ekamai International School",
+      "lat": 13.7185,
+      "lng": 100.5870,
+      "match_radius_km": 1.5,
+      "aliases": ["ekamai school"]
+    }
+  ],
+  "landmarks": [
+    {
+      "id": "landmark-bangkok-hospital",
+      "title_th": "โรงพยาบาลกรุงเทพ",
+      "title_en": "Bangkok Hospital",
+      "lat": 13.7530,
+      "lng": 100.5770,
+      "match_radius_km": 2.0,
+      "geo_zone_slugs": ["thonglor", "asok"],
+      "aliases": ["รพ.กรุงเทพ", "bangkok hospital"],
+      "confidence": "coords"
+    },
+    {
+      "id": "landmark-rca",
+      "title_th": "RCA",
+      "title_en": "Royal City Avenue",
+      "lat": 13.7475,
+      "lng": 100.5795,
+      "match_radius_km": 1.5,
+      "geo_zone_slugs": ["thonglor"],
+      "aliases": ["อาร์ซีเอ", "royal city avenue"],
+      "confidence": "coords"
+    },
+    {
+      "id": "landmark-phetchaburi-tadmai",
+      "title_th": "เพชรบุรีตัดใหม่",
+      "title_en": "Phetchaburi–Tad Mai",
+      "lat": 13.7490,
+      "lng": 100.5570,
+      "match_radius_km": 1.2,
+      "geo_zone_slugs": ["asok"],
+      "aliases": ["เพชรบุรีตัดใหม่", "phetchaburi tad mai"],
+      "confidence": "suggest"
+    },
+    {
+      "id": "landmark-sukhumvit-55",
+      "title_th": "สุขุมวิท 55",
+      "title_en": "Sukhumvit Soi 55",
+      "lat": 13.7240,
+      "lng": 100.5785,
+      "match_radius_km": 0.9,
+      "geo_zone_slugs": ["thonglor"],
+      "aliases": ["ซอย 55", "soi 55", "sukhumvit 55"],
+      "confidence": "coords"
+    },
+    {
+      "id": "landmark-thonglor-soi-end",
+      "title_th": "ท้ายซอยทองหล่อ",
+      "title_en": "Thonglor Soi end",
+      "lat": 13.7185,
+      "lng": 100.5860,
+      "match_radius_km": 0.7,
+      "geo_zone_slugs": ["thonglor"],
+      "aliases": ["ท้ายซอยทองหล่อ", "thonglor soi end"],
+      "confidence": "suggest"
+    }
+  ]
+}

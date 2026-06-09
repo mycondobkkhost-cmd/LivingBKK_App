@@ -16,7 +16,8 @@
 | รูปซ้ำ / สงสัย | แถว `moderation_flags` ประเภท `duplicate_image` + สถานะรูป `pending` | 0 |
 | ข้อความประกาศ | Edge Function `moderate-listing-text` — regex ใน Deno (เบอร์/LINE/URL) | 0 |
 | ลายน้ำเว็บอื่น | ข้อความเตือนตอนอัปโหลด + คิวแอดมิน | 0 |
-| ลายน้ำ PROPPITER ฝังในไฟล์ | Edge `listing-watermark-images` — โลโก้เล็กมุมล่างขวา ~8% กึ่งโปร่งแสง | 0 |
+| ลายน้ำ PROPPITER (หน้าบ้าน) | Edge `listing-watermark-images` — สร้างไฟล์ `wm/` แยกจากต้นฉบับ · `public_url` = มีลายน้ำ · `storage_path` = ต้นฉบับ | 0 |
+| แอดมินดาวน์โหลดต้นฉบับ | พรีวิวประกาศ → **ดาวน์โหลดรูปต้นฉบับ** (จาก `storage_path`) | 0 |
 | อัปโหลดรูปลายน้ำ | แอดมิน → แท็บ **ลายน้ำ** → Storage `brand-assets/watermark/` | 0 |
 
 ## สิ่งที่ไม่ทำ (เพื่อไม่ให้มีค่าใช้จ่ายแฝง)

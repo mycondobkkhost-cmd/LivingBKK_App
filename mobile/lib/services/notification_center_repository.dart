@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
 import '../config/post_listing_menu_config.dart';
@@ -6,6 +8,7 @@ import '../state/user_role_controller.dart';
 import 'auth_service.dart';
 import 'chat_service.dart';
 import 'listing_owner_repository.dart';
+import 'property_care_notification_service.dart';
 
 /// ศูนย์แจ้งเตือน — รวม lifecycle ประกาศ + แชท + mock ระบบ (v1)
 class NotificationCenterRepository extends ChangeNotifier {
@@ -20,6 +23,27 @@ class NotificationCenterRepository extends ChangeNotifier {
   bool get isLoading => _loading;
 
   int get unreadCount => _items.where((e) => !e.read).length;
+
+  void setPropertyCareNotifications(List<PropertyCareNotifEntry> entries) {
+    _items.removeWhere((e) => e.type == AppNotificationType.propertyCareGrant);
+    for (final e in entries) {
+      _items.insert(
+        0,
+        AppNotification(
+          id: e.id,
+          type: AppNotificationType.propertyCareGrant,
+          title: e.title,
+          body: e.body,
+          createdAt: e.createdAt,
+          read: e.read,
+          priority: AppNotificationPriority.action,
+          route: PostListingMenuConfig.mineShellTabRoute,
+          ctaLabel: e.ctaLabel,
+        ),
+      );
+    }
+    notifyListeners();
+  }
 
   List<AppNotification> filtered(AppNotificationFilter filter) {
     if (filter == AppNotificationFilter.all) return _items;
@@ -89,7 +113,7 @@ class NotificationCenterRepository extends ChangeNotifier {
       out.add(AppNotification(
         id: 'welcome',
         type: AppNotificationType.systemAnnouncement,
-        title: isEnglish ? 'Welcome to PROPPITER' : 'ยินดีต้อนรับ PROPPITER',
+        title: isEnglish ? 'Welcome to RealXtate' : 'ยินดีต้อนรับ RealXtate',
         body: isEnglish
             ? 'Verified listings · Free to post · Full-service support'
             : 'ข้อมูลแม่นยำ • ลงประกาศฟรี • บริการครบวงจร',
@@ -100,6 +124,7 @@ class NotificationCenterRepository extends ChangeNotifier {
 
     out.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     _items = out;
+    await PropertyCareNotificationService.instance.sync(isEnglish: isEnglish);
     _loading = false;
     notifyListeners();
   }
@@ -108,6 +133,12 @@ class NotificationCenterRepository extends ChangeNotifier {
     final i = _items.indexWhere((e) => e.id == id);
     if (i < 0 || _items[i].read) return;
     _items[i] = _items[i].copyWith(read: true);
+    if (id.startsWith('care_')) {
+      unawaited(
+        PropertyCareNotificationService.instance
+            .markRead(id.replaceFirst('care_', '')),
+      );
+    }
     notifyListeners();
   }
 

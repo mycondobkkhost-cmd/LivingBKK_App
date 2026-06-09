@@ -12,7 +12,9 @@ import '../../widgets/admin_mobile_layout.dart';
 
 /// แอดมินจัดการทะเบียนโครงการ — เพิ่ม/แก้/ดึงจาก LI โดยไม่ต้องโค้ด
 class AdminProjectsTab extends StatefulWidget {
-  const AdminProjectsTab({super.key});
+  const AdminProjectsTab({super.key, required this.isCeo});
+
+  final bool isCeo;
 
   @override
   State<AdminProjectsTab> createState() => _AdminProjectsTabState();
@@ -24,8 +26,6 @@ class _AdminProjectsTabState extends State<AdminProjectsTab> {
   final _importUrl = TextEditingController();
 
   List<PropertyProjectRow> _all = [];
-  List<String> _discoveredSlugs = [];
-  String? _bulkStatus;
   String? _importHint;
   bool _loading = true;
   bool _busy = false;
@@ -112,28 +112,7 @@ class _AdminProjectsTabState extends State<AdminProjectsTab> {
     }
   }
 
-  Future<void> _discoverPropertyHub() async {
-    final s = context.s;
-    setState(() {
-      _busy = true;
-      _bulkStatus = s.adminProjectsDiscovering;
-    });
-    try {
-      final slugs = await _repo.discoverPropertyHubSlugs();
-      if (!mounted) return;
-      setState(() {
-        _discoveredSlugs = slugs;
-        _bulkStatus = s.adminProjectsDiscovered(slugs.length);
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _bulkStatus = '$e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  Future<void> _resetAndResyncCatalog() async {
+  Future<void> _resetCatalog() async {
     final s = context.s;
     final ok = await showDialog<bool>(
       context: context,
@@ -154,80 +133,21 @@ class _AdminProjectsTabState extends State<AdminProjectsTab> {
     );
     if (ok != true || !mounted) return;
 
-    setState(() {
-      _busy = true;
-      _bulkStatus = s.adminProjectsResetTitle;
-      _discoveredSlugs = [];
-    });
+    setState(() => _busy = true);
     try {
       final purge = await _repo.purgeAllProjects();
       final deleted = (purge['projects_deleted'] as num?)?.toInt() ?? 0;
       final unlinked = (purge['listings_unlinked'] as num?)?.toInt() ?? 0;
+      await _refresh();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(s.adminProjectsResetDone(deleted, unlinked))),
       );
-      await _syncAllFromPropertyHub();
     } catch (e) {
       if (!mounted) return;
-      setState(() => _bulkStatus = '$e');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(ProjectRepository.friendlyImportError(e))),
       );
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
-  }
-
-  /// กดปุ่มเดียว: ค้นหาชื่อทั้งหมด → ดึงรายละเอียดทีละชุดจนจบ
-  Future<void> _syncAllFromPropertyHub() async {
-    await _discoverPropertyHub();
-    if (!mounted || _discoveredSlugs.isEmpty) return;
-    await _batchImportPropertyHub();
-  }
-
-  Future<void> _batchImportPropertyHub() async {
-    final s = context.s;
-    if (_discoveredSlugs.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.adminProjectsDiscoverFirst)),
-      );
-      return;
-    }
-    setState(() {
-      _busy = true;
-      _bulkStatus = s.adminProjectsImportingBatch;
-    });
-    try {
-      var offset = 0;
-      var totalOk = 0;
-      var totalFail = 0;
-      while (offset < _discoveredSlugs.length) {
-        const batchSize = 20;
-        final end = offset + batchSize;
-        final batch = _discoveredSlugs.sublist(
-          offset,
-          end > _discoveredSlugs.length ? _discoveredSlugs.length : end,
-        );
-        if (batch.isEmpty) break;
-        final data = await _repo.batchImportPropertyHub(slugs: batch, limit: batchSize);
-        totalOk += (data['ok'] as num?)?.toInt() ?? 0;
-        totalFail += (data['fail'] as num?)?.toInt() ?? 0;
-        offset += batch.length;
-        if (!mounted) return;
-        setState(() {
-          _bulkStatus = s.adminProjectsBatchProgress(offset, _discoveredSlugs.length, totalOk, totalFail);
-        });
-        if ((data['remaining'] as num?)?.toInt() == 0 && offset >= _discoveredSlugs.length) break;
-      }
-      await _refresh();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.adminProjectsBatchDone(totalOk, totalFail))),
-      );
-    } catch (e) {
-      if (!mounted) return;
-      setState(() => _bulkStatus = '$e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -278,6 +198,52 @@ class _AdminProjectsTabState extends State<AdminProjectsTab> {
           ? context.s.adminProjectsNeedSupabase
           : '$e';
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _bulkEnrichTags() async {
+    final s = context.s;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.adminProjectsEnrichTagsTitle),
+        content: Text(s.adminProjectsEnrichTagsBody),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.adminProjectsEnrichTagsConfirm),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final result = await _repo.bulkEnrichAllTags();
+      await _refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            s.adminProjectsEnrichTagsDone(
+              (result['updated'] as num?)?.toInt() ?? 0,
+              (result['needs_review'] as num?)?.toInt() ?? 0,
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ProjectRepository.friendlyImportError(e))),
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -354,54 +320,34 @@ class _AdminProjectsTabState extends State<AdminProjectsTab> {
               icon: const Icon(Icons.cloud_download_outlined),
               label: Text(s.adminProjectsImportBtn),
             ),
-            const Divider(height: 28),
-            Text(s.adminProjectsBulkTitle, style: AdminTheme.title),
-            const SizedBox(height: 6),
-            AdminHint(s.adminProjectsBulkHint),
-            const SizedBox(height: 10),
-            FilledButton.icon(
-              onPressed: _busy ? null : _syncAllFromPropertyHub,
-              icon: const Icon(Icons.cloud_sync_outlined),
-              label: Text(s.adminProjectsSyncAllBtn),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _busy ? null : _discoverPropertyHub,
-                  icon: const Icon(Icons.travel_explore),
-                  label: Text(s.adminProjectsDiscoverBtn),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _busy || _discoveredSlugs.isEmpty ? null : _batchImportPropertyHub,
-                  icon: const Icon(Icons.download_for_offline_outlined),
-                  label: Text(s.adminProjectsBulkImportBtn),
-                ),
-              ],
-            ),
-            if (_bulkStatus != null) ...[
-              const SizedBox(height: 8),
-              Text(_bulkStatus!, style: AdminTheme.status),
+            if (widget.isCeo) ...[
+              const Divider(height: 28),
+              Text(s.adminProjectsResetTitle, style: AdminTheme.title),
+              const SizedBox(height: 6),
+              AdminHint(s.adminProjectsResetHint),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _resetCatalog,
+                icon: const Icon(Icons.delete_sweep_outlined),
+                label: Text(s.adminProjectsResetBtn),
+                style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700),
+              ),
             ],
-            const SizedBox(height: 14),
-            Text(s.adminProjectsResetTitle, style: AdminTheme.title),
+            const Divider(height: 28),
+            Text(s.adminProjectsEnrichTagsTitle, style: AdminTheme.title),
             const SizedBox(height: 6),
-            AdminHint(s.adminProjectsResetHint),
+            AdminHint(s.adminProjectsEnrichTagsHint),
             const SizedBox(height: 10),
-            OutlinedButton.icon(
-              onPressed: _busy ? null : _resetAndResyncCatalog,
-              icon: const Icon(Icons.delete_sweep_outlined),
-              label: Text(s.adminProjectsResetBtn),
-              style: OutlinedButton.styleFrom(foregroundColor: Colors.red.shade700),
+            FilledButton.tonalIcon(
+              onPressed: _busy ? null : _bulkEnrichTags,
+              icon: const Icon(Icons.sell_outlined),
+              label: Text(s.adminProjectsEnrichTagsBtn),
             ),
             const Divider(height: 28),
             Row(
               children: [
                 Expanded(
                   child: TextField(
-                    controller: _search,
                     decoration: InputDecoration(
                       prefixIcon: const Icon(Icons.search),
                       hintText: s.adminProjectsSearchHint,
@@ -507,8 +453,13 @@ class _ProjectCard extends StatelessWidget {
             ),
             if (project.btsStation != null)
               Text(project.btsStation!, style: TextStyle(fontSize: 11)),
+            if (project.searchTagSlugs.isNotEmpty)
+              Text(
+                s.adminProjectsTagCount(project.searchTagSlugs.length),
+                style: TextStyle(fontSize: 11, color: AppTheme.primary),
+              ),
             Text(
-              '${project.slug} · ${project.sourcePlatform}',
+              '${project.slug} · ${project.sourcePlatform} · ${project.tagEnrichStatus}',
               style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
             ),
           ],

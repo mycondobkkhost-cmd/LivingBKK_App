@@ -13,6 +13,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const importId = body.import_id as string | undefined;
+    const purge = body.purge === true;
     if (!importId) return jsonResponse({ error: "import_id required" }, 400);
 
     const db = createClient(
@@ -30,11 +31,28 @@ Deno.serve(async (req) => {
 
     const listingId = row.listing_id as string | null;
     if (listingId) {
-      await db
-        .from("listings")
-        .update({ status: "hidden" })
-        .eq("id", listingId)
-        .eq("status", "published");
+      if (purge) {
+        const { data: listing } = await db
+          .from("listings")
+          .select("status")
+          .eq("id", listingId)
+          .maybeSingle();
+        const st = listing?.status as string | undefined;
+        if (st === "draft" || st === "hidden") {
+          await db.from("listings").delete().eq("id", listingId);
+        } else if (st === "published") {
+          await db
+            .from("listings")
+            .update({ status: "hidden" })
+            .eq("id", listingId);
+        }
+      } else {
+        await db
+          .from("listings")
+          .update({ status: "hidden" })
+          .eq("id", listingId)
+          .eq("status", "published");
+      }
     }
 
     const { data: updated, error: updErr } = await db

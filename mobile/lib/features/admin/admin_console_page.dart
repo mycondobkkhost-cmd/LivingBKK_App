@@ -8,23 +8,36 @@ import '../../l10n/app_strings.dart';
 import '../../models/admin_dashboard_overview.dart';
 import '../../services/admin_repository.dart';
 import '../../services/chat_service.dart';
+import '../../services/demo_cast_bootstrap.dart';
 import '../../services/in_app_notification_hub.dart';
 import '../../services/realtime_service.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
+import '../../state/admin_viewport_controller.dart';
 import '../../utils/admin_desktop.dart';
-import '../../widgets/admin_dashboard_bar.dart';
+import '../../utils/admin_routing.dart';
+import '../../utils/admin_sign_out.dart';
 import '../../widgets/admin_mobile_layout.dart';
-import '../../widgets/admin_recent_leads_strip.dart';
 import 'admin_chat_panel.dart';
 import 'admin_chats_tab.dart';
+import 'admin_nav_model.dart';
+import 'admin_shell_scaffold.dart';
 
 /// โหมดแอดมินบนคอม — inbox + แชทในจอเดียว (Web)
 class AdminConsolePage extends StatefulWidget {
-  const AdminConsolePage({super.key, this.initialRoomId});
+  const AdminConsolePage({
+    super.key,
+    this.initialRoomId,
+    this.initialMessageId,
+    this.focusQueue = false,
+    this.initialReturnNav,
+  });
 
   final String? initialRoomId;
+  final String? initialMessageId;
+  final bool focusQueue;
+  final AdminNavId? initialReturnNav;
 
   @override
   State<AdminConsolePage> createState() => _AdminConsolePageState();
@@ -34,7 +47,10 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
   final _admin = AdminRepository();
   bool _allowed = false;
   bool _loading = true;
+  String _adminTier = 'admin';
   String? _selectedRoomId;
+  String? _highlightMessageId;
+  AdminNavId? _returnNav;
   Timer? _refreshTimer;
   AdminDashboardOverview _overview = const AdminDashboardOverview();
   final _notifHub = InAppNotificationHub.instance;
@@ -45,6 +61,15 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
   void initState() {
     super.initState();
     _selectedRoomId = widget.initialRoomId;
+    _highlightMessageId = widget.initialMessageId;
+    _returnNav = widget.initialReturnNav;
+    if (widget.initialRoomId != null) {
+      final roomId = widget.initialRoomId!;
+      ChatService.instance.markAdminThreadRead(roomId);
+      if (roomId.startsWith('demo-lead-chat-')) {
+        ChatService.instance.ensureViewingLeadChat(roomId);
+      }
+    }
     _init();
     _refreshTimer = Timer.periodic(const Duration(seconds: 15), (_) => _refreshInbox());
     final uid = SupabaseService.client?.auth.currentUser?.id ?? '';
@@ -75,29 +100,58 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     }
   }
 
-  void _jumpFromKpi(int tabIndex) {
-    if (tabIndex == 1) {
-      _clearRoom();
-      return;
+  AdminNavConfig get _navConfig =>
+      AdminNavConfig(tier: _adminTier, overview: _overview);
+
+  void _selectNav(AdminNavId id) {
+    switch (id) {
+      case AdminNavId.dashboard:
+        context.go('/admin');
+        return;
+      case AdminNavId.inbox:
+        _clearRoom();
+        context.go('/admin/console');
+        return;
+      case AdminNavId.queue:
+        _clearRoom();
+        context.go('/admin/console?filter=unclaimed');
+        return;
+      default:
+        context.go('/admin?nav=${id.name}');
     }
-    context.go('/admin');
   }
 
   @override
   void didUpdateWidget(covariant AdminConsolePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialRoomId != widget.initialRoomId) {
-      setState(() => _selectedRoomId = widget.initialRoomId);
+    if (oldWidget.initialRoomId != widget.initialRoomId ||
+        oldWidget.initialMessageId != widget.initialMessageId ||
+        oldWidget.initialReturnNav != widget.initialReturnNav) {
+      setState(() {
+        _selectedRoomId = widget.initialRoomId;
+        _highlightMessageId = widget.initialMessageId;
+        _returnNav = widget.initialReturnNav;
+      });
+      final roomId = widget.initialRoomId;
+      if (roomId != null) {
+        ChatService.instance.markAdminThreadRead(roomId);
+        if (roomId.startsWith('demo-lead-chat-')) {
+          ChatService.instance.ensureViewingLeadChat(roomId);
+        }
+      }
     }
   }
 
   Future<void> _init() async {
     try {
+      await DemoCastBootstrap.ensureReady();
       final ok = await _admin.isAdmin();
+      final tier = await _admin.fetchAdminTier();
       if (!mounted) return;
       setState(() {
         _allowed = ok;
         _loading = false;
+        _adminTier = tier;
       });
     } catch (_) {
       if (!mounted) return;
@@ -109,17 +163,47 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     await _refreshInbox();
   }
 
-  void _selectRoom(String roomId) {
-    setState(() => _selectedRoomId = roomId);
+  void _selectRoom(String roomId, {String? messageId}) {
+    ChatService.instance.markAdminThreadRead(roomId);
+    setState(() {
+      _selectedRoomId = roomId;
+      _highlightMessageId = messageId;
+    });
     if (kIsWeb) {
-      context.go('/admin/console?room=$roomId');
+      context.go(
+        adminConsoleChatPath(
+          roomId: roomId,
+          messageId: messageId,
+          returnNav: _returnNav,
+        ),
+      );
     }
   }
 
+  void _exitChatView() {
+    final returnNav = _returnNav;
+    if (returnNav != null &&
+        returnNav != AdminNavId.inbox &&
+        returnNav != AdminNavId.queue) {
+      if (context.canPop()) {
+        context.pop();
+        return;
+      }
+      context.go(adminReturnPath(returnNav));
+      return;
+    }
+    context.go(
+      widget.focusQueue ? '/admin/console?filter=unclaimed' : '/admin/console',
+    );
+  }
+
   void _clearRoom() {
-    setState(() => _selectedRoomId = null);
+    setState(() {
+      _selectedRoomId = null;
+      _highlightMessageId = null;
+    });
     if (kIsWeb) {
-      context.go('/admin/console');
+      _exitChatView();
     }
   }
 
@@ -147,116 +231,176 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       );
     }
 
-    return Theme(
-      data: AdminTheme.shellTheme(Theme.of(context)),
-      child: AdminMobileLayout.scaffold(
-      context: context,
-      safeBottom: false,
-      appBar: AdminMobileLayout.appBar(
-        context: context,
-        title: Text(s.adminConsoleTitle),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.storefront_outlined),
-            tooltip: s.adminViewConsumerApp,
-            onPressed: () => context.go('/?preview=1'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.cloud_download_outlined),
-            tooltip: s.adminImportTitle,
-            onPressed: () => context.push('/admin/import'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.tune),
-            tooltip: s.adminFaqSettings,
-            onPressed: () => context.push('/admin/faq'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.dashboard_customize_outlined),
-            tooltip: s.adminTitle,
-            onPressed: () => context.go('/admin'),
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            tooltip: s.refresh,
-            onPressed: () async {
-              await _refreshInbox();
-            },
-          ),
-        ],
+    final consoleActions = [
+      const AdminViewportToggleButton(),
+      IconButton(
+        icon: const Icon(Icons.storefront_outlined),
+        tooltip: s.adminViewConsumerApp,
+        onPressed: () => goConsumerApp(context),
       ),
-      body: AdminMobileLayout.tabBody(
-        context,
-        child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AdminDashboardBar(
-            data: _overview,
-            compact: true,
-            onJump: _jumpFromKpi,
-          ),
-          AdminRecentLeadsStrip(onChanged: _refreshInbox),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final wide = constraints.maxWidth >= kAdminDesktopMinWidth;
-                final selected = _selectedRoomId;
+      IconButton(
+        icon: const Icon(Icons.refresh),
+        tooltip: s.refresh,
+        onPressed: () async {
+          await _refreshInbox();
+        },
+      ),
+      IconButton(
+        icon: const Icon(Icons.logout),
+        tooltip: s.signOut,
+        onPressed: () => performAdminSignOut(context),
+      ),
+    ];
 
-                if (wide) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      SizedBox(
-                        width: kAdminInboxPaneWidth,
-                        child: AdminChatsTab(
-                          compact: true,
-                          embedded: true,
-                          selectedRoomId: selected,
-                          onRoomSelected: _selectRoom,
-                        ),
-                      ),
-                      const VerticalDivider(width: 1),
-                      Expanded(
-                        child: selected == null
-                            ? _EmptyChatPane(text: s.adminConsolePickChat)
-                            : AdminChatPanel(
-                                key: ValueKey(selected),
-                                roomId: selected,
-                                embedded: true,
-                                onResolved: () async {
-                                  await _refreshInbox();
-                                },
-                              ),
-                      ),
-                    ],
-                  );
-                }
+    Widget consolePane(bool splitWide) {
+      final selected = _selectedRoomId;
 
-                if (selected != null) {
-                  return AdminChatPanel(
-                    key: ValueKey(selected),
-                    roomId: selected,
-                    embedded: true,
-                    onBack: _clearRoom,
-                    onResolved: () async {
-                      await _refreshInbox();
-                      if (mounted) _clearRoom();
-                    },
-                  );
-                }
-
-                return AdminChatsTab(
-                  compact: true,
-                  embedded: true,
-                  onRoomSelected: _selectRoom,
-                );
-              },
+      if (splitWide) {
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              width: kAdminInboxPaneWidth,
+              child: AdminChatsTab(
+                compact: true,
+                embedded: true,
+                focusQueue: widget.focusQueue,
+                selectedRoomId: selected,
+                onRoomSelected: (id) => _selectRoom(id),
+                onSearchPick: (id, {messageId}) =>
+                    _selectRoom(id, messageId: messageId),
+              ),
             ),
-          ),
-        ],
+            const VerticalDivider(width: 1),
+            Expanded(
+              child: selected == null
+                  ? _EmptyChatPane(text: s.adminConsolePickChat)
+                  : AdminChatPanel(
+                      key: ValueKey('$selected-${_highlightMessageId ?? ''}'),
+                      roomId: selected,
+                      embedded: true,
+                      highlightMessageId: _highlightMessageId,
+                      onBack: _clearRoom,
+                      backTooltip: adminChatBackTooltip(_returnNav, s),
+                      onHighlightConsumed: () {
+                        if (mounted) setState(() => _highlightMessageId = null);
+                      },
+                      onResolved: () async {
+                        await _refreshInbox();
+                      },
+                    ),
+            ),
+          ],
+        );
+      }
+
+      if (selected != null) {
+        return AdminChatPanel(
+          key: ValueKey('$selected-${_highlightMessageId ?? ''}'),
+          roomId: selected,
+          embedded: true,
+          highlightMessageId: _highlightMessageId,
+          onHighlightConsumed: () {
+            if (mounted) setState(() => _highlightMessageId = null);
+          },
+          onBack: _clearRoom,
+          backTooltip: adminChatBackTooltip(_returnNav, s),
+          onResolved: () async {
+            await _refreshInbox();
+            if (mounted) _clearRoom();
+          },
+        );
+      }
+
+        return AdminChatsTab(
+          compact: true,
+          embedded: true,
+          focusQueue: widget.focusQueue,
+          onRoomSelected: (id) => _selectRoom(id),
+          onSearchPick: (id, {messageId}) =>
+              _selectRoom(id, messageId: messageId),
+        );
+    }
+
+    return PopScope(
+      canPop: _selectedRoomId == null,
+      onPopInvoked: (didPop) {
+        if (!didPop && _selectedRoomId != null) _clearRoom();
+      },
+      child: Theme(
+      data: AdminTheme.shellTheme(),
+      child: AdminTheme.lightPaletteScope(
+      child: ListenableBuilder(
+        listenable: AdminViewportController.instance ?? Listenable.merge(const []),
+        builder: (context, _) {
+          final wideShell = useAdminWideShell(context);
+          final splitWide = useAdminSplitPane(context);
+          final navConfig = _navConfig;
+
+          final isolatedBanner = DemoCastBootstrap.isolatedAdminTrial
+              ? Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEFF6FF),
+                    border: Border(bottom: BorderSide(color: AdminTheme.border)),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Text(
+                    s.adminUnifiedTrialBanner,
+                    style: AdminTheme.hint.copyWith(color: const Color(0xFF1D4ED8)),
+                  ),
+                )
+              : null;
+
+          final pane = consolePane(splitWide);
+          final shellBody = wideShell
+              ? Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    AdminWideContentBar(
+                      title: s.adminConsoleTitle,
+                      actions: consoleActions,
+                    ),
+                    if (isolatedBanner != null) isolatedBanner,
+                    Expanded(child: pane),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    if (isolatedBanner != null) isolatedBanner,
+                    Expanded(child: pane),
+                  ],
+                );
+
+          return AdminMobileLayout.scaffold(
+            context: context,
+            appBar: wideShell
+                ? null
+                : AdminMobileLayout.appBar(
+                    context: context,
+                    leading: AdminNavMenuButton(
+                      config: navConfig,
+                      selected: AdminNavId.inbox,
+                      onSelect: _selectNav,
+                      compact: true,
+                    ),
+                    title: Text(s.adminConsoleTitle),
+                    actions: consoleActions,
+                  ),
+            body: AdminShellScaffold(
+              config: navConfig,
+              selected: widget.focusQueue ? AdminNavId.queue : AdminNavId.inbox,
+              onSelect: _selectNav,
+              tierLabel: s.adminNavTierLabel(_adminTier),
+              actions: const [],
+              body: shellBody,
+            ),
+          );
+        },
       ),
-      ),
-      ),
+    ),
+    ),
     );
   }
 }

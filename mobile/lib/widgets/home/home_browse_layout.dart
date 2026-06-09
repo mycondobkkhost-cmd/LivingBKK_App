@@ -101,7 +101,7 @@ class _HomeBrowseLayoutState extends State<HomeBrowseLayout> {
         .toList();
 
     return ColoredBox(
-      color: LivingBkkBrand.pageBackground,
+      color: LivingBkkBrand.pageBackgroundOf(context),
       child: ScrollConfiguration(
         behavior: const _HomeBrowseScrollBehavior(),
         child: CustomScrollView(
@@ -156,17 +156,14 @@ class _HomeBrowseLayoutState extends State<HomeBrowseLayout> {
             ),
           for (final section in latest)
             SliverToBoxAdapter(
-              child: Transform.translate(
-                offset: const Offset(0, -14),
-                child: HomeListingRail(
-                  title: s.isEnglish ? section.titleEn : section.titleTh,
-                  items: section.items,
-                  accentIndex: section.accentIndex,
-                  topInset: 0,
-                  showCoAgentStrip: widget.isAgentPerspective,
-                  onTapListing: widget.onTapListing ?? (_) {},
-                  onViewAll: () => widget.onViewAllSection?.call(section),
-                ),
+              child: HomeListingRail(
+                title: s.isEnglish ? section.titleEn : section.titleTh,
+                items: section.items,
+                accentIndex: section.accentIndex,
+                topInset: 0,
+                showCoAgentStrip: widget.isAgentPerspective,
+                onTapListing: widget.onTapListing ?? (_) {},
+                onViewAll: () => widget.onViewAllSection?.call(section),
               ),
             ),
           SliverToBoxAdapter(
@@ -194,17 +191,14 @@ class _HomeBrowseLayoutState extends State<HomeBrowseLayout> {
           ),
           for (final section in others)
             SliverToBoxAdapter(
-              child: Transform.translate(
-                offset: const Offset(0, -10),
-                child: HomeListingRail(
-                  title: s.isEnglish ? section.titleEn : section.titleTh,
-                  items: section.items,
-                  accentIndex: section.accentIndex,
-                  topInset: 0,
-                  showCoAgentStrip: widget.isAgentPerspective,
-                  onTapListing: widget.onTapListing ?? (_) {},
-                  onViewAll: () => widget.onViewAllSection?.call(section),
-                ),
+              child: HomeListingRail(
+                title: s.isEnglish ? section.titleEn : section.titleTh,
+                items: section.items,
+                accentIndex: section.accentIndex,
+                topInset: 0,
+                showCoAgentStrip: widget.isAgentPerspective,
+                onTapListing: widget.onTapListing ?? (_) {},
+                onViewAll: () => widget.onViewAllSection?.call(section),
               ),
             ),
         ],
@@ -252,7 +246,7 @@ class _PropertyTypeCard extends StatelessWidget {
   final bool isAgent;
   final VoidCallback? onOpenFilters;
 
-  static const _displaySlugs = ['condo', 'house', 'land', 'townhome'];
+  static const _displaySlugs = PropertyCatalog.homePrimarySlugs;
 
   void _onCategoryTap(BuildContext context, String? slug) {
     if (slug == null) {
@@ -390,7 +384,7 @@ class _LocationTabHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 4),
+      padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 4, LiLayout.pagePadding, 2),
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
@@ -28,10 +30,14 @@ import '../../services/notification_center_repository.dart';
 import '../../widgets/home/home_browse_layout.dart';
 import '../../widgets/li_home_header.dart';
 import '../../widgets/listing_card.dart';
+import '../../widgets/listing_grid.dart';
 import '../../widgets/listings_map.dart';
+import '../../widgets/map_pin_radius_bar.dart';
 import '../../widgets/search_filter_sheet.dart';
 import '../../widgets/smart_search_bar.dart';
+import '../../widgets/admin_mobile_layout.dart';
 import '../../widgets/app_mobile_scaffold.dart';
+import '../../utils/page_safe_insets.dart';
 
 class MapHomePage extends StatefulWidget {
   const MapHomePage({
@@ -59,6 +65,8 @@ class _MapHomePageState extends State<MapHomePage> {
   List<HomeFeedSection> _sections = [];
   bool _loading = true;
   bool _mapView = false;
+  bool _focusNearMeOnMap = false;
+  bool _pinPlacementMode = false;
   HomeViewModeLi _viewMode = HomeViewModeLi.list;
   String? _selectedId;
   String? _selectedTransitSlug;
@@ -74,6 +82,11 @@ class _MapHomePageState extends State<MapHomePage> {
   @override
   void initState() {
     super.initState();
+    if (widget.searchSession.filters.projectSlugs?.isNotEmpty ?? false) {
+      widget.searchSession.setFilters(
+        widget.searchSession.filters.copyWith(clearProjectSlugs: true),
+      );
+    }
     widget.searchSession.addListener(_scheduleLoad);
     widget.roleController.addListener(_scheduleLoad);
     ListingActivityService.instance.load();
@@ -219,6 +232,36 @@ class _MapHomePageState extends State<MapHomePage> {
     await _load();
   }
 
+  void _openMapView() {
+    setState(() {
+      _mapView = true;
+      _focusNearMeOnMap = true;
+      _viewMode = HomeViewModeLi.map;
+      _selectedId = null;
+    });
+    unawaited(_refreshNearMe());
+  }
+
+  List<ListingPublic> _mapSheetListings({ListingPublic? anchor}) {
+    if (anchor != null && anchor.lat != null && anchor.lng != null) {
+      return sortByProximityThenPrice(
+        _listings,
+        lat: anchor.lat!,
+        lng: anchor.lng!,
+        referencePrice: anchor.priceNet,
+        excludeId: anchor.id,
+      );
+    }
+    if (_userLat != null && _userLng != null) {
+      return sortByProximityThenPrice(
+        _listings,
+        lat: _userLat!,
+        lng: _userLng!,
+      );
+    }
+    return _listings;
+  }
+
   void _onFiltersChanged(SearchFilters filters) {
     widget.searchSession.setFilters(filters);
   }
@@ -260,12 +303,24 @@ class _MapHomePageState extends State<MapHomePage> {
   }
 
   void _openProjectFromSearch(String projectName, {String? projectSlug}) {
-    ListingNavigation.openProjectUnits(
+    ListingNavigation.openProject(
       context,
       projectName: projectName,
       projectSlug: projectSlug,
       isAgent: _isAgentPerspective,
     );
+  }
+
+  void _onPinPlaced(double lat, double lng) {
+    final radius = _filters.radiusKm ?? kSearchPinRadiusDefaultKm;
+    _onFiltersChanged(
+      _filters.copyWith(
+        pinLatitude: lat,
+        pinLongitude: lng,
+        radiusKm: radius,
+      ),
+    );
+    setState(() => _pinPlacementMode = false);
   }
 
   Future<void> _openFilters() async {
@@ -312,11 +367,16 @@ class _MapHomePageState extends State<MapHomePage> {
   Widget _buildMapView(BuildContext context) {
     final s = AppStrings.of(context);
     final selected = _selected;
+    final sheetListings = _mapSheetListings(anchor: selected);
+    final topInset = PageSafeInsets.top(context);
+    final mapTitle = '${s.mapSearchLabel} · ${sheetListings.length}';
 
     return AppMobileScaffold(
       safeBottomBody: false,
       backgroundColor: AppTheme.backgroundAlt,
-      body: Stack(
+      body: AdminMobileLayout.withInsets(
+        context,
+        Stack(
         children: [
           Positioned.fill(
             child: _loading
@@ -325,6 +385,14 @@ class _MapHomePageState extends State<MapHomePage> {
                     listings: _listings,
                     selectedId: _selectedId,
                     showPriceOnMarker: true,
+                    fullBleed: true,
+                    focusUserOnStart: _focusNearMeOnMap,
+                    fabBottomPadding: selected != null ? 200 : 160,
+                    pinLatitude: _filters.pinLatitude,
+                    pinLongitude: _filters.pinLongitude,
+                    radiusKm: _filters.radiusKm,
+                    pinPlacementMode: _pinPlacementMode,
+                    onPinPlaced: _onPinPlaced,
                     onListingTap: (l) => setState(() => _selectedId = l.id),
                   ),
           ),
@@ -335,8 +403,8 @@ class _MapHomePageState extends State<MapHomePage> {
             child: Material(
               elevation: 2,
               color: AppTheme.headerTint,
-              child: SafeArea(
-                bottom: false,
+              child: Padding(
+                padding: EdgeInsets.only(top: topInset),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
@@ -348,6 +416,7 @@ class _MapHomePageState extends State<MapHomePage> {
                             icon: const Icon(Icons.arrow_back),
                             onPressed: () => setState(() {
                               _mapView = false;
+                              _focusNearMeOnMap = false;
                               _viewMode = HomeViewModeLi.list;
                               _selectedId = null;
                             }),
@@ -355,17 +424,22 @@ class _MapHomePageState extends State<MapHomePage> {
                           ),
                           Expanded(
                             child: Text(
-                              '${s.mapSearchLabel} · ${_listings.length}',
-                              style: TextStyle(
+                              mapTitle,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15,
                               ),
                             ),
                           ),
-                          TextButton.icon(
-                            onPressed: _openFilters,
-                            icon: const Icon(Icons.tune, size: 18),
-                            label: Text(s.t('ตัวกรอง', 'Filters'), style: TextStyle(fontSize: 12)),
+                          IconButton(
+                            onPressed: () {
+                              setState(() => _focusNearMeOnMap = true);
+                              unawaited(_refreshNearMe());
+                            },
+                            tooltip: s.searchNearByTitle,
+                            icon: const Icon(Icons.near_me_outlined, size: 22),
                           ),
                         ],
                       ),
@@ -375,13 +449,28 @@ class _MapHomePageState extends State<MapHomePage> {
                         LiLayout.pagePadding,
                         0,
                         LiLayout.pagePadding,
-                        8,
+                        4,
                       ),
                       child: SmartSearchBar(
                         filters: _filters,
                         onFiltersChanged: _onFiltersChanged,
                         style: SearchBarStyle.livingInsider,
                         onMapSearch: null,
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        LiLayout.pagePadding,
+                        0,
+                        LiLayout.pagePadding,
+                        8,
+                      ),
+                      child: MapPinRadiusBar(
+                        filters: _filters,
+                        pinPlacementMode: _pinPlacementMode,
+                        onPinPlacementModeChanged: (v) =>
+                            setState(() => _pinPlacementMode = v),
+                        onFiltersChanged: _onFiltersChanged,
                       ),
                     ),
                   ],
@@ -456,23 +545,23 @@ class _MapHomePageState extends State<MapHomePage> {
                         ),
                         const SizedBox(height: 8),
                       ],
-                      ..._listings.take(25).map(
-                            (item) => ListingCard(
-                              listing: item,
-                              style: ListingCardStyle.list,
-                              showCoAgentStrip: _isAgentPerspective,
-                              onTap: () {
-                                setState(() => _selectedId = item.id);
-                                _openListing(item);
-                              },
-                            ),
-                          ),
+                      ListingGrid(
+                        items: sheetListings.take(25).toList(),
+                        horizontalPadding: 12,
+                        showCoAgentStrip: _isAgentPerspective,
+                        onTapListing: (item) {
+                          setState(() => _selectedId = item.id);
+                          _openListing(item);
+                        },
+                      ),
                     ],
                   ),
                 );
               },
             ),
         ],
+        ),
+        bleedBottom: true,
       ),
     );
   }
@@ -507,7 +596,7 @@ class _MapHomePageState extends State<MapHomePage> {
                     onFiltersChanged: _onFiltersChanged,
                     onOpenFilters: _openFilters,
                     onOpenProfile: widget.onOpenProfile,
-                    onOpenMapSearch: () => setState(() => _mapView = true),
+                    onOpenMapSearch: _openMapView,
                     onOpenNotifications: () => NotificationCenterSheet.show(
                       context,
                       roleController: widget.roleController,

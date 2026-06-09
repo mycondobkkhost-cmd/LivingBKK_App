@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../data/property_catalog.dart';
@@ -18,6 +19,9 @@ import '../../widgets/requirement_location_picker.dart';
 import '../../utils/page_safe_insets.dart';
 import '../../theme/li_layout.dart';
 import '../../widgets/consumer/consumer_page_shell.dart';
+import '../../config/demand_board_menu_config.dart';
+import '../../services/auth_service.dart';
+import '../../widgets/auth/auth_gate.dart';
 
 class CreateRequirementPage extends StatefulWidget {
   const CreateRequirementPage({super.key, this.sourceThreadId});
@@ -56,6 +60,7 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
 
   bool _urgentRush = false;
   bool _submitting = false;
+  bool _authBlocked = !AuthGate.canProceed;
 
   static const _decisionKeys = [
     'book_now',
@@ -79,7 +84,35 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
       : PriceSliderScale.rentPositionToBaht(_maxPricePos);
 
   @override
+  void initState() {
+    super.initState();
+    AuthService.instance.addListener(_onAuthChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _promptAuthIfNeeded());
+  }
+
+  void _onAuthChanged() {
+    if (!mounted || !_authBlocked) return;
+    if (AuthGate.canProceed) {
+      setState(() => _authBlocked = false);
+    }
+  }
+
+  Future<void> _promptAuthIfNeeded() async {
+    if (!mounted || !_authBlocked) return;
+    await AuthGate.requireRealAccount(
+      context,
+      redirectRoute: DemandBoardMenuConfig.createRequirementRoute,
+    );
+    if (!mounted) return;
+    if (AuthGate.canProceed) {
+      setState(() => _authBlocked = false);
+    }
+    // ปิดป้อปอัพแล้วยังอยู่หน้าฟอร์ม — กรอกไม่ได้จนกว่าจะล็อกอิน
+  }
+
+  @override
   void dispose() {
+    AuthService.instance.removeListener(_onAuthChanged);
     _name.dispose();
     _phone.dispose();
     _messenger.dispose();
@@ -124,6 +157,12 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
 
   Future<void> _submit() async {
     final s = AppStrings.of(context);
+    if (!await AuthGate.requireRealAccount(
+      context,
+      redirectRoute: DemandBoardMenuConfig.createRequirementRoute,
+    )) {
+      return;
+    }
     FocusScope.of(context).unfocus();
     setState(() => _locationTouched = true);
 
@@ -314,7 +353,9 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
     return ConsumerPageShell(
       title: s.requirementCreateTitle,
       onBack: () => Navigator.of(context).maybePop(),
-      body: Form(
+      body: AbsorbPointer(
+        absorbing: _authBlocked,
+        child: Form(
         key: _formKey,
         child: ListView(
           controller: _scroll,
@@ -571,6 +612,7 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

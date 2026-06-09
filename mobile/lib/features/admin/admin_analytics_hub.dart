@@ -18,6 +18,7 @@ import '../../widgets/ops/ops_funnel_strip.dart';
 import '../../widgets/ops/ops_mini_bar_chart.dart';
 import '../../widgets/ops/ops_period_chips.dart';
 import '../../widgets/ops/ops_summary_metrics.dart';
+import 'admin_audit_log_panel.dart';
 
 /// ศูนย์รายงานครบชุด — รองรับ scale ผ่าน rollup tables
 class AdminAnalyticsHub extends StatefulWidget {
@@ -49,7 +50,7 @@ class _AdminAnalyticsHubState extends State<AdminAnalyticsHub>
   @override
   void initState() {
     super.initState();
-    _tabs = TabController(length: 8, vsync: this);
+    _tabs = TabController(length: 9, vsync: this);
     _load();
   }
 
@@ -173,6 +174,7 @@ class _AdminAnalyticsHubState extends State<AdminAnalyticsHub>
                   Tab(text: s.adminAnalyticsTabApp),
                   Tab(text: s.adminAnalyticsTabErrors),
                   Tab(text: s.adminAnalyticsTabExport),
+                  Tab(text: s.adminAnalyticsTabAudit),
                 ],
               ),
             ],
@@ -236,6 +238,7 @@ class _AdminAnalyticsHubState extends State<AdminAnalyticsHub>
                     _appTab(s),
                     _errorsTab(s),
                     _exportTab(s),
+                    const AdminAuditLogPanel(),
                   ],
                 ),
         ),

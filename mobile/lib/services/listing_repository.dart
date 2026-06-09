@@ -4,22 +4,43 @@ import '../data/property_catalog.dart';
 import '../models/listing_public.dart';
 import '../models/listing_transaction_types.dart';
 import '../models/search_filters.dart';
-import '../utils/geo_zone_match.dart';
+import '../utils/listing_price_helpers.dart';
 import '../utils/metro_region.dart';
+import '../utils/search_filter_match.dart';
+import '../utils/owner_listing_media.dart';
+import 'auth_service.dart';
 import 'supabase_service.dart';
+import 'trial_listing_store.dart';
 
 class ListingRepository {
   /// true = แสดงทรัพย์ตัวอย่างในแอป (Supabase ว่างหรือยังไม่ seed)
   static bool lastFetchUsedDemo = false;
 
   Future<String?> resolveIdByCode(String listingCode) async {
-    if (!SupabaseService.isReady || listingCode.isEmpty) return null;
-    final row = await SupabaseService.client!
-        .from('listings')
-        .select('id')
-        .eq('listing_code', listingCode)
-        .maybeSingle();
-    return row?['id'] as String?;
+    final code = listingCode.trim();
+    if (code.isEmpty) return null;
+
+    String? fromDemo() {
+      final upper = code.toUpperCase();
+      for (final l in DemoListingsFactory.cached) {
+        if (l.listingCode.toUpperCase() == upper) return l.id;
+      }
+      return null;
+    }
+
+    if (!SupabaseService.isReady) return fromDemo();
+
+    try {
+      final row = await SupabaseService.client!
+          .from('listings')
+          .select('id')
+          .eq('listing_code', code)
+          .maybeSingle();
+      final id = row?['id'] as String?;
+      if (id != null && id.isNotEmpty) return id;
+    } catch (_) {}
+
+    return fromDemo();
   }
 
   Future<List<ListingPublic>> fetchPublished({
@@ -69,6 +90,12 @@ class ListingRepository {
       query = query.inFilter('listing_type', [
         ListingTransactionTypes.sale,
         ListingTransactionTypes.saleInstallment,
+        ListingTransactionTypes.rentAndSale,
+      ]);
+    } else if (effectiveType == ListingTransactionTypes.rent) {
+      query = query.inFilter('listing_type', [
+        ListingTransactionTypes.rent,
+        ListingTransactionTypes.rentAndSale,
       ]);
     } else if (effectiveType != null) {
       query = query.eq('listing_type', effectiveType);
@@ -110,14 +137,7 @@ class ListingRepository {
         .map((e) => ListingPublic.fromJson(e as Map<String, dynamic>))
         .toList();
 
-    if (f?.geoZoneSlugs != null && f!.geoZoneSlugs!.isNotEmpty) {
-      list = list
-          .where((l) =>
-              l.geoZoneSlug != null && f.geoZoneSlugs!.contains(l.geoZoneSlug))
-          .toList();
-    }
-
-    list = _applyClientOnlyFilters(list, f, skipGeo: f?.geoZoneSlugs != null);
+    list = _applyClientOnlyFilters(list, f);
     list = MetroRegion.filterListings(list);
 
     if (list.isEmpty) {
@@ -159,10 +179,18 @@ class ListingRepository {
           .toList();
     }
     if (f?.minPrice != null) {
-      list = list.where((l) => l.priceNet >= f!.minPrice!).toList();
+      list = list
+          .where((l) =>
+              ListingPriceHelpers.effectivePrice(l, browseFilter: effectiveType) >=
+              f!.minPrice!)
+          .toList();
     }
     if (f?.maxPrice != null) {
-      list = list.where((l) => l.priceNet <= f!.maxPrice!).toList();
+      list = list
+          .where((l) =>
+              ListingPriceHelpers.effectivePrice(l, browseFilter: effectiveType) <=
+              f!.maxPrice!)
+          .toList();
     }
     if (f?.bedrooms != null) {
       list = list.where((l) => (l.bedrooms ?? 0) == f!.bedrooms).toList();
@@ -186,26 +214,22 @@ class ListingRepository {
               l.title.toLowerCase().contains(p))
           .toList();
     }
-    return MetroRegion.filterListings(
-      _applyClientOnlyFilters(list, f, skipGeo: f?.geoZoneSlugs != null),
-    );
+    return MetroRegion.filterListings(_applyClientOnlyFilters(list, f));
   }
 
   List<ListingPublic> _applyClientOnlyFilters(
     List<ListingPublic> list,
-    SearchFilters? f, {
-    bool skipGeo = false,
-  }) {
+    SearchFilters? f,
+  ) {
     if (f == null) return list;
 
-    if (!skipGeo && f.geoZoneSlugs != null && f.geoZoneSlugs!.isNotEmpty) {
+    if (f.hasZoneFilters) {
+      list = list.where((l) => matchesZoneFiltersListing(l, f)).toList();
+    }
+
+    if (f.hasPinRadius) {
       list = list
-          .where((l) => listingMatchesGeoZones(
-                slugs: f.geoZoneSlugs!,
-                district: l.district,
-                projectName: l.projectName,
-                title: l.title,
-              ))
+          .where((l) => matchesPinRadiusFilter(f, lat: l.lat, lng: l.lng))
           .toList();
     }
 
@@ -236,6 +260,19 @@ class ListingRepository {
       return null;
     }
 
+    ListingPublic? fromTrial() {
+      if (!AuthService.instance.isTrialSignedIn &&
+          !AuthService.instance.trialSimulatesBackend) {
+        return null;
+      }
+      final row = TrialListingStore.instance.rowById(trimmed);
+      if (row == null || !OwnerListingMedia.canPreviewOnline(row)) return null;
+      return OwnerListingMedia.toListingPublic(row);
+    }
+
+    final trial = fromTrial();
+    if (trial != null) return trial;
+
     if (!Env.isConfigured || !SupabaseService.isReady) {
       return fromDemo();
     }
@@ -250,9 +287,9 @@ class ListingRepository {
         return ListingPublic.fromJson(Map<String, dynamic>.from(row));
       }
     } catch (_) {
-      return fromDemo();
+      return fromTrial() ?? fromDemo();
     }
 
-    return fromDemo();
+    return fromTrial() ?? fromDemo();
   }
 }

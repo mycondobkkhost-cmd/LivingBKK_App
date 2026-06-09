@@ -27,7 +27,7 @@ void main() {
       id: 'discovery-1',
       listingId: '',
       listingCode: 'DISCOVERY',
-      listingTitle: 'PROPPITER — Property search',
+      listingTitle: 'RealXtate — Property search',
       category: 'discovery',
     );
 

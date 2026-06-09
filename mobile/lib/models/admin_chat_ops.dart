@@ -16,3 +16,20 @@ class AdminPeer {
   final String id;
   final String displayName;
 }
+
+/// ลูกค้าเดิมมีแอดมินดูแลอยู่ในแชทอื่น — แจ้งก่อนรับงานห้องใหม่
+class CustomerAdminContinuityHint {
+  const CustomerAdminContinuityHint({
+    required this.participantUserId,
+    required this.adminId,
+    required this.adminName,
+    required this.otherRoomId,
+    required this.otherRoomTitle,
+  });
+
+  final String participantUserId;
+  final String adminId;
+  final String adminName;
+  final String otherRoomId;
+  final String otherRoomTitle;
+}

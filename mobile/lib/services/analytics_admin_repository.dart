@@ -360,7 +360,7 @@ class AnalyticsAdminRepository {
   List<AnalyticsListingDailyRow> _demoListings() => const [
         AnalyticsListingDailyRow(
           listingId: 'demo-1',
-          listingCode: 'PPTR-2401',
+          listingCode: 'RXT-2401',
           views: 186,
           shares: 12,
           chatStarts: 9,
@@ -368,7 +368,7 @@ class AnalyticsAdminRepository {
         ),
         AnalyticsListingDailyRow(
           listingId: 'demo-2',
-          listingCode: 'PPTR-2402',
+          listingCode: 'RXT-2402',
           views: 142,
           shares: 8,
           chatStarts: 6,

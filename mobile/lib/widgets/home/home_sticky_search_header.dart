@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../models/search_filters.dart';
 import '../../theme/app_palette.dart';
-import '../../shell/main_shell_scope.dart';
 import '../../state/locale_controller.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../notification_bell_button.dart';
 import '../proppiter_brand_hero.dart';
 import '../perspective_dropdown_chip.dart';
+import '../search_filter_chips.dart';
+import '../typewriter_hint_label.dart';
 
 /// หัวหน้าแรก — gradient ม่วงนุ่ม + toolbar + ค้นหา (sticky)
 class HomeStickySearchHeader extends StatelessWidget {
@@ -39,8 +41,11 @@ class HomeStickySearchHeader extends StatelessWidget {
 
   static const double hPad = 16;
   static const double topContentPad = 6;
-  static const double toolbarHeight = 52;
+  /// โซนโลโก้ + สโลแกน + แถวปุ่มขวา (standard lockup ~40 + สโลแกน)
+  static const double toolbarHeight = 64;
   static const double searchHeight = 48;
+  static const double zoneChipsHeight = 34;
+  static const double zoneChipsGap = 6;
   static const double blockGap = 10;
   static const double bottomPad = 14;
 
@@ -69,27 +74,37 @@ class HomeStickySearchHeader extends StatelessWidget {
   static double get headerBlockGap => _scaleGap(blockGap);
 
   /// ความสูง body ใต้ spacer บน — ต้องตรงกับ delegate ทุก pixel
-  static double collapsedBodyHeight() =>
-      headerContentTopPad + searchHeight + bottomPad;
+  static double _zoneChipsExtra({required bool hasZoneChips}) =>
+      hasZoneChips ? zoneChipsGap + zoneChipsHeight : 0;
 
-  static double expandedBodyHeight() =>
+  static double collapsedBodyHeight({bool hasZoneChips = false}) =>
+      headerContentTopPad +
+      searchHeight +
+      _zoneChipsExtra(hasZoneChips: hasZoneChips) +
+      bottomPad;
+
+  static double expandedBodyHeight({bool hasZoneChips = false}) =>
       headerContentTopPad +
       toolbarHeight +
       headerBlockGap +
       searchHeight +
+      _zoneChipsExtra(hasZoneChips: hasZoneChips) +
       bottomPad;
 
   @override
   Widget build(BuildContext context) {
     final inset = topInset(context);
     final topSpacer = headerTopSpacer(inset);
+    final showZoneChips =
+        filters.hasZoneFilters && onFiltersChanged != null;
 
     return SliverPersistentHeader(
       pinned: true,
       delegate: _HomeHeaderDelegate(
         topSpacer: topSpacer,
-        minHeight: topSpacer + collapsedBodyHeight(),
-        maxHeight: topSpacer + expandedBodyHeight(),
+        minHeight: topSpacer + collapsedBodyHeight(hasZoneChips: showZoneChips),
+        maxHeight: topSpacer + expandedBodyHeight(hasZoneChips: showZoneChips),
+        showZoneChips: showZoneChips,
         roleController: roleController,
         localeController: localeController,
         filters: filters,
@@ -109,6 +124,7 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
     required this.topSpacer,
     required this.minHeight,
     required this.maxHeight,
+    required this.showZoneChips,
     required this.roleController,
     required this.localeController,
     required this.filters,
@@ -123,6 +139,7 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   final double topSpacer;
   final double minHeight;
   final double maxHeight;
+  final bool showZoneChips;
   final UserRoleController roleController;
   final LocaleController localeController;
   final SearchFilters filters;
@@ -145,7 +162,9 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
     double shrinkOffset,
     bool overlapsContent,
   ) {
-    final collapsedBody = HomeStickySearchHeader.collapsedBodyHeight();
+    final zoneChipsCallback = onFiltersChanged;
+    final collapsedBody =
+        HomeStickySearchHeader.collapsedBodyHeight(hasZoneChips: showZoneChips);
     final expandedBody = maxExtent - topSpacer;
     final range = (maxExtent - minExtent).clamp(1.0, double.infinity);
     final t = (1 - (shrinkOffset / range)).clamp(0.0, 1.0);
@@ -157,8 +176,8 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LivingBkkBrand.homeHeaderBlockGradient,
+        decoration: BoxDecoration(
+          gradient: LivingBkkBrand.homeHeaderBlockGradientOf(context),
         ),
         child: Column(
           children: [
@@ -176,18 +195,33 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                 child: Stack(
                   clipBehavior: Clip.none,
                   children: [
-                    // ค้นหา — ติดล่างเสมอ (sticky collapsed state)
+                    // ค้นหา (+ chips ทำเล) — ติดล่างเสมอ (sticky collapsed state)
                     Align(
                       alignment: Alignment.bottomCenter,
-                      child: SizedBox(
-                        height: HomeStickySearchHeader.searchHeight,
-                        width: double.infinity,
-                        child: _SearchCapsule(
-                          filters: filters,
-                          onOpenSearch: onOpenSearch,
-                          onMapSearch: onMapSearch,
-                          onOpenFilters: onOpenFilters,
-                        ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (showZoneChips && zoneChipsCallback != null) ...[
+                            SizedBox(
+                              height: HomeStickySearchHeader.zoneChipsHeight,
+                              child: SearchFilterChips(
+                                filters: filters,
+                                onFiltersChanged: zoneChipsCallback,
+                              ),
+                            ),
+                            const SizedBox(height: HomeStickySearchHeader.zoneChipsGap),
+                          ],
+                          SizedBox(
+                            height: HomeStickySearchHeader.searchHeight,
+                            width: double.infinity,
+                            child: _SearchCapsule(
+                              filters: filters,
+                              onOpenSearch: onOpenSearch,
+                              onMapSearch: onMapSearch,
+                              onOpenFilters: onOpenFilters,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     // Toolbar — หายไปเมื่อ scroll ลง
@@ -197,12 +231,15 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
                         left: 0,
                         right: 0,
                         height: toolbarH,
-                        child: Opacity(
-                          opacity: t,
-                          child: _ToolbarRow(
-                            roleController: roleController,
-                            localeController: localeController,
-                            onOpenNotifications: onOpenNotifications,
+                        child: ClipRect(
+                          child: Opacity(
+                            opacity: t,
+                            child: _ToolbarRow(
+                              roleController: roleController,
+                              localeController: localeController,
+                              onOpenNotifications: onOpenNotifications,
+                              toolbarHeight: toolbarH,
+                            ),
                           ),
                         ),
                       ),
@@ -221,19 +258,41 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
     return topSpacer != oldDelegate.topSpacer ||
         minHeight != oldDelegate.minHeight ||
         maxHeight != oldDelegate.maxHeight ||
+        showZoneChips != oldDelegate.showZoneChips ||
         filters != oldDelegate.filters;
   }
 }
 
-/// Lockup P + PROPPITER (PNG) บน + สโลเกนล่าง
+/// Lockup P + RealXtate (PNG) บน + สโลแกนล่าง
 class _HomeHeaderBrandBlock extends StatelessWidget {
-  const _HomeHeaderBrandBlock();
+  const _HomeHeaderBrandBlock({
+    required this.toolbarHeight,
+  });
+
+  final double toolbarHeight;
 
   @override
   Widget build(BuildContext context) {
-    return const ProppiterBrandHero(
-      size: ProppiterBrandHeroSize.compact,
-      showSlogan: false,
+    // สโลแกนต้องการ ~12pt ใต้ lockup — ซ่อนก่อนถ้า toolbar หดจนล้น
+    final showSlogan = toolbarHeight >= 52;
+    final size = toolbarHeight >= 58
+        ? ProppiterBrandHeroSize.standard
+        : ProppiterBrandHeroSize.compact;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 2),
+      child: SizedBox(
+        height: toolbarHeight,
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: Alignment.centerLeft,
+          child: ProppiterBrandHero(
+            size: size,
+            showSlogan: showSlogan,
+            sloganLift: size == ProppiterBrandHeroSize.standard ? 4 : 2,
+          ),
+        ),
+      ),
     );
   }
 }
@@ -243,45 +302,53 @@ class _ToolbarRow extends StatelessWidget {
     required this.roleController,
     required this.localeController,
     required this.onOpenNotifications,
+    required this.toolbarHeight,
   });
 
   final UserRoleController roleController;
   final LocaleController localeController;
   final VoidCallback onOpenNotifications;
+  final double toolbarHeight;
 
   static const double _actionSize = 36;
 
   @override
   Widget build(BuildContext context) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
-          child: Transform.translate(
-            offset: const Offset(10, -7),
-            child: const _HomeHeaderBrandBlock(),
-          ),
+          child: _HomeHeaderBrandBlock(toolbarHeight: toolbarHeight),
         ),
-        PerspectiveDropdownChip(
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: PerspectiveDropdownChip(
           controller: roleController,
           localeController: localeController,
           onPurpleHeader: true,
           compact: true,
           mini: true,
+          ),
         ),
         const SizedBox(width: 6),
-        _actionIcon(
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: _actionIcon(
           icon: Icons.favorite_border_rounded,
-          onTap: () => MainShellScope.maybeOf(context)?.selectTab(1),
+          onTap: () => context.push('/saved-listings'),
+          ),
         ),
         const SizedBox(width: 8),
-        SizedBox(
-          width: _actionSize,
-          height: _actionSize,
-          child: NotificationBellButton(
-            compact: true,
-            onPressed: onOpenNotifications,
-            onPurple: true,
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: SizedBox(
+            width: _actionSize,
+            height: _actionSize,
+            child: NotificationBellButton(
+              compact: true,
+              onPressed: onOpenNotifications,
+              onPurple: true,
+            ),
           ),
         ),
       ],
@@ -321,8 +388,6 @@ class _SearchCapsule extends StatelessWidget {
   static const double _actionSize = 40;
   static const double _leftPad = 14;
   static const double _rightPad = 8;
-  static const Color _dividerColor = Color(0xFFE5E7EB);
-
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
@@ -334,7 +399,7 @@ class _SearchCapsule extends StatelessWidget {
     final hasActions = onMapSearch != null || onOpenFilters != null;
 
     return Material(
-      color: Colors.white,
+      color: p.surface,
       elevation: 0,
       borderRadius: radius,
       clipBehavior: Clip.antiAlias,
@@ -351,21 +416,32 @@ class _SearchCapsule extends StatelessWidget {
                     Icon(
                       Icons.search_rounded,
                       size: 22,
-                      color: LivingBkkBrand.homeHeaderBlockColor,
+                      color: p.primary,
                     ),
                     const SizedBox(width: 10),
                     Expanded(
-                      child: Text(
-                        hasQuery ? query! : s.searchHintProjects,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 14,
-                          height: 1.2,
-                          fontWeight: hasQuery ? FontWeight.w600 : FontWeight.w400,
-                          color: hasQuery ? p.textPrimary : p.textSecondary,
-                        ),
-                      ),
+                      child: hasQuery
+                          ? Text(
+                              query!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14,
+                                height: 1.2,
+                                fontWeight: FontWeight.w600,
+                                color: p.textPrimary,
+                              ),
+                            )
+                          : TypewriterHintLabel(
+                              fullText: s.searchDiscoveryTypewriterHint,
+                              cacheKey: 'home_search_capsule',
+                              style: TextStyle(
+                                fontSize: 14,
+                                height: 1.2,
+                                fontWeight: FontWeight.w400,
+                                color: p.textSecondary,
+                              ),
+                            ),
                     ),
                   ],
                 ),
@@ -405,10 +481,11 @@ class _SearchCapsule extends StatelessWidget {
 class _CapsuleDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Container(
       width: 1,
       height: 24,
-      color: _SearchCapsule._dividerColor,
+      color: p.border,
     );
   }
 }
@@ -428,6 +505,7 @@ class _CapsuleAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return SizedBox(
       width: _SearchCapsule._actionSize,
       height: _SearchCapsule._actionSize,
@@ -443,9 +521,7 @@ class _CapsuleAction extends StatelessWidget {
           child: Icon(
             icon,
             size: 22,
-            color: showBadge
-                ? LivingBkkBrand.homeHeaderBlockColor
-                : const Color(0xFF6B7280),
+            color: showBadge ? p.primary : p.textSecondary,
           ),
         ),
       ),

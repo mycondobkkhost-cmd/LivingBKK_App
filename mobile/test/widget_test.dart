@@ -14,8 +14,8 @@ void main() {
     await LocalPrefsService.instance.init();
   });
 
-  test('PROPPITER brand constants', () {
-    expect(LivingBkkBrand.name, 'PROPPITER');
+  test('RealXtate brand constants', () {
+    expect(LivingBkkBrand.name, 'RealXtate');
     expect(LivingBkkBrand.tagline(const Locale('th')), contains('โพสต์ฟรี'));
     expect(LivingBkkBrand.tagline(const Locale('en')), contains('Post for free'));
     expect(LivingBkkBrand.purplePrimary, const Color(0xFF583AD6));
@@ -29,7 +29,7 @@ void main() {
     );
   });
 
-  testWidgets('PROPPITER logo composes mark and wordmark', (WidgetTester tester) async {
+  testWidgets('RealXtate logo composes mark and wordmark', (WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         locale: Locale('th'),
@@ -48,7 +48,7 @@ void main() {
 
     expect(find.byType(LivingBkkLogo), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
-    expect(find.textContaining('PROPPITER'), findsOneWidget);
+    expect(find.textContaining('RealXtate'), findsOneWidget);
     expect(find.textContaining('โพสต์ฟรี'), findsOneWidget);
   });
 }

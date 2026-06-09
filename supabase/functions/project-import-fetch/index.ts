@@ -6,11 +6,8 @@ import {
   slugifyProjectName,
 } from "../_shared/project_parser.ts";
 import { createServiceClient } from "../_shared/supabase_env.ts";
-import {
-  formatBtsField,
-  mergeNearbyTransitLabels,
-  transitAliases,
-} from "../_shared/transit_proximity.ts";
+import { enrichProjectTags } from "../_shared/project_search_tag_enrich.ts";
+import { transitAliases } from "../_shared/transit_proximity.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -30,14 +27,18 @@ Deno.serve(async (req) => {
     }
 
     const parsed = await parseProjectFromUrl(sourceUrl);
-    const nearbyTransit = mergeNearbyTransitLabels({
+    const enriched = enrichProjectTags({
       lat: parsed.lat,
       lng: parsed.lng,
-      descriptionTh: parsed.descriptionTh,
-      existing: parsed.btsStation,
+      name_th: parsed.nameTh,
+      name_en: parsed.nameEn,
+      description_th: parsed.descriptionTh,
+      bts_station: parsed.btsStation,
+      aliases: parsed.aliases,
     });
-    const btsStation = formatBtsField(nearbyTransit) ?? parsed.btsStation;
-    const aliases = [...parsed.aliases, ...transitAliases(nearbyTransit)];
+    const aliases = [
+      ...new Set([...parsed.aliases, ...transitAliases(enriched.nearby_transit), ...enriched.aliases_extra]),
+    ];
     const db = createServiceClient();
 
     if (!upsert) {
@@ -48,13 +49,27 @@ Deno.serve(async (req) => {
     const slug = existing?.slug as string | undefined ??
       slugifyProjectName(parsed.nameEn || parsed.nameTh);
 
+    let geoZoneId: string | null = (existing?.geo_zone_id as string | null) ?? null;
+    if (enriched.primary_geo_zone_slug) {
+      const { data: gz } = await db
+        .from("geo_zones")
+        .select("id")
+        .eq("slug", enriched.primary_geo_zone_slug)
+        .maybeSingle();
+      if (gz?.id) geoZoneId = gz.id as string;
+    }
+
     const payload: Record<string, unknown> = {
       slug,
       name_th: parsed.nameTh,
       name_en: parsed.nameEn,
       district: parsed.district,
-      bts_station: btsStation,
-      nearby_transit: nearbyTransit,
+      bts_station: enriched.bts_station,
+      nearby_transit: enriched.nearby_transit,
+      search_tag_slugs: [...new Set([slug, ...enriched.search_tag_slugs])],
+      tag_enrich_status: enriched.tag_enrich_status,
+      tag_enrich_meta: enriched.tag_enrich_meta,
+      geo_zone_id: geoZoneId,
       property_type: parsed.propertyType,
       lat: parsed.lat,
       lng: parsed.lng,

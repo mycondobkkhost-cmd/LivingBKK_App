@@ -1,7 +1,7 @@
 name: livingbkk
-description: LivingBKK — Bangkok metro property · Rent · Buy · Sell
+description: RealXtate — Bangkok metro property · Rent · Buy · Sell
 publish_to: "none"
-version: 0.1.0+1
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.2.0 <4.0.0"  # Flutter 3.19.6 / Dart 3.3
@@ -27,6 +27,7 @@ dependencies:
   url_launcher: ^6.3.0
   http: ^1.2.0
   crypto: ^3.0.3
+  sign_in_with_apple: ^6.1.3
   firebase_core: ^2.32.0
   firebase_messaging: ^14.9.4
   shared_preferences: ^2.2.3
@@ -47,3 +48,4 @@ flutter:
     - assets/promo/
     - assets/home_services/
     - assets/data/search_display_index.json
+    - assets/data/search_zone_catalog.json

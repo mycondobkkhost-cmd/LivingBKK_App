@@ -39,7 +39,7 @@ class Env {
       googleMapsApiKey.isNotEmpty && !googleMapsApiKey.contains('YOUR_');
 
   /// URL หลักของเว็บแอป (ใช้ในลิงก์แชร์) — ไม่มี trailing slash
-  /// ตัวอย่าง: https://livingbkk.netlify.app
+  /// ตัวอย่าง: https://realxtateth.com
   static String get webBaseUrl {
     final v = (dotenv.env['WEB_BASE_URL'] ?? '').trim();
     if (v.isEmpty) return '';
@@ -83,6 +83,14 @@ class Env {
   /// ช่วงทดลอง: กดเข้าตามบทบาทได้โดยไม่ต้องรหัส — ตั้ง `TRIAL_MODE=false` เมื่อเปิดใช้จริง
   static bool get trialMode {
     final v = (dotenv.env['TRIAL_MODE'] ?? 'true').trim().toLowerCase();
+    return v != 'false' && v != '0' && v != 'off' && v != 'no';
+  }
+
+  /// เคสตัวอย่างหลังบ้าน — แสดงเมื่อ DB ว่าง (แยกจาก TRIAL_MODE ได้)
+  /// ตั้ง `ADMIN_DEMO_CASES=false` ก่อน production จริง
+  static bool get adminDemoCases {
+    if (trialMode) return true;
+    final v = (dotenv.env['ADMIN_DEMO_CASES'] ?? 'true').trim().toLowerCase();
     return v != 'false' && v != '0' && v != 'off' && v != 'no';
   }
 

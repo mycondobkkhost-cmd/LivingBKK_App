@@ -1,10 +1,17 @@
-/// รหัสทรัพย์ + หมายเลขธุรกรรม (อังกฤษ + ตัวเลข)
+import '../config/code_glossary.dart';
+
+/// รหัสทรัพย์ + หมายเลขธุรกรรม — คำอธิบายไทยดู [CodeGlossary]
 ///
-/// ทรัพย์: `RENT-CD-2026-000042` (ประเภทธุรกรรม · ประเภททรัพย์ · ปี · ลำดับ)
+/// ประกาศ: `RENT-CD-2026-000042` (ประเภทธุรกรรม · ประเภททรัพย์ · ปี · ลำดับ)
+/// ทะเบียนกลาง: `RXT-2026-000001` (RealXtate · หน่วยทรัพย์รวมหลายโพสต์)
 /// แชท:   `CHAT-2026-000001`
 /// Lead:  `LEAD-2026-000001`
 /// นัด:   `APPT-2026-000001`
 abstract final class ReferenceCodes {
+  /// รหัสทะเบียนทรัพย์กลาง (RXT) — ดู [CodeGlossary.inventory]
+  static const inventoryPrefix = 'RXT';
+
+  static const _legacyInventoryPrefixes = ['RXT', 'PPTR', 'PTP'];
   static String propertyPrefix(String propertyType) {
     switch (propertyType) {
       case 'house':
@@ -88,4 +95,18 @@ abstract final class ReferenceCodes {
 
   static bool isPirListingCode(String code) =>
       pirListingPattern.hasMatch(code.trim().toUpperCase());
+
+  /// รหัสทะเบียนกลาง RXT-YYYY-###### (รองรับ PPTR/PTP เก่า)
+  static bool isInventoryCode(String code) {
+    final upper = code.trim().toUpperCase();
+    for (final p in _legacyInventoryPrefixes) {
+      if (upper.startsWith('$p-')) return true;
+    }
+    return false;
+  }
+
+  static String inventoryCode({required int sequence, int? year}) {
+    final y = year ?? DateTime.now().year;
+    return '$inventoryPrefix-$y-${sequence.toString().padLeft(6, '0')}';
+  }
 }

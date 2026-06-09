@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-/// PROPPITER — official brand identity (rebrand 2026)
+/// RealXtate — official brand identity (rebrand 2026)
 class LivingBkkBrand {
   LivingBkkBrand._();
 
-  static const String name = 'PROPPITER';
-  static const String nameTh = 'PROPPITER';
-  static const String nameEn = 'PROPPITER';
+  static const String name = 'RealXtate';
+  static const String nameTh = 'RealXtate';
+  static const String nameEn = 'RealXtate';
 
   /// กำกับใต้ชื่อแบรนด์ (แยกจากสโลแกน)
   static const String descriptorEn = 'Real Estate Matching Platform';
@@ -50,7 +50,7 @@ class LivingBkkBrand {
   static const Color robinhoodPurpleMid = Color(0xFF6B3FA0);
   static const Color robinhoodPurpleLight = Color(0xFFF3E8FF);
 
-  // ── PROPPITER palette (brand brief 2026) ──
+  // ── RealXtate palette (brand brief 2026) ──
   static const Color purplePrimary = propNavy;
   static const Color purpleLight = Color(0xFF9B6DFF);
   static const Color purpleMid = Color(0xFF7B5CE8);
@@ -73,7 +73,7 @@ class LivingBkkBrand {
   static const Color headerGradientStart = robinhoodPurple;
   static const Color headerGradientEnd = robinhoodPurpleDark;
 
-  // ── Dark UI surfaces (PROPPITER brief) ──
+  // ── Dark UI surfaces (RealXtate brief) ──
   static const Color navyMid = Color(0xFF16142A);
   static const Color surface = Color(0xFF16142A);
   static const Color surfaceElevated = Color(0xFF221E3C);
@@ -127,6 +127,19 @@ class LivingBkkBrand {
     stops: [0.0, 0.38, 0.72, 1.0],
   );
 
+  /// หัวม่วง dark — deep purple 4-stop (ไม่มีขาว)
+  static const LinearGradient homeHeaderBlockGradientDark = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF2A1548),
+      Color(0xFF3A1F66),
+      Color(0xFF4E2A84),
+      Color(0xFF5E42B0),
+    ],
+    stops: [0.0, 0.32, 0.68, 1.0],
+  );
+
   /// หน้าแรก — deep purple → orange fade (Robinhood delivery feel)
   static const LinearGradient homeHeaderGradient = LinearGradient(
     begin: Alignment.topCenter,
@@ -141,6 +154,36 @@ class LivingBkkBrand {
     ],
     stops: [0.0, 0.28, 0.48, 0.68, 0.9, 1.0],
   );
+
+  /// หน้าแรก dark — purple → darkBg fade
+  static const LinearGradient homeHeaderGradientDark = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFF2A1548),
+      Color(0xFF3A1F66),
+      Color(0xFF4E2A84),
+      Color(0xFF352A6B),
+      darkBg,
+      darkBg,
+    ],
+    stops: [0.0, 0.28, 0.48, 0.68, 0.9, 1.0],
+  );
+
+  static bool isLight(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.light;
+
+  static Color pageBackgroundOf(BuildContext context) =>
+      isLight(context) ? pageBackground : darkBg;
+
+  static LinearGradient homeHeaderBlockGradientOf(BuildContext context) =>
+      isLight(context) ? homeHeaderBlockGradient : homeHeaderBlockGradientDark;
+
+  static LinearGradient homeHeaderGradientOf(BuildContext context) =>
+      isLight(context) ? homeHeaderGradient : homeHeaderGradientDark;
+
+  static LinearGradient promoGradientOf(BuildContext context) =>
+      isLight(context) ? promoGradientLight : promoGradient;
 
   static const LinearGradient canvaHeroGradient = robinhoodHeaderGradient;
 
@@ -202,4 +245,18 @@ class LivingBkkBrand {
 
   static String tagline(Locale locale) =>
       locale.languageCode == 'th' ? taglineTh : taglineEn;
+}
+
+extension LivingBkkBrandContext on BuildContext {
+  bool get isLightTheme => LivingBkkBrand.isLight(this);
+
+  Color get brandPageBackground => LivingBkkBrand.pageBackgroundOf(this);
+
+  LinearGradient get homeHeaderBlockGradient =>
+      LivingBkkBrand.homeHeaderBlockGradientOf(this);
+
+  LinearGradient get homeHeaderGradient =>
+      LivingBkkBrand.homeHeaderGradientOf(this);
+
+  LinearGradient get promoGradient => LivingBkkBrand.promoGradientOf(this);
 }

@@ -28,14 +28,18 @@ class _Sheet extends StatelessWidget {
   IconData _iconFor(String slug) => switch (slug) {
         'condo' => Icons.apartment_rounded,
         'house' => Icons.home_rounded,
-        'townhome' => Icons.other_houses_rounded,
-        'apartment' => Icons.domain_rounded,
         'land' => Icons.landscape_rounded,
+        'townhome' => Icons.other_houses_rounded,
         'commercial' => Icons.storefront_rounded,
         'office' => Icons.business_rounded,
         'home_office' => Icons.home_work_outlined,
-        'warehouse' => Icons.warehouse_outlined,
+        'showroom' => Icons.directions_car_filled_outlined,
+        'business' => Icons.stars_rounded,
         'factory' => Icons.factory_outlined,
+        'warehouse' => Icons.warehouse_outlined,
+        'co_working' => Icons.groups_outlined,
+        'apartment' => Icons.domain_rounded,
+        'pool_villa' => Icons.pool_outlined,
         _ => Icons.category_outlined,
       };
 

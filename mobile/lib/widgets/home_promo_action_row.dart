@@ -42,7 +42,7 @@ class HomePromoActionRow extends StatelessWidget {
                 colors: [p.primary.withOpacity(0.12), p.primaryLight],
               ),
               accent: p.primary,
-              onTap: () => PostListingNavigation.openCreateWithAuthGate(context),
+              onTap: () => PostListingNavigation.openManageHub(context),
             ),
           ),
           if (DemandBoardMenuConfig.showPromoRequirementTile(roleController)) ...[

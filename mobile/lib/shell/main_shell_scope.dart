@@ -8,7 +8,7 @@ class MainShellScope extends InheritedWidget {
     required super.child,
   });
 
-  final void Function(int index) selectTab;
+  final void Function(int index, {bool boardFromHome}) selectTab;
 
   static MainShellScope? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<MainShellScope>();

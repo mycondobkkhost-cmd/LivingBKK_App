@@ -10,6 +10,7 @@ extension ChatRoomDisplay on ChatRoom {
     if (isDiscovery) return s.chatDiscoveryTitle;
     if (isDemandOffer) return s.chatDemandOfferRoomTitle;
     if (isStaffSupport) return s.chatAdminInquiry;
+    if (isParticipantHub) return s.hubSeekerTitle;
     return s.chatPropertyTitle;
   }
 
@@ -22,6 +23,7 @@ extension ChatRoomDisplay on ChatRoom {
       return listingTitle.isNotEmpty ? listingTitle : s.chatDemandOfferRoomTitle;
     }
     if (isStaffSupport) return s.chatAdminInquiry;
+    if (isParticipantHub) return listingTitle;
     return displayTitle;
   }
 
@@ -30,6 +32,7 @@ extension ChatRoomDisplay on ChatRoom {
     if (isDiscovery) return Icons.travel_explore_outlined;
     if (isDemandOffer) return Icons.local_offer_outlined;
     if (isStaffSupport) return Icons.support_agent_outlined;
+    if (isParticipantHub) return Icons.hub_outlined;
     return Icons.home_outlined;
   }
 

@@ -31,7 +31,7 @@ class PostListingProfileMenu extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         for (var i = 0; i < entries.length; i++)
-          if (showAll || entries[i].id == 'create') ...[
+          if (showAll || entries[i].id == 'create' || entries[i].id == 'cared') ...[
             ProfileMenuTile(
               icon: entries[i].icon,
               title: entries[i].title,

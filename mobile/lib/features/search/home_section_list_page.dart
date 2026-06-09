@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../models/listing_public.dart';
 import '../../models/listing_route_extra.dart';
 import '../../theme/li_layout.dart';
-import '../../widgets/listing_card.dart';
+import '../../widgets/listing_grid.dart';
 import '../../utils/page_safe_insets.dart';
 import '../../widgets/consumer/consumer_page_shell.dart';
 
@@ -25,7 +25,11 @@ class HomeSectionListPage extends StatelessWidget {
     return ConsumerPageShell(
       title: title,
       onBack: () => context.pop(),
-      body: ListView.separated(
+      body: ListingGrid(
+        items: items,
+        showCoAgentStrip: isAgent,
+        shrinkWrap: false,
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: PageSafeInsets.padLTRB(
           context,
           left: LiLayout.pagePadding,
@@ -34,20 +38,10 @@ class HomeSectionListPage extends StatelessWidget {
           bottom: LiLayout.pagePadding,
           addHomeIndicator: false,
         ),
-        itemCount: items.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 10),
-        itemBuilder: (context, i) {
-          final item = items[i];
-          return ListingCard(
-            listing: item,
-            style: ListingCardStyle.feed,
-            showCoAgentStrip: isAgent,
-            onTap: () => context.push(
-              '/listing/${item.id}',
-              extra: ListingRouteExtra(listing: item, isAgent: isAgent),
-            ),
-          );
-        },
+        onTapListing: (item) => context.push(
+          '/listing/${item.id}',
+          extra: ListingRouteExtra(listing: item, isAgent: isAgent),
+        ),
       ),
     );
   }

@@ -113,6 +113,102 @@ function effectivePrice(parsed: LiParsedListing): number {
   return parsed.priceNet > 0 ? parsed.priceNet : PLACEHOLDER_PRICE;
 }
 
+/** Bangkok metro bbox — reject swapped/invalid PH coords */
+function resolveListingCoords(
+  project: Record<string, unknown> | null,
+  parsed: LiParsedListing,
+): { lat: number; lng: number } {
+  const fallback = { lat: 13.7367, lng: 100.5608 };
+  const sources: [unknown, unknown][] = [
+    [project?.lat, project?.lng],
+    [parsed.lat, parsed.lng],
+  ];
+
+  for (const [rawLat, rawLng] of sources) {
+    let lat = Number(rawLat);
+    let lng = Number(rawLng);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+    // Common data bug: lat/lng swapped (lng stored as lat)
+    if (lat > 90 && lng <= 90) {
+      const tmp = lat;
+      lat = lng;
+      lng = tmp;
+    }
+    if (lat < 13.2 || lat > 14.5 || lng < 99.8 || lng > 101.2) continue;
+    return { lat, lng };
+  }
+  return fallback;
+}
+
+function geographyPoint(lng: number, lat: number): string {
+  return `SRID=4326;POINT(${lng} ${lat})`;
+}
+
+type DuplicateRef = {
+  import_id: string;
+  listing_id: string | null;
+  listing_code: string | null;
+  title_preview: string | null;
+  status: string;
+  source_url: string;
+  source_external_id: string | null;
+};
+
+async function loadDuplicateRef(
+  db: ReturnType<typeof serviceDb>,
+  importId: string,
+): Promise<DuplicateRef | null> {
+  const { data } = await db
+    .from("listing_imports")
+    .select(
+      "id, status, title_preview, listing_id, source_url, source_external_id, listings(listing_code)",
+    )
+    .eq("id", importId)
+    .maybeSingle();
+  if (!data) return null;
+  const listing = data.listings as { listing_code?: string } | null;
+  return {
+    import_id: data.id as string,
+    listing_id: (data.listing_id as string | null) ?? null,
+    listing_code: listing?.listing_code ?? null,
+    title_preview: (data.title_preview as string | null) ?? null,
+    status: data.status as string,
+    source_url: data.source_url as string,
+    source_external_id: (data.source_external_id as string | null) ?? null,
+  };
+}
+
+async function markImportFailed(
+  db: ReturnType<typeof serviceDb>,
+  rowId: string,
+  msg: string,
+  duplicateOf: DuplicateRef | null,
+) {
+  const parsedPatch: Record<string, unknown> = {};
+  if (duplicateOf) {
+    parsedPatch.duplicate_of = duplicateOf;
+    parsedPatch.flags = ["duplicate_import"];
+  }
+  const { data: current } = await db
+    .from("listing_imports")
+    .select("parsed")
+    .eq("id", rowId)
+    .maybeSingle();
+  const existingParsed = (current?.parsed as Record<string, unknown> | null) ?? {};
+  const nextParsed = duplicateOf
+    ? { ...existingParsed, ...parsedPatch }
+    : existingParsed;
+
+  await db
+    .from("listing_imports")
+    .update({
+      status: "failed",
+      error_message: msg.slice(0, 500),
+      parsed: nextParsed,
+    })
+    .eq("id", rowId);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -161,10 +257,12 @@ Deno.serve(async (req) => {
         .eq("source_url", sourceUrl)
         .maybeSingle();
       if (dup && dup.status !== "archived" && dup.status !== "failed") {
+        const duplicateOf = await loadDuplicateRef(db, dup.id as string);
         return jsonResponse({
           error: "ลิงก์นี้อยู่ในคิวแล้ว",
           import_id: dup.id,
           status: dup.status,
+          duplicate_of: duplicateOf,
         }, 409);
       }
 
@@ -204,16 +302,28 @@ Deno.serve(async (req) => {
           .neq("id", rowId)
           .maybeSingle();
         if (dupExt && dupExt.status !== "archived" && dupExt.status !== "failed") {
-          throw new Error(`รายการนี้นำเข้าแล้ว (${parsed.sourceExternalId})`);
+          const duplicateOf = await loadDuplicateRef(db, dupExt.id as string);
+          const err = new Error(
+            `รายการนี้นำเข้าแล้ว (${parsed.sourceExternalId})`,
+          );
+          (err as Error & { duplicateOf?: DuplicateRef | null }).duplicateOf =
+            duplicateOf;
+          throw err;
         }
       }
 
       const project = await matchProject(db, parsed.projectName);
 
-      const lat = (project?.lat as number | undefined) ?? parsed.lat ?? 13.7367;
-      const lng = (project?.lng as number | undefined) ?? parsed.lng ?? 100.5608;
+      if (!project && parsed.projectName?.trim()) {
+        if (!parsed.flags.includes("project_not_in_registry")) {
+          parsed.flags.push("project_not_in_registry");
+        }
+      }
+
+      const { lat, lng } = resolveListingCoords(project, parsed);
       const district = (project?.district as string | undefined) ??
         parsed.district ?? "กรุงเทพฯ";
+      const point = geographyPoint(lng, lat);
 
       const listingPayload: Record<string, unknown> = {
         owner_id: auth.userId,
@@ -239,8 +349,8 @@ Deno.serve(async (req) => {
         source_url: sourceUrl,
         source_external_id: parsed.sourceExternalId,
         status: "draft",
-        location_exact: { type: "Point", coordinates: [lng, lat] },
-        location_public: { type: "Point", coordinates: [lng, lat] },
+        location_exact: point,
+        location_public: point,
       };
 
       let listingId = importRow.listing_id as string | null;
@@ -277,6 +387,7 @@ Deno.serve(async (req) => {
         source_platform: platform,
         external_id: parsed.sourceExternalId,
         contact_private: parsed.contactPrivate,
+        source_meta: parsed.sourceMeta ?? null,
         html_bytes: html.length,
       };
 
@@ -299,6 +410,7 @@ Deno.serve(async (req) => {
             contactPrivate: undefined,
             matched_project_id: project?.id ?? null,
             source_platform: platform,
+            source_meta: parsed.sourceMeta ?? null,
           },
         })
         .eq("id", rowId)
@@ -306,6 +418,16 @@ Deno.serve(async (req) => {
         .single();
 
       if (updErr) return jsonResponse({ error: updErr.message }, 400);
+
+      try {
+        const { syncImportToVault, syncListingToVault } = await import(
+          "../_shared/vault_sync.ts"
+        );
+        await syncImportToVault(db, rowId);
+        if (listingId) await syncListingToVault(db, listingId);
+      } catch (_) {
+        /* vault sync optional until migration deployed */
+      }
 
       return jsonResponse({
         import: updated,
@@ -316,11 +438,14 @@ Deno.serve(async (req) => {
       });
     } catch (e) {
       const msg = String(e);
-      await db
-        .from("listing_imports")
-        .update({ status: "failed", error_message: msg.slice(0, 500) })
-        .eq("id", rowId);
-      return jsonResponse({ error: msg, import_id: rowId }, 422);
+      const duplicateOf =
+        (e as Error & { duplicateOf?: DuplicateRef | null }).duplicateOf ?? null;
+      await markImportFailed(db, rowId, msg, duplicateOf);
+      return jsonResponse({
+        error: msg,
+        import_id: rowId,
+        duplicate_of: duplicateOf,
+      }, 422);
     }
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);

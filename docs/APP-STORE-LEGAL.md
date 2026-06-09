@@ -1,4 +1,4 @@
-# App Store / Play Store — กฎหมายและความเป็นส่วนตัว (PROPPITER)
+# App Store / Play Store — กฎหมายและความเป็นส่วนตัว (RealXtate)
 
 ## สรุปสั้น ๆ
 
@@ -8,7 +8,7 @@
 | ลิงก์เงื่อนไข + นโยบายกดเปิดได้ | ✅ ต้องมี URL สาธารณะใน Connect ด้วย |
 | ฉบับเต็มในแอป + `mobile/web/legal/*.html` | ✅ ใช้เป็น Privacy Policy URL ได้หลัง deploy เว็บ |
 | บันทึก `listing_policy_version` ใน metadata | ⚠️ audit เบื้องต้น — ไม่ใช่ตาราง compliance แยก |
-| อีเมล `privacy@proppiter.app` ในฉบับกฎหมาย | ⚠️ ต้องเป็นกล่องจริงก่อนส่งร้าน |
+| อีเมล `privacy@realxtateth.com` ในฉบับกฎหมาย | ⚠️ ต้องเป็นกล่องจริงก่อนส่งร้าน |
 
 **ไม่มี checkbox ใดที่ “รับประกันผ่านร้าน” โดยอัตโนมัติ** — Apple/Google ดูทั้ง URL, การลบบัญชี, UGC moderation, และข้อมูลที่เก็บใน Privacy Nutrition Labels
 
@@ -37,7 +37,7 @@ TERMS_OF_SERVICE_URL=https://...
 ## Checklist ก่อนส่งร้าน
 
 - [ ] Deploy `mobile/web` รวมโฟลเดอร์ `legal/` แล้วทดสอบ URL สองลิงก์
-- [ ] เปิดใช้กล่อง `privacy@proppiter.app` (หรือแก้ใน `legal_config.dart` + HTML)
+- [ ] เปิดใช้กล่อง `privacy@realxtateth.com` (หรือแก้ใน `legal_config.dart` + HTML)
 - [ ] ปิด `TRIAL_MODE` / `ALLOW_PASSWORDLESS_LOGIN` ใน production
 - [ ] กรอก App Privacy (Data types: contact, photos, location ฯลฯ) ให้ตรงกับแอปจริง
 - [ ] มี flow ลบบัญชี (Profile หรือติดต่อ support) ตาม Guideline 5.1.1(v)

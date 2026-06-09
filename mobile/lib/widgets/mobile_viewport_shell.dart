@@ -1,7 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../state/admin_viewport_controller.dart';
 import '../theme/living_bkk_brand.dart';
+import '../utils/admin_desktop.dart';
+import '../utils/web_browser_path.dart';
 
 /// บน Web: จำกัดความกว้างแบบมือถือ (~iPhone) กลางจอ
 const kMobilePreviewMaxWidth = 430.0;
@@ -26,12 +29,26 @@ class MobileViewportShell extends StatelessWidget {
     super.key,
     required this.child,
     this.fullWidth = false,
+    this.path = '/',
   });
 
   final Widget? child;
 
   /// บน Web: ไม่จำกัดความกว้าง (ใช้กับ /admin/*)
   final bool fullWidth;
+
+  /// เส้นทางปัจจุบัน — ใช้บังคับไม่แสดงกรอบ iPhone บนหลังบ้าน
+  final String path;
+
+  bool get _useFullWidth {
+    if (!kIsWeb) return fullWidth;
+    // หลังบ้านบนเว็บ — เต็มจอเสมอ (ไม่ใส่กรอบ iPhone แม้โหมด「แบบแอป」)
+    if (isAdminPath(path)) return true;
+    final browser = webBrowserPath();
+    if (isAdminPath(browser)) return true;
+    if (isAdminPath(Uri.base.path)) return true;
+    return fullWidth;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,14 +61,14 @@ class MobileViewportShell extends StatelessWidget {
       return child!;
     }
 
-    // Admin / full-width บนมือถือ (Safari, PWA) — ยังต้องเว้น island
-    if (fullWidth) {
+    // Admin / full-width — จอกว้างใช้พื้นที่ล่างเต็มจอ
+    if (_useFullWidth) {
       return LayoutBuilder(
         builder: (context, constraints) {
           if (constraints.maxWidth <= kMobilePreviewMaxWidth + 48) {
-            return _injectSafeArea(context, child!);
+            return _injectSafeArea(context, child!, bleedBottom: true);
           }
-          return child!;
+          return _stripBottomInset(context, child!);
         },
       );
     }
@@ -79,33 +96,48 @@ class MobileViewportShell extends StatelessWidget {
   }
 
   /// จอแคบ (เต็มความกว้าง) — ยังใส่ safe area ให้ใกล้ iPhone จริง
-  static Widget _injectSafeArea(BuildContext context, Widget child) {
+  static Widget _injectSafeArea(
+    BuildContext context,
+    Widget child, {
+    bool bleedBottom = false,
+  }) {
     final mq = MediaQuery.of(context);
     if (mq.viewPadding.top >= IPhone17ProMaxPreview.safeTop - 4) {
-      return child;
+      return bleedBottom ? _stripBottomInset(context, child) : child;
     }
     return Stack(
       fit: StackFit.expand,
       children: [
-        const DecoratedBox(
+        DecoratedBox(
           decoration: BoxDecoration(
-            gradient: LivingBkkBrand.homeHeaderBlockGradient,
+            gradient: LivingBkkBrand.homeHeaderBlockGradientOf(context),
           ),
         ),
         MediaQuery(
           data: mq.copyWith(
             padding: mq.padding.copyWith(
-              top: 0,
-              bottom: IPhone17ProMaxPreview.safeBottom,
+              top: IPhone17ProMaxPreview.safeTop,
+              bottom: bleedBottom ? 0 : IPhone17ProMaxPreview.safeBottom,
             ),
             viewPadding: mq.viewPadding.copyWith(
               top: IPhone17ProMaxPreview.safeTop,
-              bottom: IPhone17ProMaxPreview.safeBottom,
+              bottom: bleedBottom ? 0 : IPhone17ProMaxPreview.safeBottom,
             ),
           ),
           child: child,
         ),
       ],
+    );
+  }
+
+  static Widget _stripBottomInset(BuildContext context, Widget child) {
+    final mq = MediaQuery.of(context);
+    return MediaQuery(
+      data: mq.copyWith(
+        padding: mq.padding.copyWith(bottom: 0),
+        viewPadding: mq.viewPadding.copyWith(bottom: 0),
+      ),
+      child: child,
     );
   }
 }
@@ -142,9 +174,9 @@ class _IPhone17ProMaxFrame extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            const DecoratedBox(
+            DecoratedBox(
               decoration: BoxDecoration(
-                gradient: LivingBkkBrand.homeHeaderBlockGradient,
+                gradient: LivingBkkBrand.homeHeaderBlockGradientOf(context),
               ),
             ),
             MediaQuery(
@@ -153,9 +185,8 @@ class _IPhone17ProMaxFrame extends StatelessWidget {
                   IPhone17ProMaxPreview.width,
                   IPhone17ProMaxPreview.height,
                 ),
-                // layout เต็มจอ — อ่าน inset จาก viewPadding (ไม่ดัน body ลงทิ้งแถบขาว)
                 padding: mq.padding.copyWith(
-                  top: 0,
+                  top: IPhone17ProMaxPreview.safeTop,
                   bottom: IPhone17ProMaxPreview.safeBottom,
                 ),
                 viewPadding: mq.viewPadding.copyWith(

@@ -72,6 +72,10 @@ class _AdminImportTabState extends State<AdminImportTab> {
           importId: importId,
           scrollController: scrollController,
           onChanged: _refresh,
+          onSwitchImport: (otherId) async {
+            Navigator.of(ctx).pop();
+            await _openReview(otherId);
+          },
         ),
       ),
     );
@@ -101,15 +105,34 @@ class _AdminImportTabState extends State<AdminImportTab> {
       _url.clear();
       await _refresh();
       if (!mounted) return;
+      final detail = await _repo.getImportDetail(row.id);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.adminImportFetchedFor(s.adminImportSourceLabel(row.sourcePlatform)))),
+        SnackBar(
+          content: Text(
+            detail.projectNotInRegistry
+                ? s.adminImportFetchedProjectMissing
+                : s.adminImportFetchedFor(s.adminImportSourceLabel(row.sourcePlatform)),
+          ),
+          duration: Duration(seconds: detail.projectNotInRegistry ? 5 : 3),
+        ),
       );
       await _openReview(row.id);
     } on ListingImportFetchException catch (e) {
       await _refresh();
       if (!mounted) return;
+      final dup = e.duplicateOf;
+      final dupLabel = dup?.listingCode ??
+          dup?.titlePreview ??
+          dup?.sourceExternalId;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message)),
+        SnackBar(
+          content: Text(
+            dupLabel != null
+                ? '${e.message} · ${s.adminImportDuplicateOf(dupLabel)}'
+                : e.message,
+          ),
+          duration: const Duration(seconds: 5),
+        ),
       );
       if (e.importId != null) {
         await _openReview(e.importId!);
@@ -340,6 +363,22 @@ class _ImportRowCard extends StatelessWidget {
                       _MiniChip(label: time, icon: Icons.schedule),
                   ],
                 ),
+                if (row.isDuplicateFailure && row.duplicateOf != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    s.adminImportDuplicateOf(
+                      row.duplicateOf!.listingCode ??
+                          row.duplicateOf!.titlePreview ??
+                          row.duplicateOf!.sourceExternalId ??
+                          row.duplicateOf!.importId,
+                    ),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.error,
+                    ),
+                  ),
+                ],
                 if (row.errorMessage != null && row.errorMessage!.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   Text(row.errorMessage!, style: TextStyle(fontSize: 12, color: AppTheme.error)),

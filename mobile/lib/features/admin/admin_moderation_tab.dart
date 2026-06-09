@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../services/admin_repository.dart';
+import 'admin_listing_public_preview_sheet.dart';
 import '../../services/auth_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
@@ -166,7 +167,18 @@ class _AdminModerationTabState extends State<AdminModerationTab> {
           maxLines: 3,
         ),
         isThreeLine: true,
-        trailing: PopupMenuButton<String>(
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined),
+              tooltip: s.adminListingPreview,
+              onPressed: () => showAdminListingPublicPreview(
+                context: context,
+                listingId: id,
+              ),
+            ),
+            PopupMenuButton<String>(
           onSelected: (v) async {
             final trial = AuthService.instance.trialSimulatesBackend;
             var ok = false;
@@ -202,6 +214,8 @@ class _AdminModerationTabState extends State<AdminModerationTab> {
           itemBuilder: (_) => [
             PopupMenuItem(value: 'approve', child: Text(s.adminApproveListing)),
             PopupMenuItem(value: 'reject', child: Text(s.adminRejectListing)),
+          ],
+            ),
           ],
         ),
       ),

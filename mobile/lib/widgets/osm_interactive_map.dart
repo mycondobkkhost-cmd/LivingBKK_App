@@ -18,12 +18,28 @@ class OsmListingsMap extends StatefulWidget {
     this.selectedId,
     this.onListingTap,
     this.showPriceOnMarker = false,
+    this.fullBleed = false,
+    this.focusUserOnStart = false,
+    this.fabBottomPadding = 12,
+    this.pinLatitude,
+    this.pinLongitude,
+    this.radiusKm,
+    this.pinPlacementMode = false,
+    this.onPinPlaced,
   });
 
   final List<ListingPublic> listings;
   final String? selectedId;
   final void Function(ListingPublic listing)? onListingTap;
   final bool showPriceOnMarker;
+  final bool fullBleed;
+  final bool focusUserOnStart;
+  final double fabBottomPadding;
+  final double? pinLatitude;
+  final double? pinLongitude;
+  final double? radiusKm;
+  final bool pinPlacementMode;
+  final void Function(double lat, double lng)? onPinPlaced;
 
   @override
   State<OsmListingsMap> createState() => _OsmListingsMapState();
@@ -37,7 +53,13 @@ class _OsmListingsMapState extends State<OsmListingsMap> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _fitBounds());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.focusUserOnStart) {
+        _goToMyLocation();
+      } else {
+        _fitBounds();
+      }
+    });
   }
 
   void _onMapEvent(MapEvent event) {
@@ -207,22 +229,57 @@ class _OsmListingsMapState extends State<OsmListingsMap> {
         ),
       );
     }
+    final lat = widget.pinLatitude;
+    final lng = widget.pinLongitude;
+    if (lat != null && lng != null) {
+      markers.add(
+        Marker(
+          point: osm.LatLng(lat, lng),
+          width: 32,
+          height: 32,
+          child: Icon(Icons.push_pin, color: AppTheme.primary, size: 32),
+        ),
+      );
+    }
     return markers;
+  }
+
+  List<CircleMarker> _buildCircles() {
+    final lat = widget.pinLatitude;
+    final lng = widget.pinLongitude;
+    final km = widget.radiusKm;
+    if (lat == null || lng == null || km == null) return [];
+    return [
+      CircleMarker(
+        point: osm.LatLng(lat, lng),
+        radius: km * 1000,
+        color: AppTheme.primary.withOpacity(0.12),
+        borderColor: AppTheme.primary,
+        borderStrokeWidth: 2,
+      ),
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final radius = widget.fullBleed ? 0.0 : 16.0;
     return Stack(
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(radius),
           child: FlutterMap(
             mapController: _mapController,
             options: MapOptions(
               initialCenter: _bangkok,
               initialZoom: 12,
               onMapEvent: _onMapEvent,
+              onTap: widget.pinPlacementMode
+                  ? (_, point) => widget.onPinPlaced?.call(
+                        point.latitude,
+                        point.longitude,
+                      )
+                  : null,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.all,
               ),
@@ -232,6 +289,8 @@ class _OsmListingsMapState extends State<OsmListingsMap> {
                 urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                 userAgentPackageName: 'com.livingbkk.app',
               ),
+              if (_buildCircles().isNotEmpty)
+                CircleLayer(circles: _buildCircles()),
               MarkerLayer(markers: _buildMarkers()),
               const RichAttributionWidget(
                 attributions: [
@@ -258,10 +317,11 @@ class _OsmListingsMapState extends State<OsmListingsMap> {
         ),
         Positioned(
           right: 12,
-          bottom: 12,
+          bottom: widget.fabBottomPadding,
           child: FloatingActionButton.small(
             heroTag: 'near_me_osm',
             onPressed: _goToMyLocation,
+            tooltip: s.searchNearByTitle,
             child: const Icon(Icons.my_location),
           ),
         ),

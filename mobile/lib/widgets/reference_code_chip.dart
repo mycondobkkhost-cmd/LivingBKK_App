@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../config/code_glossary.dart';
 import '../l10n/app_strings.dart';
 import '../theme/app_theme.dart';
 import '../utils/reference_codes.dart';
@@ -20,7 +21,7 @@ class ReferenceCodeChip extends StatelessWidget {
   final String label;
   final bool compact;
   final VoidCallback? onCopied;
-  /// กดชิปเพื่อเปิดหน้าอื่น (เช่นรายละเอียดทรัพย์) — ไอคอนขวายังคัดลอกได้
+  /// กดชิปเพื่อเปิดหน้าอื่น — ปุ่มคัดลอกขวาไม่เรียก onNavigate
   final VoidCallback? onNavigate;
 
   Future<void> _copy(BuildContext context) async {
@@ -45,50 +46,100 @@ class ReferenceCodeChip extends StatelessWidget {
       color: AppTheme.primary,
     );
 
-    return Material(
-      color: AppTheme.primaryLight,
-      borderRadius: BorderRadius.circular(compact ? 6 : 8),
-      child: InkWell(
-        onTap: onNavigate ?? () => _copy(context),
-        borderRadius: BorderRadius.circular(compact ? 6 : 8),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 8 : 10,
-            vertical: compact ? 4 : 6,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                '$label ',
-                style: TextStyle(
-                  fontSize: compact ? 10 : 12,
-                  color: AppTheme.textSecondary,
-                ),
+    final radius = compact ? 6.0 : 8.0;
+    final s = AppStrings.of(context);
+    final caption = CodeGlossary.captionFor(code, isEn: s.isEnglish);
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$label ',
+              style: TextStyle(
+                fontSize: compact ? 10 : 12,
+                color: AppTheme.textSecondary,
               ),
-              Flexible(
-                child: Text(code, style: mono, overflow: TextOverflow.ellipsis),
-              ),
+            ),
+            Flexible(
+              child: Text(code, style: mono, overflow: TextOverflow.ellipsis),
+            ),
+            if (onNavigate != null) ...[
               const SizedBox(width: 4),
               Icon(
-                onNavigate != null ? Icons.open_in_new : Icons.copy,
+                Icons.open_in_new,
                 size: compact ? 12 : 14,
                 color: AppTheme.primary.withOpacity(0.7),
               ),
-              if (onNavigate != null) ...[
-                const SizedBox(width: 2),
-                GestureDetector(
-                  onTap: () => _copy(context),
-                  child: Icon(
-                    Icons.copy,
-                    size: compact ? 11 : 13,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
+            ] else ...[
+              const SizedBox(width: 4),
+              Icon(
+                Icons.copy,
+                size: compact ? 12 : 14,
+                color: AppTheme.primary.withOpacity(0.7),
+              ),
             ],
+          ],
+        ),
+        if (!compact && caption.isNotEmpty)
+          Text(
+            caption,
+            style: TextStyle(fontSize: 10, color: AppTheme.textSecondary),
+          ),
+      ],
+    );
+
+    if (onNavigate == null) {
+      return Material(
+        color: AppTheme.primaryLight,
+        borderRadius: BorderRadius.circular(radius),
+        child: InkWell(
+          onTap: () => _copy(context),
+          borderRadius: BorderRadius.circular(radius),
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 8 : 10,
+              vertical: compact ? 4 : 6,
+            ),
+            child: body,
           ),
         ),
+      );
+    }
+
+    return Material(
+      color: AppTheme.primaryLight,
+      borderRadius: BorderRadius.circular(radius),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          InkWell(
+            onTap: onNavigate,
+            borderRadius: BorderRadius.horizontal(
+              left: Radius.circular(radius),
+            ),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                compact ? 8 : 10,
+                compact ? 4 : 6,
+                4,
+                compact ? 4 : 6,
+              ),
+              child: body,
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.copy, size: compact ? 14 : 16),
+            padding: EdgeInsets.all(compact ? 4 : 6),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            visualDensity: VisualDensity.compact,
+            tooltip: AppStrings.of(context).t('คัดลอก', 'Copy'),
+            onPressed: () => _copy(context),
+          ),
+        ],
       ),
     );
   }
@@ -103,6 +154,10 @@ class TransactionReferenceBar extends StatelessWidget {
     this.listingLabel,
     this.transactionLabel,
     this.onListingNavigate,
+    this.onTransactionNavigate,
+    this.leadId,
+    this.listingId,
+    this.threadId,
   });
 
   final String? listingCode;
@@ -110,6 +165,10 @@ class TransactionReferenceBar extends StatelessWidget {
   final String? listingLabel;
   final String? transactionLabel;
   final VoidCallback? onListingNavigate;
+  final VoidCallback? onTransactionNavigate;
+  final String? leadId;
+  final String? listingId;
+  final String? threadId;
 
   @override
   Widget build(BuildContext context) {
@@ -135,6 +194,7 @@ class TransactionReferenceBar extends StatelessWidget {
           code: transactionRef!,
           label: transactionLabel ?? s.transactionRefLabel,
           compact: true,
+          onNavigate: onTransactionNavigate,
         ),
       );
     }

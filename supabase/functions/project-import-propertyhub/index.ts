@@ -11,6 +11,25 @@ import {
   slugFromPropertyHubUrl,
 } from "../_shared/propertyhub_parser.ts";
 
+function mergeAliases(
+  base: unknown,
+  incoming: string[],
+  extras: string[] = [],
+): string[] {
+  const set = new Set<string>();
+  if (Array.isArray(base)) {
+    for (const a of base) {
+      const s = String(a).trim();
+      if (s) set.add(s);
+    }
+  }
+  for (const raw of [...incoming, ...extras]) {
+    const s = (raw ?? "").trim();
+    if (s) set.add(s);
+  }
+  return [...set].sort();
+}
+
 async function upsertProject(
   db: SupabaseClient,
   parsed: Awaited<ReturnType<typeof parsePropertyHubProjectFromUrl>>,
@@ -29,8 +48,15 @@ async function upsertProject(
     throw new Error("outside_metro: โครงการอยู่นอก กทม.+ปริมณฑล");
   }
 
-  const existing = await matchProject(db, parsed.nameTh) ??
-    await matchProject(db, parsed.nameEn);
+  const { data: bySlug } = await db
+    .from("property_projects")
+    .select("id, slug, name_th, name_en, aliases")
+    .eq("slug", parsed.slug)
+    .maybeSingle();
+
+  const existing = (bySlug as Record<string, unknown> | null) ??
+    (await matchProject(db, parsed.nameTh)) ??
+    (await matchProject(db, parsed.nameEn));
 
   const payload: Record<string, unknown> = {
     slug: parsed.slug,
@@ -42,7 +68,7 @@ async function upsertProject(
     property_type: parsed.propertyType,
     lat: parsed.lat,
     lng: parsed.lng,
-    aliases: parsed.aliases,
+    aliases: mergeAliases([], parsed.aliases ?? [], [parsed.slug]),
     year_built: parsed.yearBuilt,
     facilities: parsed.facilities,
     cover_image_url: parsed.coverImageUrl,
@@ -56,6 +82,19 @@ async function upsertProject(
   };
 
   if (existing?.id) {
+    const keepSlug =
+      (typeof existing.slug === "string" && existing.slug.trim()) ||
+      parsed.slug;
+    const aliasExtras: string[] = [];
+    if (parsed.slug && parsed.slug !== keepSlug) {
+      aliasExtras.push(parsed.slug);
+    }
+    payload.slug = keepSlug;
+    payload.aliases = mergeAliases(
+      existing.aliases,
+      parsed.aliases ?? [],
+      aliasExtras,
+    );
     const { data, error } = await db
       .from("property_projects")
       .update(payload)

@@ -14,7 +14,9 @@ abstract final class ListingExclusiveOptions {
   }
 
   static bool isSaleType(String listingType) =>
-      listingType == 'sale' || listingType == 'sale_installment';
+      listingType == 'sale' ||
+      listingType == 'sale_installment' ||
+      listingType == 'rent_and_sale';
 
   static String contractLabel(int days, bool isEnglish, {required bool isSale}) {
     if (isSale) {

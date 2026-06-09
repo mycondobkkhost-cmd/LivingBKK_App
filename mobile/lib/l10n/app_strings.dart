@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/demand_offer_acceptance.dart';
 import '../models/listing_public.dart';
 import '../models/search_filters.dart';
+import '../models/viewing_report.dart';
 import '../state/locale_controller.dart';
 import '../theme/living_bkk_brand.dart';
 
@@ -26,6 +27,38 @@ class AppStrings {
   String get navBoard => t('บอร์ด', 'Board');
   String get navWork => t('งาน', 'Work');
   String get navSaved => t('บันทึก', 'Saved');
+  /// แท็บล่าง — จัดการประกาศ (ไม่ซ้ำแท็บบอร์ด「ประกาศ」)
+  String get navMyListings => t('ของฉัน', 'Mine');
+  String get createListingFree => t('สร้างประกาศฟรี', 'Create listing free');
+  String get authRequiredBeforePost => t(
+        'กรุณาเข้าสู่ระบบหรือลงทะเบียนก่อนลงประกาศ',
+        'Please log in or register before posting',
+      );
+  String get postDemandWantedButton =>
+      t('ลงประกาศหาทรัพย์', 'Post property wanted');
+  String get createListingLoginRequired => t(
+        'เข้าสู่ระบบหรือสมัครสมาชิกก่อนสร้างประกาศ',
+        'Log in or sign up to create a listing',
+      );
+  String get myListingsHubEmpty => t(
+        'ยังไม่มีประกาศ — กดปุ่มด้านบนเพื่อสร้างประกาศแรกฟรี',
+        'No listings yet — tap above to create your first one free',
+      );
+  String get mineTabSignInTitle => t(
+        'เข้าสู่ระบบเพื่อจัดการทรัพย์',
+        'Sign in to manage properties',
+      );
+  String get mineTabSignInBody => t(
+        'ทรัพย์ที่แอดมินมอบให้และประกาศของคุณจะแสดงที่นี่\n'
+        'ไม่ใช่แค่สลับมุมมอง「เจ้าของ」บนหน้าแรก — ต้องล็อกอินบัญชีเจ้าของ',
+        'Assigned properties and your listings appear here.\n'
+        'Switching to Owner view on home is not enough — sign in as owner.',
+      );
+  String get mineTabOwnerTrialButton => t(
+        'เข้าเป็นเจ้าของทดลอง · ไม่ต้องรหัส',
+        'Enter as trial owner · no password',
+      );
+  String get mineTabGoLoginButton => t('ไปหน้าเข้าสู่ระบบ', 'Go to login');
   String get navMessages => t('ติดต่อ', 'Contact');
   String get navProfile => t('โปรไฟล์', 'Profile');
   String get navExplore => t('สำรวจ', 'Explore');
@@ -66,6 +99,25 @@ class AppStrings {
   String get themeLight => t('สว่าง', 'Light');
   String get themeDark => t('มืด', 'Dark');
   String get themeSystem => t('ตามระบบ', 'System');
+  String get adminViewportSetting => t('มุมมองการแสดงผล', 'Display view');
+  String get adminViewportDesktop => t('เมนูซ้าย (คอม)', 'Sidebar (desktop)');
+  String get adminViewportMobile => t('เมนูบน (แอป)', 'Top menu (app)');
+  String get adminViewportDesktopHint => t(
+        'กำลังใช้: เมนูซ้ายตลอด — เหมาะกับจอคอม',
+        'Active: persistent sidebar — for desktop',
+      );
+  String get adminViewportMobileHint => t(
+        'กำลังใช้: เมนู ☰ ด้านบน — เหมือนแอปมือถือ',
+        'Active: top ☰ menu — like the phone app',
+      );
+  String get adminViewportToggleToDesktop =>
+      t('สลับเป็นเมนูซ้าย (คอม)', 'Switch to sidebar (desktop)');
+  String get adminViewportToggleToMobile =>
+      t('สลับเป็นเมนูบน (แอป)', 'Switch to top menu (app)');
+  String get adminViewportWebOnlyNote => t(
+        'ไอคอนแสดงโหมดที่ใช้อยู่ — แตะเพื่อสลับ',
+        'Icon shows the active mode — tap to switch',
+      );
   String get menuDemandBoard => t('บอร์ดส่งเสนอทรัพย์', 'Demand board');
 
   // Header
@@ -79,6 +131,10 @@ class AppStrings {
 
   // Demand board
   String get demandBoardTitle => t('ประกาศหาทรัพย์', 'Property wanted');
+  String get demandBoardCollectionTitle => t(
+        'แหล่งรวบรวมความต้องการหาทรัพย์',
+        'Property needs hub',
+      );
   String get demandBoardHint => t(
         'เจ้าของและนายหน้า — เข้ามาเสนอทรัพย์ที่ตรงความต้องการได้',
         'Owners & brokers — submit matching listings here',
@@ -152,7 +208,7 @@ class AppStrings {
       case DemandLeadSource.coAgentSourced:
         return t('ลีดจากโคนายหน้าหาให้ลูกค้า', 'Co-broker sourced lead');
       case null:
-        return t('ลูกค้า PROPPITER', 'PROPPITER customer');
+        return t('ลูกค้า RealXtate', 'RealXtate customer');
     }
   }
 
@@ -181,6 +237,15 @@ class AppStrings {
   String get savedDemandBoardEmpty => t(
         'ยังไม่มีประกาศบอร์ดที่บันทึก',
         'No saved board posts yet',
+      );
+  String get savedDemandBoardManage => t('จัดการ', 'Manage');
+  String savedDemandBoardDeleteSelected(int n) =>
+      t('ลบที่เลือก ($n)', 'Delete selected ($n)');
+  String get savedDemandBoardRemoved =>
+      t('ลบออกจากรายการบันทึกแล้ว', 'Removed from saved');
+  String savedDemandBoardDeleteConfirm(int n) => t(
+        'ลบประกาศที่เลือก $n รายการออกจากรายการบันทึก?',
+        'Remove $n saved board posts?',
       );
   String get savedDemandBoardHint => t(
         'กดไอคอนหัวใจที่ประกาศบอร์ดเพื่อเก็บไว้ดูทีหลัง',
@@ -254,14 +319,14 @@ class AppStrings {
         'Bot filters projects first · request admin when needed',
       );
   String get chatAdminWelcome => t(
-        'สวัสดีครับ ผมช่วยคัดโครงการและทรัพย์ใน PROPPITER ให้ได้\n\n'
+        'สวัสดีครับ ผมช่วยคัดโครงการและทรัพย์ใน RealXtate ให้ได้\n\n'
         'ลองพิมพ์ เช่น:\n'
         '• ช่วยหาห้อง The Line งบ 25,000\n'
         '• คอนโดใกล้ BTS อ่อนนุช\n'
         '• ก้อปปี้รหัสทรัพย์ RENT-CD-…\n\n'
         'หากต้องการคุยแอดมินโดยตรง พิมพ์「ขอคุยกับแอดมิน」'
         ' — อาจรอตามคิวเนื่องจากมีผู้ติดต่อจำนวนมาก',
-        'Hi — I can match projects and listings in PROPPITER.\n\n'
+        'Hi — I can match projects and listings in RealXtate.\n\n'
         'Try:\n'
         '• Find The Line units, budget 25,000\n'
         '• Condo near BTS On Nut\n'
@@ -318,7 +383,7 @@ class AppStrings {
   String get requirementCreateCta => t('บอกความต้องการ', 'Submit need');
   String get myRequirementsTitle => t('ความต้องการของฉัน', 'My requirements');
   String get requirementListIntro => t(
-        'สรุปเงื่อนไขที่คุณต้องการ — ทีม PROPPITER จะตรวจสอบแล้วนำไปประกาศบนบอร์ด「ประกาศหาทรัพย์」เพื่อให้เจ้าของและนายหน้าเข้ามาเสนอทรัพย์ที่ตรงความต้องการ',
+        'สรุปเงื่อนไขที่คุณต้องการ — ทีม RealXtate จะตรวจสอบแล้วนำไปประกาศบนบอร์ด「ประกาศหาทรัพย์」เพื่อให้เจ้าของและนายหน้าเข้ามาเสนอทรัพย์ที่ตรงความต้องการ',
         'Your search criteria — our team reviews and publishes on the board so owners and brokers can offer matching listings',
       );
   String requirementSubmittedOn(String date) => t('ส่งเมื่อ $date', 'Submitted $date');
@@ -334,11 +399,11 @@ class AppStrings {
   String get requirementSeriousUseTitle =>
       t('ข้อควรทราบก่อนส่งความต้องการ', 'Please read before submitting');
   String get requirementSeriousUseBody => t(
-        'PROPPITER ช่วยหาทรัพย์ให้คุณโดยไม่คิดค่าบริการ แต่เบื้องหลังทีมงานต้องลงทุนเวลาและทรัพยากรจริงในการคัดหาและประสานงาน '
+        'RealXtate ช่วยหาทรัพย์ให้คุณโดยไม่คิดค่าบริการ แต่เบื้องหลังทีมงานต้องลงทุนเวลาและทรัพยากรจริงในการคัดหาและประสานงาน '
         'กรุณาส่งเฉพาะเมื่อคุณมีความต้องการหาทรัพย์จริง และให้ข้อมูลตรงตามความเป็นจริง '
         'หากส่งแบบเล่นๆ ไม่มีความต้องการจริง ให้ข้อมูลคลาดเคลื่อน หรือปิดบังเงื่อนไขสำคัญในภายหลัง '
         'เราขอสงวนสิทธิ์ในการระงับการใช้บริการนี้หรือบัญชีของคุณตามนโยบายของแพลตฟอร์ม',
-        'PROPPITER finds properties for you at no charge, but our team invests real time and resources to search and coordinate. '
+        'RealXtate finds properties for you at no charge, but our team invests real time and resources to search and coordinate. '
         'Please submit only if you genuinely need a property and provide accurate information. '
         'Casual or playful use, misleading details, or withholding important conditions later may result in suspension of this service or your account under our policies.',
       );
@@ -528,17 +593,17 @@ class AppStrings {
         return 'Property$place\n'
             '· Great location near transit\n'
             '· Ready to view / move in\n'
-            'Contact and viewing via PROPPITER only';
+            'Contact and viewing via RealXtate only';
       case 'zh':
         return '房源$place\n'
             '· 交通便利\n'
             '· 可预约看房 / 可入住\n'
-            '请通过 PROPPITER 联系与预约看房';
+            '请通过 RealXtate 联系与预约看房';
       default:
         return 'ทรัพย์$place\n'
             '· ทำเลดี ใกล้รถไฟฟ้า\n'
             '· พร้อมเข้าอยู่ / นัดชมได้\n'
-            'ติดต่อและนัดชมผ่าน PROPPITER เท่านั้น';
+            'ติดต่อและนัดชมผ่าน RealXtate เท่านั้น';
     }
   }
 
@@ -575,9 +640,9 @@ class AppStrings {
       );
   String get createListingPublishPrivacyNotice => t(
         'ประกาศของคุณจะแสดงต่อผู้ใช้ทั่วไป — ข้อมูลติดต่อส่วนตัว (เช่น เบอร์โทร ไอดีไลน์) '
-        'จะไม่ปรากฏในประกาศสาธารณะ มีเฉพาะทีมงาน PROPPITER ที่ดูแลข้อมูลของคุณและติดต่อคุณเมื่อมีผู้สนใจ',
+        'จะไม่ปรากฏในประกาศสาธารณะ มีเฉพาะทีมงาน RealXtate ที่ดูแลข้อมูลของคุณและติดต่อคุณเมื่อมีผู้สนใจ',
         'Your listing is visible to other users — private contact details (phone, Line ID, etc.) '
-        'are not shown publicly. Only the PROPPITER team manages your data and contacts you when there is interest.',
+        'are not shown publicly. Only the RealXtate team manages your data and contacts you when there is interest.',
       );
   String get createListingPublishTermsPrefix =>
       t('ฉันยอมรับ ', 'I agree to the ');
@@ -599,7 +664,7 @@ class AppStrings {
 
   // Exclusive listings
   String get ownerExclusiveTitle =>
-      t('ฝาก Exclusive กับ PROPPITER', 'Exclusive mandate with PROPPITER');
+      t('ฝาก Exclusive กับ RealXtate', 'Exclusive mandate with RealXtate');
   String ownerExclusivePitchFor(bool isSale, int contractDays) {
     if (isEnglish) {
       final period = isSale
@@ -656,8 +721,8 @@ class AppStrings {
           'Rental mandate with us for $period — no other brokers during this period',
         );
   String get ownerExclusiveTermsExclusiveOnly => t(
-        'ฝากกับ PROPPITER เท่านั้น',
-        'Exclusive to PROPPITER only',
+        'ฝากกับ RealXtate เท่านั้น',
+        'Exclusive to RealXtate only',
       );
   String get ownerExclusiveTermsMarketing => t(
         'ฟรีดันประกาศและทำการตลาด',
@@ -733,7 +798,7 @@ class AppStrings {
   String get viewingAccessSectionTitle =>
       t('การนัดดูในอนาคต (ไม่บังคับ)', 'Future viewings (optional)');
   String get viewingAccessSectionIntro => t(
-        'ช่วยให้ทีม PROPPITER ประสานงานเมื่อมีลูกค้าขอนัดชม — ไม่ต้องใส่รายละเอียดครบทุกช่อง',
+        'ช่วยให้ทีม RealXtate ประสานงานเมื่อมีลูกค้าขอนัดชม — ไม่ต้องใส่รายละเอียดครบทุกช่อง',
         'Helps our team coordinate when a customer requests a viewing — no need to fill everything now',
       );
   String get viewingAccessFollowUpHint => t(
@@ -807,9 +872,14 @@ class AppStrings {
         return t('ที่ดินพร้อมโอน', 'Land — ready to transfer');
       case 'office':
       case 'commercial':
+      case 'showroom':
+      case 'business':
+      case 'co_working':
       case 'warehouse':
       case 'factory':
         return t('พื้นที่ว่างพร้อมใช้งาน', 'Vacant — ready to use');
+      case 'pool_villa':
+        return t('บ้านว่างพร้อมอยู่', 'Vacant — move-in ready');
       case 'apartment':
         return t('ห้องว่างพร้อมอยู่', 'Vacant — move-in ready');
       default:
@@ -938,7 +1008,7 @@ class AppStrings {
         'Edit, refresh & pin — full control',
       );
   String get homeHeaderWelcome =>
-      t('ยินดีต้อนรับสู่ PROPPITER', 'Welcome to PROPPITER');
+      t('ยินดีต้อนรับสู่ RealXtate', 'Welcome to RealXtate');
   String get homeHeaderSlogan => t(
         'ประกาศฟรี ปิดไว ไม่ต้องหาลูกค้าเอง',
         'Free listings · close fast · we bring the buyers',
@@ -949,10 +1019,12 @@ class AppStrings {
   String get homeServiceMapTitle => t('ค้นหาแผนที่', 'Map search');
   String get homeQuickServiceMapLine1 => t('ค้นหา', 'Search');
   String get homeQuickServiceMapLine2 => t('ใกล้ฉัน', 'Near me');
-  String get homeQuickServiceMatchLine1 => t('ช่วยหา', 'We find');
-  String get homeQuickServiceMatchLine2 => t('ให้ฟรี', 'For free');
-  String get homeQuickServiceBoardLine1 => t('ประกาศ', 'Post');
-  String get homeQuickServiceBoardLine2 => t('หาซื้อ/หาเช่า', 'Buy or rent');
+  String get homeQuickServiceMatchLine1 => t('สร้างประกาศ', 'Create post');
+  String get homeQuickServiceMatchLine2 => t('หาซื้อ / หาเช่า', 'Buy / Rent');
+  String get homeQuickServiceMatchLine3 => t('เราหาให้ฟรี', 'We find for free');
+  String get homeQuickServiceBoardLine1 => t('รวมประกาศ', 'All posts');
+  String get homeQuickServiceBoardLine2 => t('หาซื้อ / หาเช่า', 'Buy / Rent');
+  String get homeQuickServiceBoardLine3 => t('เสนอทรัพย์ด่วน', 'Quick offer');
   String get homeServiceMapSubtitle =>
       t('ดูทรัพย์รอบคุณบนแผนที่', 'Browse listings on the map');
   String get homeServiceMapPromo => t('แม่นยำ', 'Verified');
@@ -1102,6 +1174,7 @@ class AppStrings {
   String get listingTypeRent => t('เช่า', 'Rent');
   String get listingTypeSale => t('ขาย', 'Sale');
   String get listingTypeSaleInstallment => t('ขายฝาก', 'Installment sale');
+  String get listingTypeRentAndSale => t('ขาย + ให้เช่า', 'Sale + rent');
 
   /// ป้ายประเภทประกาศ — ไม่มี เซ้ง / ขายดาวน์
   String listingTransactionLabel(String? type) {
@@ -1112,10 +1185,36 @@ class AppStrings {
         return listingTypeSale;
       case 'sale_installment':
         return listingTypeSaleInstallment;
+      case 'rent_and_sale':
+        return listingTypeRentAndSale;
       default:
         return type?.isNotEmpty == true ? type! : listingTypeSale;
     }
   }
+
+  /// ป้ายสั้นบนรูป (แนวนอน) — เช่า / ขาย / ขาย+เช่า
+  String listingTransactionRibbonLabel(String? type) {
+    switch (type) {
+      case 'rent':
+        return listingTypeRent;
+      case 'sale':
+        return listingTypeSale;
+      case 'sale_installment':
+        return listingTypeSaleInstallment;
+      case 'rent_and_sale':
+        return t('ขาย/เช่า', 'Sale/Rent');
+      default:
+        return listingTypeSale;
+    }
+  }
+
+  String get createListingRentAndSaleHint => t(
+        'ประกาศนี้จะแสดงทั้งแท็บเช่าและซื้อ — กรอกราคาเช่าและราคาขายแยกกัน',
+        'This listing appears in both Rent and Buy — enter rent and sale prices separately',
+      );
+  String get createListingDualPriceSummary => t('ราคาเช่า + ขาย', 'Rent + sale prices');
+  String get careOwnerDataSalePriceRequired =>
+      t('กรอกราคาขาย', 'Enter sale price');
   String get coAgentBadge => t('รับโค', 'Co-broker');
   String get coAgentEligible => t('รับโคนายหน้า', 'Co-broker eligible');
   String get coAgentOpen => t('เปิดรับโคนายหน้า', 'Open for co-broker');
@@ -1140,7 +1239,9 @@ class AppStrings {
       );
   String get filterPetAllowed => t('เลี้ยงสัตว์ได้', 'Pet-friendly');
   String get filterInvestor => t('การลงทุน / ซื้อ', 'Investment / buy');
-  String get filterWithTenant => t('ซื้อพร้อมผู้เช่า', 'Buy with tenant');
+  String get filterWithTenant => filterSaleWithTenant;
+  String get filterSaleWithTenant =>
+      t('ขายพร้อมผู้เช่า', 'Sale with tenant in place');
   String get filterBmv => t('BMV', 'BMV');
   String minYieldLabel(String value) =>
       t('Yield ขั้นต่ำ: $value', 'Min yield: $value');
@@ -1156,6 +1257,18 @@ class AppStrings {
   // ── Auth / login ──
   String get authQuickEntry =>
       t('เข้าใช้งานทันที · ไม่ต้องรหัส', 'Continue · no password needed');
+  String get authQuickEntryAdmin => t(
+        'เข้าหลังบ้านทดลอง · ไม่ต้องรหัส',
+        'Open admin demo · no password',
+      );
+  String get authQuickEntryFront => t(
+        'เข้าหน้าบ้านทดลอง · ไม่ต้องรหัส',
+        'Open app demo · no password',
+      );
+  String get authQuickEntryOwner => t(
+        'เข้าเป็นเจ้าของทดลอง · ไม่ต้องรหัส',
+        'Open as demo owner · no password',
+      );
   String get authWelcome => t('ยินดีต้อนรับ', 'Welcome');
   String get authEmailOrUsername => t('ชื่อผู้ใช้ / อีเมล', 'Username / email');
   String get authPassword => t('รหัสผ่าน', 'Password');
@@ -1180,7 +1293,7 @@ class AppStrings {
   String get loginTitle => t('สมัคร / เข้าสู่ระบบ', 'Sign up / Log in');
   String get signUpTitle => t('สมัครสมาชิก', 'Sign up');
   String get signInTitle => t('เข้าสู่ระบบ', 'Log in');
-  String get signUpPageTitle => t('สร้างบัญชี PROPPITER', 'Create PROPPITER account');
+  String get signUpPageTitle => t('สร้างบัญชี RealXtate', 'Create RealXtate account');
   String get signUpPageIntro => t(
         'เช่า ซื้อ ขายในกรุงเทพฯ — สมัครครั้งเดียวใช้ได้ทุกบทบาท',
         'Rent, buy & sell in Bangkok — one account for every role',
@@ -1272,6 +1385,12 @@ class AppStrings {
       );
 
   // ── Profile ──
+  String get profileGuestWelcome => t('ยินดีต้อนรับ', 'Welcome');
+  String get profileGuestSubtitle => t(
+        'เข้าสู่ระบบเพื่อบันทึกทรัพย์และจัดการประกาศ',
+        'Sign in to save listings and manage your posts',
+      );
+  String get profileGuestCta => t('เข้าสู่ระบบ / สมัคร', 'Log in / Sign up');
   String get testUser => t('ผู้ใช้ทดสอบ', 'Test user');
   String get trialModeStatus => t('โหมดทดลอง', 'Trial mode');
   String get demoModeStatus => t('โหมด Demo ข้อมูล', 'Demo data mode');
@@ -1287,6 +1406,15 @@ class AppStrings {
   String get signedOut => t('ออกจากระบบแล้ว', 'Signed out');
   String get exitTrial => t('ออกจากโหมดทดลอง', 'Exit trial');
   String get signOut => t('ออกจากระบบ', 'Sign out');
+  String get deleteAccount => t('ลบบัญชี', 'Delete account');
+  String get deleteAccountTitle => t('ลบบัญชีถาวร?', 'Delete account permanently?');
+  String get deleteAccountHint => t(
+        'ข้อมูลโปรไฟล์ ประกาศ และแชทที่เชื่อมกับบัญชีนี้จะถูกลบและไม่สามารถกู้คืนได้',
+        'Your profile, listings, and linked chats will be permanently deleted and cannot be recovered',
+      );
+  String get deleteAccountConfirm => t('ลบบัญชีถาวร', 'Delete permanently');
+  String get deleteAccountDone => t('ลบบัญชีแล้ว', 'Account deleted');
+  String get deleteAccountCancel => t('ยกเลิก', 'Cancel');
   String get perspectiveSwitchHint => t(
         'สลับได้ที่หัวหน้าแรก (ข้างโลโก้) — 「คุณคือ」\n'
         'นายหน้า = เห็นเฉพาะทรัพย์รับโค · เจ้าของ = ลงประกาศได้',
@@ -1355,18 +1483,17 @@ class AppStrings {
   String get detailAskInfoCta => detailContactCta;
   String get detailScheduleCta => t('นัดชม', 'Book viewing');
   String get listingLastUpdated => t('อัปเดตล่าสุด', 'Last updated');
+  String get listingBumpedLabel => t('เลื่อนประกาศ', 'Listing bump');
   String listingUpdatedAgo(DateTime at) {
     final diff = DateTime.now().difference(at);
     if (diff.inMinutes < 1) return t('เมื่อสักครู่', 'Just now');
-    if (diff.inHours < 1) {
-      return t('${diff.inMinutes} นาทีที่แล้ว', '${diff.inMinutes} min ago');
+    if (diff.inMinutes < 60) {
+      return t('${diff.inMinutes} นาทีก่อน', '${diff.inMinutes} min ago');
     }
-    if (diff.inHours < 24 && at.day == DateTime.now().day) {
-      return t('${diff.inHours} ชั่วโมงที่แล้ว', '${diff.inHours} hours ago');
+    if (diff.inHours < 24) {
+      return t('${diff.inHours} ชั่วโมงก่อน', '${diff.inHours} hr ago');
     }
-    if (diff.inDays == 0) return t('วันนี้', 'Today');
-    if (diff.inDays == 1) return t('เมื่อวาน', 'Yesterday');
-    return t('${diff.inDays} วันที่แล้ว', '${diff.inDays} days ago');
+    return t('${diff.inDays} วันก่อน', '${diff.inDays} days ago');
   }
   String get bookingInterestIntent =>
       t('สนใจจองทรัพย์นี้ — รอแอดมินติดต่อกลับ', 'Interested to book — awaiting admin');
@@ -1380,8 +1507,22 @@ class AppStrings {
       );
   String get adminInboxBookingInterest => t('สนใจจองด่วน', 'Urgent booking');
   String get searchDiscoveryHint =>
-      t('ทำเล | โครงการ | คำอื่นๆ', 'Area | Project | Keywords');
+      t('พิมพ์ย่าน สถานี โครงการ…', 'Type area, station, project…');
+  String get searchDiscoveryTypewriterHint => t(
+        'ลองค้นหา โครงการ, ย่าน, ทำเล, สถานีรถไฟฟ้า',
+        'Try projects, areas, locations, BTS/MRT stations',
+      );
+  String get searchZoneTagAddTitle =>
+      t('เพิ่มแท็กค้นหา', 'Add search tags');
+  String get searchZonePopularTitle =>
+      t('แนะนำ', 'Suggested');
   String get searchHistoryTitle => t('ประวัติและเทรนด์การค้นหา', 'History & trends');
+  String get searchYourHistoryTitle =>
+      t('ประวัติการค้นหาของคุณ', 'Your search history');
+  String get searchHistoryEmpty => t(
+        'ยังไม่มีประวัติ — ลองค้นหาโครงการหรือทำเลด้านบน',
+        'No history yet — search for a project or area above',
+      );
   String get searchClearAll => t('ล้างทั้งหมด', 'Clear all');
   String get searchTrendsTitle => t('เทรนด์การค้นหา', 'Search trends');
   String get searchResultsTitle => t('ผลการค้นหา', 'Search results');
@@ -1391,6 +1532,53 @@ class AppStrings {
   String get searchTabLocation => t('ทำเล', 'Location');
   String get searchTabTransit => t('การเดินทาง', 'Transit');
   String get searchTabProject => t('โครงการ', 'Projects');
+  String get searchTabEducation => t('สถานศึกษา', 'Education');
+  String get searchZoneTagHint =>
+      t('พิมพ์ชื่อย่าน/ทำเล…', 'Type neighborhood or area…');
+  String get searchZoneTagHintLocation =>
+      t('พิมพ์ชื่อย่าน เช่น ทองหล่อ เอกมัย', 'Type area e.g. Thong Lo, Ekkamai');
+  String get searchZoneTagHintTransit =>
+      t('พิมพ์ชื่อสถานี BTS/MRT', 'Type BTS/MRT station name');
+  String get searchZoneTagHintProject =>
+      t('พิมพ์ชื่อโครงการ', 'Type project name');
+  String get searchZoneTagHintEducation =>
+      t('พิมพ์ชื่อสถานศึกษา', 'Type school or university');
+  String get mapPinPlace => t('ปักหมุด', 'Drop pin');
+  String get mapPinTapHint => t('แตะแผนที่เพื่อปักหมุด', 'Tap map to drop pin');
+  String get mapPinClear => t('ลบหมุด', 'Clear pin');
+  String get mapPinRadiusLabel => t('รัศมี', 'Radius');
+  String mapPinRadiusKm(double km) => mapPinRadiusDisplay(km);
+  String mapPinRadiusDisplay(double km) {
+    if (km < 1) {
+      final m = (km * 1000).round();
+      return t('$m ม.', '$m m');
+    }
+    final v = km == km.roundToDouble()
+        ? '${km.toInt()}'
+        : km.toStringAsFixed(1);
+    return t('$v กม.', '$v km');
+  }
+
+  String mapPinActive(double km) => t(
+        'กำลังค้นหาในรัศมี ${mapPinRadiusDisplay(km)} จากหมุด',
+        'Searching within ${mapPinRadiusDisplay(km)} of pin',
+      );
+  String searchApplyZoneFilters(int count) =>
+      t('ดูทั้งหมด ($count)', 'View all ($count)');
+  String get searchProjectsSection => t('โครงการ', 'Projects');
+  String searchSeeAllForQuery(String query) => t(
+        'ดูผลลัพธ์ทั้งหมดสำหรับ \'$query\'',
+        'See all results for \'$query\'',
+      );
+  String projectStatRentFrom(String price) =>
+      t('เช่าเริ่มต้น $price', 'Rent from $price');
+  String projectStatSaleFrom(String price) =>
+      t('ขายเริ่มต้น $price', 'Sale from $price');
+  String get projectNearbyTitle => t('โครงการใกล้เคียง', 'Nearby projects');
+  String projectNearbyDistanceKm(double km) {
+    final v = km < 10 ? km.toStringAsFixed(1) : km.round().toString();
+    return t('$v กม.', '$v km');
+  }
   String get searchPopularAreasTitle => t('ทำเลที่ถูกค้นหามากที่สุด', 'Most searched areas');
   String get searchProjectHint => t('พิมพ์ชื่อโครงการในช่องค้นหาด้านบน', 'Type a project name above');
   String get listingSubmitReceivedTitle => t('เราได้รับข้อมูลของคุณแล้ว', 'We received your listing');
@@ -1424,9 +1612,42 @@ class AppStrings {
   String get myListingsTitle => t('ประกาศของฉัน', 'My listings');
   String get noListingsYet => t('ยังไม่มีประกาศ', 'No listings yet');
   String get confirmAvailable => t('ยืนยันว่าง', 'Mark available');
+  String get confirmAvailableBump => t(
+        'ยืนยันว่าง / ดันประกาศ',
+        'Confirm vacant / Bump',
+      );
   String get confirmedAvailableBump => t(
         'ยืนยันว่างแล้ว — ดันประกาศ (Bump)',
         'Marked available — listing bumped',
+      );
+  String get listingBumpFailed => t(
+        'ดันประกาศไม่สำเร็จ — ลองรีเฟรชหน้า',
+        'Could not bump — try refreshing',
+      );
+  String listingExpiresBumpHint(int daysLeft) => t(
+        'ประกาศจะหมดอายุในอีก $daysLeft วัน (ยืนยันว่าง / ดันประกาศ)',
+        'Listing expires in $daysLeft days (confirm vacant / bump)',
+      );
+  String listingBumpCooldownHint(int hours, int minutes) => t(
+        'กดได้อีกใน $hours ชม. $minutes นาที',
+        'Available again in ${hours}h ${minutes}m',
+      );
+  String get listingViewStats => t('ดูสถิติ', 'View stats');
+  String get listingEditAction => t('แก้ไข', 'Edit');
+  String get listingCloseShort => t('ปิดประกาศ…', 'Close…');
+  String get listingTapForDetails => t('แตะเพื่อดูรายละเอียด', 'Tap for details');
+  String get listingEditComingSoon => t(
+        'ฟอร์มแก้ไขเต็มจะมาในเฟสถัดไป — ใช้ปิด/ดันประกาศก่อน',
+        'Full edit form coming soon — use bump or close for now',
+      );
+  String get listingStatsSheetHint => t(
+        'สถิติอัปเดตเมื่อมีผู้เข้าชมหรือเริ่มแชทจากประกาศนี้',
+        'Stats update when viewers browse or start a chat from this listing',
+      );
+  String get listingInsightShares => t('แชร์', 'Shares');
+  String listingStatsOneLiner(int views, int shares, int chats) => t(
+        'เข้าชม $views · แชร์ $shares · แชท $chats',
+        '$views views · $shares shares · $chats chats',
       );
   String listingBumpReminder(int daysLeft) => t(
         '⏰ กรุณายืนยันว่าง — เหลือ $daysLeft วันก่อนเก็บประกาศอัตโนมัติ',
@@ -1447,10 +1668,97 @@ class AppStrings {
   String get closeListingConfirm => t('ยืนยันปิดประกาศ', 'Confirm close');
   String get closeListingRentTitle => t('ปิดประกาศเช่า', 'Close rental listing');
   String get closeListingRentHint => t(
-        'ระบุวันที่ห้องว่างอีกครั้ง — ประกาศจะถูกเก็บในคลัง (ไม่แสดงต่อสาธารณะ)',
-        'When will it be available again? Listing will be archived (hidden from public).',
+        'เลือกแบบปิดประกาศ — ประกาศจะถูกเก็บในคลัง (ไม่แสดงต่อสาธารณะ)',
+        'Choose how to close — listing will be archived (hidden from public).',
       );
-  String get closeListingSaleTitle => t('ปิดการขายแล้ว', 'Mark as sold');
+  String get closeListingModePermanent =>
+      t('ลบประกาศถาวร', 'Close listing permanently');
+  String get closeListingModePermanentHint => t(
+        'เลือกเหตุผลด้านล่าง แล้วกดยืนยัน',
+        'Pick a reason below, then confirm',
+      );
+  String get closeListingModeTenanted =>
+      t('มีผู้เช่าแล้ว', 'Already tenanted');
+  String get closeListingModeTenantedHint => t(
+        'ระบุวันที่ทรัพย์จะว่างอีกครั้ง',
+        'Set when the unit will be available again',
+      );
+  String get closeListingTenantedDateSection =>
+      t('วันที่ว่างอีกครั้ง', 'Available again on');
+  String get closeListingTenantedDateHint => t(
+        'ระบบจะแจ้งเตือนก่อนถึงวัน (เช่น 30 และ 15 วันล่วงหน้า)',
+        'We will remind you before that date (e.g. 30 and 15 days ahead)',
+      );
+  String get closeListingTenantedReminderNote => t(
+        'ก่อนวันว่าง คุณเลือกได้: เผยแพร่ล่วงหน้า · ยังไม่แน่ใจ (เตือนอีกครั้ง) · เปลี่ยนวัน · ปิดถาวร',
+        'Before vacancy you can: republish early · not sure (remind again) · change date · close permanently',
+      );
+  String get closeListingTenantedConfirm =>
+      t('ยืนยันปิดประกาศชั่วคราว', 'Confirm temporary close');
+  String get closeListingPermanentDeleteConfirm =>
+      t('ยืนยันลบประกาศถาวร', 'Confirm permanent close');
+  String get closeListingRentPermanentSection =>
+      t('เลือกเหตุผลปิดถาวร', 'Pick a permanent reason');
+  String get closeRentReasonSold =>
+      t('ทรัพย์ขายไปแล้ว', 'Property sold');
+  String get closeRentReasonSoldHint => t(
+        'ไม่นำประกาศเช่านี้กลับมาใช้ใหม่',
+        'This rental listing cannot be republished',
+      );
+  String get closeRentReasonStopRent =>
+      t('ไม่ต้องการปล่อยเช่าแล้ว', 'No longer renting out');
+  String get closeRentReasonStopRentHint => t(
+        'หยุดปล่อยเช่า — ปิดถาวร',
+        'Stop renting — permanent close',
+      );
+  String get closeRentReasonUnavailable =>
+      t('ทรัพย์ไม่พร้อมอีกต่อไป', 'Property no longer available');
+  String get closeRentReasonUnavailableHint => t(
+        'ไม่สามารถให้เช่าได้อีก',
+        'Cannot be rented anymore',
+      );
+  String get closeListingRentTemporarySection =>
+      t('ว่างอีกครั้งในภายหลัง', 'Available again later');
+  String get closeListingRentTemporaryTitle =>
+      t('จะว่างอีกครั้ง — ระบุวันที่', 'Will be available — pick a date');
+  String get closeListingRentTemporaryHint => t(
+        'เก็บประกาศชั่วคราว นำกลับมาได้เมื่อถึงวัน',
+        'Temporarily archived — can return when date arrives',
+      );
+  String get closeListingPermanentConfirm =>
+      t('ยืนยันปิดถาวร', 'Confirm permanent close');
+  String closeRentArchivedReason(String key) {
+    switch (key) {
+      case 'sold':
+        return closeRentReasonSold;
+      case 'stop_rent':
+        return closeRentReasonStopRent;
+      case 'unavailable':
+        return closeRentReasonUnavailable;
+      default:
+        return listingSaleArchivedNote;
+    }
+  }
+  String get closeSaleReasonStopSale =>
+      t('ไม่ต้องการขายแล้ว', 'No longer selling');
+  String get closeSaleReasonStopSaleHint => t(
+        'หยุดขาย — ปิดถาวร',
+        'Stop selling — permanent close',
+      );
+  String get listingClosePickReason => t(
+        'กดเพื่อเลือก: มีผู้เช่าแล้ว หรือ ปิดถาวร',
+        'Tap: already tenanted or permanent close',
+      );
+  String get listingPreviewOnline => t('พรีวิวออนไลน์', 'Preview live');
+  String get listingPreviewNotOnline => t(
+        'ประกาศนี้ยังไม่ออนไลน์ — รอทีมตรวจสอบหรือยังไม่เผยแพร่',
+        'Not live yet — pending review or unpublished',
+      );
+  String get listingCoverPreviewHint => t(
+        'แตะรูปเพื่อพรีวิว',
+        'Tap photo to preview',
+      );
+  String get closeListingSaleTitle => t('ปิดประกาศขาย', 'Close sale listing');
   String get closeListingSaleHint => t(
         'ทรัพย์นี้จะถูกเก็บในคลังและไม่นำกลับมาใช้งานเป็นประกาศเดิมอีก '
         '(ข้อมูลยังอยู่ในระบบเพื่อบันทึกของแพลตฟอร์ม)',
@@ -1469,10 +1777,61 @@ class AppStrings {
       t('ว่างอีกครั้งประมาณ: $date', 'Available again around: $date');
   String get deleteListingTitle => t('ลบจากรายการของฉัน', 'Remove from my list');
   String get deleteListingHint => t(
-        'ลบจากมุมมองของคุณเท่านั้น — ข้อมูลยังอยู่ในฐานข้อมูลของ PROPPITER',
-        'Removes from your view only — data stays in PROPPITER database',
+        'ลบจากมุมมองของคุณเท่านั้น — ข้อมูลยังอยู่ในฐานข้อมูลของ RealXtate',
+        'Removes from your view only — data stays in RealXtate database',
       );
   String get deleteListingConfirm => t('ลบถาวรจากรายการ', 'Remove permanently');
+  String get hideListingFromMine => t('ซ่อนจากรายการของฉัน', 'Hide from my list');
+  String listingAvailabilityReminderTitle(int days) => t(
+        'ประกาศจะว่างในอีก $days วัน',
+        'Listing available in $days days',
+      );
+  String listingAvailabilityReminderBody(String title, String date) => t(
+        '「$title」กำหนดว่างอีกครั้ง $date — เลือกดำเนินการ',
+        '「$title」scheduled available $date — choose next step',
+      );
+  String get listingAvailabilityRepublishEarly =>
+      t('นำประกาศเผยแพร่อีกครั้ง (หาผู้เช่าล่วงหน้า)', 'Republish early (pre-marketing)');
+  String get listingAvailabilityRepublishEarlyHint => t(
+        'แสดงประกาศอีกครั้งก่อนวันว่างจริง',
+        'Show listing again before actual vacancy',
+      );
+  String get listingAvailabilityRemindLater =>
+      t('ยังไม่แน่ใจ — เตือนอีกครั้ง', 'Not sure — remind me again');
+  String get listingAvailabilityRemindLaterHint => t(
+        'ระบบจะแจ้งอีกครั้ง 15 วันก่อนวันเดิม',
+        'We will notify again 15 days before the original date',
+      );
+  String get listingAvailabilityUpdateDate =>
+      t('เปลี่ยนวันว่างจริง', 'Update available date');
+  String get listingAvailabilityUpdateDateHint => t(
+        'ระบุวันที่ทรัพย์จะว่างจริง',
+        'Set the actual vacancy date',
+      );
+  String get listingAvailabilityPermanentClose =>
+      t('ไม่พร้อมให้เช่าอีกต่อไป', 'No longer available for rent');
+  String get listingAvailabilityPermanentCloseHint => t(
+        'ขายแล้ว / ไม่เช่า / ไม่พร้อม — ปิดถาวร',
+        'Sold / stop rent / unavailable — permanent close',
+      );
+  String get listingAvailabilityManageAction =>
+      t('จัดการวันว่าง', 'Manage vacancy');
+  String listingArchivedAvailableLine(String date, int days) => t(
+        'ว่างอีกครั้ง $date (อีก $days วัน)',
+        'Available again $date (in $days days)',
+      );
+  String get listingRepublishedEarly => t(
+        'เผยแพร่ประกาศอีกครั้ง — หาผู้เช่าล่วงหน้า',
+        'Listing republished — pre-marketing',
+      );
+  String get listingAvailabilityDateUpdated => t(
+        'อัปเดตวันว่างแล้ว',
+        'Available date updated',
+      );
+  String get listingAvailabilityRemindScheduled => t(
+        'จะแจ้งเตือนอีกครั้ง 15 วันก่อนวันเดิม',
+        'Reminder scheduled 15 days before original date',
+      );
   String get listingDeletedFromView => t(
         'ลบจากรายการของคุณแล้ว',
         'Removed from your list',
@@ -1488,7 +1847,7 @@ class AppStrings {
         '$count listing(s) need availability confirm',
       );
   String get pushListingArchivedTitle =>
-      t('PROPPITER — เก็บประกาศแล้ว', 'PROPPITER — Listing archived');
+      t('RealXtate — เก็บประกาศแล้ว', 'RealXtate — Listing archived');
   String pushListingArchivedBody(String code, String title) => t(
         '$code · $title\nเก็บอัตโนมัติ — ไม่ได้ยืนยันว่างครบ 30 วัน',
         '$code · $title\nAuto-archived — no confirm for 30 days',
@@ -1537,8 +1896,8 @@ class AppStrings {
   String get createListingTiktokLabel => t('ลิงก์ TikTok (ถ้ามี)', 'TikTok link (optional)');
   String get createListingAcceptAgent => t('เปิดรับนายหน้า', 'Accept brokers');
   String get createListingAcceptAgentHint => t(
-        'อนุญาตให้นายหน้าช่วยทำการตลาดผ่าน PROPPITER',
-        'Allow brokers to market via PROPPITER',
+        'อนุญาตให้นายหน้าช่วยทำการตลาดผ่าน RealXtate',
+        'Allow brokers to market via RealXtate',
       );
   String get createListingCommissionPercent => t('ค่าคอมมิชชัน (%)', 'Commission (%)');
   String get createListingCommissionTitle =>
@@ -1584,8 +1943,8 @@ class AppStrings {
   String get listingStatusPendingReview => t('รอตรวจสอบ', 'Pending review');
   String get listingSectionPendingReview => t('รอทีมตรวจสอบ', 'Pending review');
   String get listingPendingReviewHint => t(
-        'ทีม PROPPITER กำลังตรวจสอบ — จะแจ้งเมื่อขึ้นประกาศแล้ว',
-        'PROPPITER team is reviewing — we will notify you when live',
+        'ทีม RealXtate กำลังตรวจสอบ — จะแจ้งเมื่อขึ้นประกาศแล้ว',
+        'RealXtate team is reviewing — we will notify you when live',
       );
   String get homeSaleIncludesInstallment => t(
         'ซื้อ (รวมขายฝาก)',
@@ -1604,17 +1963,50 @@ class AppStrings {
       );
   String get createListingConfirmEdit => requirementConfirmEdit;
   String get createListingConfirmSubmit => requirementConfirmSubmit;
-  String get createListingHashtagsTitle => t('ติดแฮชแท็ก', 'Add hashtags');
+  String get createListingHashtagsTitle => t('จุดเด่นทรัพย์', 'Property highlights');
   String get createListingHashtagsHint => t(
-        'เลือกอย่างน้อย 1 แท็กที่ตรงความจริง',
-        'Pick at least one tag that matches the property',
+        'เลือกจุดเด่นที่ตรงความจริงอย่างน้อย 1 รายการ — ด้านล่างเป็นตัวแนะนำ',
+        'Pick at least one accurate highlight — suggestions shown first',
+      );
+  String createListingHashtagsShowMore(int count) => t(
+        'ดูจุดเด่นเพิ่มเติม ($count)',
+        'More highlights ($count)',
+      );
+  String get createListingHashtagsShowLess =>
+      t('ซ่อนจุดเด่นเพิ่มเติม', 'Show fewer highlights');
+  String createListingHashtagsExtraSelected(int count) => t(
+        'เลือกจากรายการเพิ่มเติมแล้ว $count รายการ',
+        '$count extra highlight(s) selected',
       );
   String get createListingFacilitiesTitle => t('ส่วนกลาง', 'Common facilities');
   String get adminListingsPendingReview => t('ประกาศรอตรวจ', 'Listings pending review');
   String get adminApproveListing => t('อนุมัติเผยแพร่', 'Approve & publish');
   String get adminPublishedWithWatermark => t(
-        'เผยแพร่แล้ว — ระบบฝังลายน้ำ PROPPITER ในรูปแล้ว',
-        'Published — PROPPITER watermark burned into photos',
+        'เผยแพร่แล้ว — ยูสเห็นรูปมีลายน้ำ · ต้นฉบับเก็บในหลังบ้าน',
+        'Published — users see watermarked photos · originals kept in backend',
+      );
+  String get adminListingPreview => t('พรีวิวหน้าบ้าน', 'Public preview');
+  String get adminListingPreviewTitle =>
+      t('พรีวิวประกาศบนเว็บ', 'Listing public preview');
+  String get adminListingPreviewBanner => t(
+        'ตัวอย่างหน้าบ้าน — รูปที่แสดงคือเวอร์ชันมีลายน้ำ (public_url)',
+        'Public preview — photos shown are watermarked (public_url)',
+      );
+  String get adminListingPreviewWatermarkNote => t(
+        'แอดมินดาวน์โหลดต้นฉบับไม่มีลายน้ำได้จากปุ่มด้านบน',
+        'Admins can download originals without watermark using the button above',
+      );
+  String get adminDownloadOriginalPhotos =>
+      t('ดาวน์โหลดรูปต้นฉบับ', 'Download originals');
+  String get adminDownloadOriginalsPreparing =>
+      t('กำลังเตรียมรูปต้นฉบับ…', 'Preparing original photos…');
+  String adminDownloadOriginalsShareText(String code) =>
+      t('รูปต้นฉบับ $code (ไม่มีลายน้ำ)', 'Original photos $code (no watermark)');
+  String get adminListingPreviewFeedTab => t('การ์ดฟีด', 'Feed card');
+  String get adminListingPreviewDetailTab => t('หน้ารายละเอียด', 'Detail page');
+  String get adminListingPreviewNotFound => t(
+        'ไม่พบประกาศสำหรับพรีวิว',
+        'No listing found for preview',
       );
   String get adminTabWatermark => t('ลายน้ำ', 'Watermark');
   String get adminWatermarkTitle => t('ตั้งค่าลายน้ำรูปประกาศ', 'Listing photo watermark');
@@ -1641,8 +2033,8 @@ class AppStrings {
   String get adminWatermarkSaveTuning => t('บันทึกการปรับ', 'Save settings');
   String get adminWatermarkSaved => t('บันทึกการตั้งค่าแล้ว', 'Settings saved');
   String get adminWatermarkNote => t(
-        'รูปที่ฝังลายน้ำไปแล้วจะไม่เปลี่ยนอัตโนมัติ — เปลี่ยนรูปลายน้ำแล้วมีผลกับประกาศที่เผยแพร่ใหม่เท่านั้น',
-        'Already watermarked photos stay as-is — changes apply to new publishes only',
+        'รูปต้นฉบับเก็บใน Storage — ยูสเห็น/ดาวน์โหลดเวอร์ชันมีลายน้ำ · เปลี่ยนโลโก้มีผลประกาศเผยแพร่ใหม่',
+        'Originals kept in Storage — users see/download watermarked copies · logo changes apply to new publishes',
       );
   String get adminWatermarkClearTitle => t('ลบรูปลายน้ำที่อัปโหลด?', 'Remove uploaded watermark?');
   String get adminWatermarkClearBody => t(
@@ -1701,8 +2093,8 @@ class AppStrings {
   String get offerSubmittedTitle =>
       t('บันทึกข้อเสนอแล้ว', 'Offer saved');
   String get offerSubmittedBody => t(
-        'ทีม PROPPITER จะตรวจสอบข้อเสนอและติดต่อกลับในแชท',
-        'PROPPITER team will review your offer and follow up in chat',
+        'ทีม RealXtate จะตรวจสอบข้อเสนอและติดต่อกลับในแชท',
+        'RealXtate team will review your offer and follow up in chat',
       );
   String get offerSubmittedSummaryTitle => t('สรุปที่ส่ง', 'Submitted summary');
   String get offerSubmittedChatNote => t(
@@ -1746,7 +2138,7 @@ class AppStrings {
 
   // ── Admin ──
   String get adminTitle => t('หลังบ้าน', 'Admin');
-  String get adminLivingBkk => t('PROPPITER หลังบ้าน', 'PROPPITER Admin');
+  String get adminLivingBkk => t('RealXtate หลังบ้าน', 'RealXtate Admin');
   String get adminLink => t('ลิงก์', 'Link');
   String get adminDetails => t('รายละเอียด', 'Details');
   String get adminConfirmRole => t('ยืนยันสิทธิ์', 'Confirm role');
@@ -1801,6 +2193,34 @@ class AppStrings {
   String get adminLeadPropertyCard => t('ทรัพย์ที่ลูกค้าสนใจ', 'Property of interest');
   String get adminOpenLinkedChat =>
       t('เปิดแชทกับลูกค้า', 'Open customer chat');
+  String get adminOpenOwnerChat =>
+      t('เปิดแชทกับเจ้าของทรัพย์', 'Open owner chat');
+  String get adminLeadViewingAccessTitle =>
+      t('วิธีเปิดทรัพย์ (นัดชม)', 'Property access (viewing)');
+  String adminLeadViewingAccessLinkedHint(String code) => t(
+        'บันทึกแล้วอัปเดตที่ทรัพย์ $code และโน้ตนัดชมที่เชื่อมเคสนี้',
+        'Saved to listing $code and linked viewing notes for this lead',
+      );
+  String get adminLeadViewingAccessNoListing => t(
+        'ยังไม่มีรหัสทรัพย์ — ผูกประกาศก่อนจึงบันทึกวิธีเปิดได้',
+        'No listing code — link a listing before saving access details',
+      );
+  String get adminLeadViewingAccessSave =>
+      t('บันทึกวิธีเปิดทรัพย์', 'Save access details');
+  String get adminLeadViewingAccessSaved => t(
+        'บันทึกวิธีเปิดทรัพย์แล้ว',
+        'Property access details saved',
+      );
+  String get adminLeadViewingAccessSavedLinked => t(
+        'บันทึกแล้ว — อัปเดตทรัพย์และโน้ตนัดชมที่เชื่อมเคส',
+        'Saved — listing and linked appointment notes updated',
+      );
+  String get adminLeadViewingAccessApptNote =>
+      t('โน้ตนัดชม (เชื่อมเคส)', 'Linked viewing note');
+  String adminLeadViewingAccessLinkedNote(String code, String summary) => t(
+        '[$code] วิธีเปิดทรัพย์: $summary',
+        '[$code] Access: $summary',
+      );
   String get adminChatBeforeConfirmHint => t(
         'คุยกับลูกค้าในแชทก่อน แล้วค่อยกด「ยืนยันนัดดู」เมื่อตกลงรายละเอียดแล้ว',
         'Chat with the customer first, then confirm the viewing once agreed.',
@@ -1871,8 +2291,8 @@ class AppStrings {
   String get createListingStandaloneToggle =>
       t('ไม่ระบุชื่อโครงการ (บ้าน/ทาวน์เฮาส์นอกโครงการ)', 'No project name (standalone house/townhouse)');
   String get createListingPhotoPolicy => t(
-        'ใช้รูปถ่ายจริงของทรัพย์เท่านั้น — ห้ามลายน้ำ/โลโก้จากเว็บหรือนายหน้าอื่น · หลังอนุมัติเผยแพร่ ระบบจะฝังลายน้ำ PROPPITER ในไฟล์รูปอัตโนมัติ',
-        'Actual property photos only — no third-party watermarks/logos · after approval PROPPITER watermark is burned into image files automatically.',
+        'ใช้รูปถ่ายจริงของทรัพย์เท่านั้น — ห้ามลายน้ำ/โลโก้จากเว็บหรือนายหน้าอื่น · หลังอนุมัติเผยแพร่ ระบบจะฝังลายน้ำ RealXtate ในไฟล์รูปอัตโนมัติ',
+        'Actual property photos only — no third-party watermarks/logos · after approval RealXtate watermark is burned into image files automatically.',
       );
   String get projectSearchPlaceholder => t('พิมพ์ชื่อโครงการ...', 'Search project name...');
   String projectCatalogLoaded(int n) =>
@@ -1901,6 +2321,19 @@ class AppStrings {
         'กดไอคอนหัวใจที่การ์ดทรัพย์เพื่อเก็บไว้ดูภายหลัง',
         'Tap the heart on listing cards to save for later',
       );
+  String get savedListingsManage => t('จัดการ', 'Manage');
+  String get savedListingsSortRecent =>
+      t('บันทึกล่าสุด', 'Recently saved');
+  String savedListingsDeleteSelected(int n) =>
+      t('ลบที่เลือก ($n)', 'Delete selected ($n)');
+  String get savedListingsSelectAll => t('เลือกทั้งหมด', 'Select all');
+  String get savedListingsDeselectAll => t('ยกเลิกเลือก', 'Deselect all');
+  String get savedListingsRemoved =>
+      t('ลบออกจากรายการบันทึกแล้ว', 'Removed from saved');
+  String savedListingsDeleteConfirm(int n) => t(
+        'ลบทรัพย์ที่เลือก $n รายการออกจากรายการบันทึก?',
+        'Remove $n saved listings?',
+      );
 
   // ── Listing detail extras ──
   String get coAgentRequestSent => t(
@@ -1927,8 +2360,8 @@ class AppStrings {
   // ── Board / offer form ──
   String get offerAsLabel => t('คุณเสนอในฐานะ *', 'You are offering as *');
   String get offerPrivateNote => t(
-        'ข้อมูลนี้ไม่แสดงต่อผู้ใช้รายอื่น — ทีม PROPPITER ตรวจสอบเท่านั้น',
-        'Not visible to other users — PROPPITER team only',
+        'ข้อมูลนี้ไม่แสดงต่อผู้ใช้รายอื่น — ทีม RealXtate ตรวจสอบเท่านั้น',
+        'Not visible to other users — RealXtate team only',
       );
   String get offerVacancyWarningTitle => t(
         'ข้อควรทราบก่อนส่งข้อเสนอ',
@@ -2156,8 +2589,8 @@ class AppStrings {
   String budgetMax(String price) => t('งบไม่เกิน $price', 'Budget max $price');
   String areaMin(int sqm) => t('ขนาด ≥ $sqm ตร.ม.', 'Size ≥ $sqm sqm');
   String get offersPrivateAdmin => t(
-        'ข้อเสนอของผู้อื่นไม่แสดงต่อสาธารณะ — เฉพาะทีม PROPPITER ตรวจสอบ',
-        'Other offers are private — PROPPITER team reviews only',
+        'ข้อเสนอของผู้อื่นไม่แสดงต่อสาธารณะ — เฉพาะทีม RealXtate ตรวจสอบ',
+        'Other offers are private — RealXtate team reviews only',
       );
 
   // ── Viewing submitted dialog ──
@@ -2294,9 +2727,9 @@ class AppStrings {
   }
   String get eContractPolicy => t(
         'การกดยอมรับถือว่าคุณตกลงโครงสร้างค่าคอมก่อนเริ่มประสานงานลูกค้า '
-        'ตามนโยบาย PROPPITER (ตัวกลาง 100%)',
+        'ตามนโยบาย RealXtate (ตัวกลาง 100%)',
         'Accepting means you agree to the commission structure before coordinating, '
-        'per PROPPITER policy (100% intermediary)',
+        'per RealXtate policy (100% intermediary)',
       );
 
   // ── Lead unavailable ──
@@ -2327,7 +2760,7 @@ class AppStrings {
 
   // ── Share extras ──
   String get downloadPhotosFailed => t('ดาวน์โหลดรูปไม่สำเร็จ', 'Photo download failed');
-  String sharePhotosText(String code) => t('รูปทรัพย์ $code — PROPPITER', 'Photos $code — PROPPITER');
+  String sharePhotosText(String code) => t('รูปทรัพย์ $code — RealXtate', 'Photos $code — RealXtate');
 
   // ── Maps extras ──
   String mapListingsCount(int n) => t('$n ทรัพย์', '$n listings');
@@ -2356,13 +2789,13 @@ class AppStrings {
   // ── Admin chat ──
   List<String> get adminQuickReplies => isEnglish
       ? [
-          'Hello — PROPPITER team has received your request and will reply here.',
+          'Hello — RealXtate team has received your request and will reply here.',
           'Viewing confirmed — staff will call again before the appointment.',
           'Price/owner matters need direct coordination — please share a contact number.',
           'Thank you — ask any follow-up questions in this chat.',
         ]
       : [
-          'สวัสดีครับ ทีม PROPPITER รับเรื่องแล้ว จะติดต่อกลับในแชทนี้ครับ',
+          'สวัสดีครับ ทีม RealXtate รับเรื่องแล้ว จะติดต่อกลับในแชทนี้ครับ',
           'ยืนยันนัดดูแล้วครับ เจ้าหน้าที่จะโทรยืนยันอีกครั้งก่อนถึงวันนัด',
           'เรื่องราคา/เจ้าของ ต้องให้เจ้าหน้าที่ประสานงานโดยตรง — ขอเบอร์ติดต่อที่สะดวกได้ครับ',
           'ขอบคุณครับ หากมีคำถามเพิ่มเติม แจ้งในแชทนี้ได้เลยครับ',
@@ -2371,6 +2804,8 @@ class AppStrings {
   String get adminReplyHint => t('พิมพ์คำตอบให้ลูกค้า...', 'Type a reply to the customer...');
   String get adminPendingMeta =>
       t('รอทีมงานตอบ — ลูกค้าเห็นคำตอบในแชทเดิม', 'Awaiting team reply — customer sees replies here');
+  String get adminActiveMeta =>
+      t('กำลังดูแล — ปิดเคสเมื่อจบงาน', 'In progress — close case when done');
   String get adminResolvedMeta => t('ตอบแล้ว / ปิดเคส', 'Replied / case closed');
   String get adminViewingFormChip => t('มีฟอร์มนัดดู', 'Viewing form sent');
   String get adminStaffChatChip => t('แชทเจ้าหน้าที่', 'Staff chat');
@@ -2403,7 +2838,17 @@ class AppStrings {
       );
   String get adminOpenConsole =>
       t('เปิดโหมดคอม', 'Open desktop console');
-  String get adminTabDashboard => t('ภาพรวม', 'Dashboard');
+  String get adminTabDashboard => t('ภาพรวมแพลตฟอร์ม', 'Platform overview');
+  String get adminErpCommandCenter =>
+      t('ศูนย์บัญชาการ', 'Command center');
+  String get adminErpComms => t('สื่อสาร', 'Communications');
+  String get adminErpCustomers => t('ลูกค้า', 'Customers');
+  String get adminErpProperty => t('ทรัพย์สิน', 'Property');
+  String get adminErpGovernance => t('ธรรมาภิบาล', 'Governance');
+  String get adminErpMoreMenu => t('เพิ่มเติม', 'More');
+  String get adminErpViewCalendar => t('ปฏิทิน', 'Calendar');
+  String get adminErpViewList => t('รายการ', 'List');
+  String get adminErpViewMap => t('แผนที่', 'Map');
   String get adminDashboardBarTitle =>
       t('ภาพรวมแพลตฟอร์ม', 'Platform overview');
   String get adminViewConsumerApp =>
@@ -2420,7 +2865,9 @@ class AppStrings {
   String get adminDashLeads => t('เคสใหม่', 'New leads');
   String adminDashLeadsSub(int total) => t('รวม $total', 'Total $total');
   String get adminDashChat => t('แชทรอตอบ', 'Pending chat');
-  String get adminDashAppointments => t('นัดชม', 'Viewings');
+  String get adminDashAppointments => t('ปฏิทินนัดชม', 'Viewing calendar');
+  String get adminTabAppointmentsList =>
+      t('รายการนัด + แผนที่', 'List & map');
   String get adminDashOffers => t('ข้อเสนอรอ', 'Pending offers');
   String get adminDashModeration => t('ตรวจสอบ', 'Moderation');
   String adminDashModerationSub(int images, int flags) =>
@@ -2451,10 +2898,10 @@ class AppStrings {
   String get adminTabPromos => t('โฆษณา', 'Promos');
   String get adminPromosSpecTitle => t('ขนาดรูปโฆษณา (ตามกรอบหน้าแรก)', 'Promo image size (home frame)');
   String adminPromosSpecBody(int w, int h) => t(
-        'อัตราส่วน 21:9 · แนะนำ ${w}×${h} px · PNG/WebP/JPEG · ไม่เกิน 512 KB\n'
-        'รูปจะถูก crop แบบ cover ในกรอบสูงสุด 124pt',
-        'Aspect ratio 21:9 · recommended ${w}×${h} px · PNG/WebP/JPEG · max 512 KB\n'
-        'Image is cover-cropped in a max 124pt-tall frame',
+        'อัตราส่วน 21:9 · แนะนำ ${w}×${h} px · PNG/WebP/JPEG/GIF · ไม่เกิน 512 KB\n'
+        'รูปจะถูก crop แบบ cover ในกรอบสูงสุด 124pt · GIF แสดงแอนิเมชันได้',
+        'Aspect ratio 21:9 · recommended ${w}×${h} px · PNG/WebP/JPEG/GIF · max 512 KB\n'
+        'Image is cover-cropped in a max 124pt-tall frame · GIFs animate',
       );
   String adminPromosActiveCount(int active, int max) =>
       t('เปิดใช้งาน $active / $max รายการ', '$active / $max active');
@@ -2495,8 +2942,8 @@ class AppStrings {
       t('(ยังไม่มีรายละเอียด)', '(No detail yet)');
   String get adminPromosUploadImage => t('อัปโหลดรูป', 'Upload image');
   String get adminPromosUploadHint => t(
-        'ใช้รูป 21:9 ตามขนาดด้านบน — ถ้ายังไม่อัปโหลดจะใช้รูปในแอป (ถ้ามี)',
-        'Use 21:9 image per spec above — bundled asset used if no upload',
+        'ใช้รูป 21:9 ตามขนาดด้านบน — รองรับ GIF แอนิเมชัน · ถ้ายังไม่อัปโหลดจะใช้รูปในแอป (ถ้ามี)',
+        'Use 21:9 image per spec above — animated GIF supported · bundled asset used if no upload',
       );
   String get adminPromosSlug => t('Slug (รหัส)', 'Slug (id)');
   String get adminPromosSort => t('ลำดับ (1–10)', 'Sort order (1–10)');
@@ -2573,20 +3020,44 @@ class AppStrings {
       t('ดึงแล้ว $done/$total · สำเร็จ $ok · ล้มเหลว $fail', 'Imported $done/$total · ok $ok · fail $fail');
   String adminProjectsBatchDone(int ok, int fail) =>
       t('เสร็จแล้ว — สำเร็จ $ok · ล้มเหลว $fail', 'Done — ok $ok · fail $fail');
+  String get adminProjectsEnrichTagsTitle =>
+      t('อัปเดตแท็กค้นหามาตรฐาน', 'Refresh standard search tags');
+  String get adminProjectsEnrichTagsHint => t(
+        'คำนวณจากพิกัดโครงการ (BTS/โซน/มหาลัย/landmark) — ไม่ใช้ AI · รายการที่ขัดกันจะเป็น needs_review',
+        'Computed from project coordinates (transit/zone/POI) — no AI · mismatches marked needs_review',
+      );
+  String get adminProjectsEnrichTagsBtn =>
+      t('อัปเดตแท็กทุกโครงการ', 'Enrich tags for all projects');
+  String get adminProjectsEnrichTagsBody => t(
+        'ระบบจะคำนวณแท็กมาตรฐานให้โครงการทุกรายการจากพิกัดและชื่อ\n'
+        'โครงการที่พิกัดผิดหรือข้อมูลขัดกันจะถูกทำเครื่องหมาย needs_review',
+        'Standard tags will be computed for every project from coordinates and names.\n'
+        'Projects with bad coords or conflicts will be marked needs_review.',
+      );
+  String get adminProjectsEnrichTagsConfirm => t('เริ่มอัปเดต', 'Start update');
+  String adminProjectsEnrichTagsDone(int updated, int needsReview) => t(
+        'อัปเดตแท็กแล้ว $updated โครงการ · ต้องตรวจ $needsReview',
+        'Updated $updated projects · $needsReview need review',
+      );
+  String adminProjectsTagCount(int n) =>
+      t('แท็กค้นหา $n รายการ', '$n search tags');
+
   String get adminProjectsResetTitle => t('รีเซ็ตสมุดโครงการ', 'Reset project catalog');
   String get adminProjectsResetHint => t(
-        'ลบสมุดโครงการทั้งหมดแล้วดึงใหม่จาก Property Hub',
-        'Delete entire catalog and re-import from Property Hub',
+        'ลบสมุดโครงการทั้งหมดในระบบ — เฉพาะ CEO',
+        'Delete the entire project catalog — CEO only',
       );
-  String get adminProjectsResetBtn => t('ลบทั้งหมดแล้วดึงใหม่', 'Delete all & re-import');
+  String get adminProjectsResetBtn => t('ลบสมุดโครงการทั้งหมด', 'Delete entire catalog');
   String get adminProjectsResetConfirmTitle => t('ยืนยันรีเซ็ตสมุดโครงการ?', 'Reset entire catalog?');
   String get adminProjectsResetConfirmBody => t(
         'จะลบโครงการทุกรายการในระบบ (ประกาศที่ผูกโครงการจะถูกถอดลิงก์ ไม่ลบประกาศ)\n'
-        'จากนั้นค้นหาและดึงใหม่จาก Property Hub — ใช้เวลานาน',
+        'หลังลบให้เพิ่มโครงการทีละรายการหรือนำเข้าจากลิงก์',
         'All projects will be deleted (listings unlinked, not deleted). '
-        'Then re-discover and import from Property Hub. This takes a while.',
+        'Add projects again one by one or import from URLs.',
       );
-  String get adminProjectsResetConfirmBtn => t('ลบและดึงใหม่', 'Delete & re-import');
+  String get adminProjectsResetConfirmBtn => t('ลบทั้งหมด', 'Delete all');
+  String get adminProjectsResetCeoOnly =>
+      t('รีเซ็ตสมุดโครงการ — เฉพาะ CEO', 'Reset catalog — CEO only');
   String get adminProjectsResetCancel => t('ยกเลิก', 'Cancel');
   String adminProjectsResetDone(int deleted, int unlinked) => t(
         'ลบโครงการ $deleted รายการ · ถอดลิงก์ประกาศ $unlinked รายการ',
@@ -2677,6 +3148,30 @@ class AppStrings {
     if (flags.contains('missing_images')) {
       parts.add(t('ไม่พบรูป — อัปโหลดหรือลองดึงใหม่', 'No images — upload or retry fetch'));
     }
+    if (flags.contains('project_not_in_registry')) {
+      parts.add(t(
+        'ไม่พบโครงการในฐานข้อมูล — วางลิงก์แชร์แผนที่เพื่อปักพิกัด',
+        'Project not in registry — paste a map share link to set coordinates',
+      ));
+    }
+    if (flags.contains('missing_project') || flags.contains('missing_coords')) {
+      parts.add(t(
+        'ยังไม่ปักโครงการ/พิกัด — เพิ่มโครงการก่อนเผยแพร่',
+        'Project or pin missing — add project before publish',
+      ));
+    }
+    if (flags.contains('duplicate_import')) {
+      parts.add(t(
+        'ซ้ำกับรายการที่นำเข้าแล้ว — เปิดรายการเดิมหรือล้างรายการนี้',
+        'Duplicate of an existing import — open original or discard this row',
+      ));
+    }
+    if (flags.contains('facebook_source')) {
+      parts.add(t(
+        'ดึงจาก Facebook — ตรวจข้อความโพสต์/รูป/ลิงก์ในโพสต์',
+        'Fetched from Facebook — verify post text, photos, and links',
+      ));
+    }
     if (flags.contains('generic_og_parse') || flags.contains('needs_admin_review')) {
       parts.add(t(
         'ดึงจาก Open Graph — ตรวจหัวข้อ/รายละเอียด/ราคาให้ครบ',
@@ -2691,8 +3186,8 @@ class AppStrings {
   String get adminImportReviewTitle =>
       t('ตรวจสอบก่อนเผยแพร่', 'Review before publish');
   String get adminImportReviewHint => t(
-        'แก้ไขข้อมูลได้ก่อนกดอนุมัติ — รูปถูกดึงจาก LI แล้ว',
-        'Edit fields before approve — photos already imported from LI',
+        'แก้ไขข้อมูลได้ก่อนกดอนุมัติ — รูปถูกดึงจากลิงก์ต้นทางแล้ว',
+        'Edit fields before approve — photos already imported from source link',
       );
   String get adminImportSaveDraft => t('บันทึก draft', 'Save draft');
   String get adminImportDraftSaved => t('บันทึก draft แล้ว', 'Draft saved');
@@ -2705,6 +3200,68 @@ class AppStrings {
   String get adminImportView => t('ดูรายละเอียด', 'View details');
   String get adminImportBedrooms => t('ห้องนอน', 'Bedrooms');
   String get adminImportProjectName => t('ชื่อโครงการ', 'Project name');
+  String get adminImportProjectNotFound =>
+      t('ไม่พบโครงการในฐานข้อมูล', 'Project not found in registry');
+  String get adminImportProjectNotFoundHint => t(
+        'ชื่อโครงการดึงจาก LI แล้ว — เปิด Google Maps ค้นหาพิกัดจริง แชร์ลิงก์มาวาง แล้วตรวจก่อนยืนยัน',
+        'Project name from LI — find the pin in Google Maps, paste the share link, review, then confirm',
+      );
+  String get adminImportAddProjectFromMaps =>
+      t('เพิ่มโครงการ (วางลิงก์แผนที่)', 'Add project (paste map link)');
+  String get adminImportAddProjectTitle =>
+      t('เพิ่มโครงการ — วางลิงก์แชร์แผนที่', 'Add project — paste map share link');
+  String get adminImportAddProjectHint => t(
+        'ลิงก์แผนที่เติมเฉพาะพิกัด — ชื่อและเขตจาก LI ให้ตรวจก่อนกดยืนยัน',
+        'Map link fills coordinates only — review LI name and district before confirming',
+      );
+  String get adminImportMapsShareLink =>
+      t('ลิงก์แชร์ Google Maps', 'Google Maps share link');
+  String get adminImportMapsShareLinkHint => t(
+        'https://maps.app.goo.gl/... หรือ google.com/maps/...',
+        'https://maps.app.goo.gl/... or google.com/maps/...',
+      );
+  String get adminImportApplyMapsLink =>
+      t('ดึงพิกัดจากลิงก์', 'Apply coordinates from link');
+  String get adminImportMapsShareSteps => t(
+        '1) เปิด Google Maps ค้นหาโครงการ · 2) กดแชร์ → คัดลอกลิงก์ · 3) วางด้านบนแล้วกดดึงพิกัด',
+        '1) Open Google Maps and find the project · 2) Share → copy link · 3) Paste above and apply coordinates',
+      );
+  String get adminImportMapsLinkInvalid => t(
+        'ลิงก์ไม่ใช่ Google Maps — ใช้ลิงก์จากปุ่มแชร์ในแอปแผนที่',
+        'Not a Google Maps link — use the share link from the Maps app',
+      );
+  String get adminImportMapsLinkNoCoords => t(
+        'ไม่พบพิกัดในลิงก์ — ลองแชร์จากหมุดบนแผนที่ (ไม่ใช่แค่ชื่อสถานที่)',
+        'No coordinates in link — share from the map pin, not just a place name',
+      );
+  String get adminImportMapsCoordsApplied => t(
+        'ปักพิกัดจากลิงก์แล้ว — ตรวจชื่อโครงการก่อนยืนยัน',
+        'Coordinates applied from link — review project name before confirming',
+      );
+  String get adminImportMapsLinkResolveFailed => t(
+        'เปิดลิงก์สั้นไม่ได้ — ลองคัดลอกลิงก์เต็มจาก Google Maps',
+        'Could not resolve short link — try the full Google Maps URL',
+      );
+  String get adminImportCoordsFromLinkOnly => t(
+        'พิกัดจากลิงก์แผนที่ — ชื่อโครงการไม่ถูกเปลี่ยนอัตโนมัติ',
+        'Coordinates from map link — project name was not auto-changed',
+      );
+  String get adminImportProjectNameTh => t('ชื่อโครงการ (ไทย)', 'Project name (TH)');
+  String get adminImportProjectNameEn => t('ชื่อโครงการ (อังกฤษ)', 'Project name (EN)');
+  String get adminImportOpenGoogleMaps =>
+      t('เปิดใน Google Maps', 'Open in Google Maps');
+  String get adminImportConfirmAddProject =>
+      t('ยืนยันเพิ่มโครงการ', 'Confirm add project');
+  String get adminImportProjectLinked =>
+      t('เพิ่มโครงการและผูกกับประกาศแล้ว', 'Project added and linked to listing');
+  String get adminImportProjectNameRequired =>
+      t('ใส่ชื่อโครงการ', 'Enter project name');
+  String get adminImportCoordsRequired =>
+      t('ใส่พิกัด Lat/Lng ให้ถูกต้อง', 'Enter valid Lat/Lng');
+  String get adminImportFetchedProjectMissing => t(
+        'ดึงประกาศแล้ว — ไม่พบโครงการในฐานข้อมูล กดเพิ่มโครงการในหน้าตรวจสอบ',
+        'Listing fetched — project not in registry. Add it on the review screen.',
+      );
   String get adminImportDistrict => t('เขต / ทำเล', 'District / area');
   String get adminImportTxnType => t('ประเภทธุรกรรม', 'Transaction type');
   String get adminImportPropertyType => t('ประเภททรัพย์', 'Property type');
@@ -2753,6 +3310,42 @@ class AppStrings {
         return status;
     }
   }
+  String get adminImportDuplicateTitle =>
+      t('ซ้ำกับรายการที่นำเข้าแล้ว', 'Duplicate of existing import');
+  String get adminImportDuplicateHint => t(
+        'ระบบพบลิงก์หรือรหัส LI เดิม — เปิดรายการเดิมเพื่อเผยแพร่ต่อ หรือล้างรายการซ้ำนี้',
+        'Same link or LI id already imported — open the original to publish, or discard this duplicate',
+      );
+  String get adminImportContinuePublish =>
+      t('เผยแพร่ต่อ (รายการเดิม)', 'Continue publish (original)');
+  String get adminImportOpenOriginal =>
+      t('เปิดรายการเดิม', 'Open original import');
+  String get adminImportOpenInStock =>
+      t('เปิดในคลังทรัพย์', 'Open in listings');
+  String get adminImportOpenSourceLink =>
+      t('เปิดลิงก์ต้นทาง', 'Open source link');
+  String get adminImportDiscardDuplicate =>
+      t('ยกเลิกและล้างข้อมูล', 'Discard & purge');
+  String get adminImportDiscardConfirm => t(
+        'ล้างรายการนำเข้านี้และ draft ที่สร้างจากการดึงซ้ำ?',
+        'Discard this import row and purge its draft listing?',
+      );
+  String get adminImportDiscarded =>
+      t('ล้างรายการซ้ำแล้ว', 'Duplicate import discarded');
+  String adminImportDuplicateOf(String label) =>
+      t('ซ้ำกับ: $label', 'Duplicate of: $label');
+  String get adminImportFacebookSection =>
+      t('ข้อมูลจาก Facebook', 'Facebook post data');
+  String get adminImportSourceMetaSection =>
+      t('ข้อมูลจากลิงก์ต้นทาง', 'Source link data');
+  String get adminImportFacebookPoster =>
+      t('ผู้โพสต์', 'Posted by');
+  String get adminImportFacebookPost =>
+      t('ข้อความในโพสต์', 'Post text');
+  String get adminImportFacebookLinks =>
+      t('ลิงก์ในโพสต์', 'Links in post');
+  String get adminImportOpenPostLink =>
+      t('เปิดลิงก์โพสต์', 'Open post link');
   String adminPendingCount(int n) => t('รอตอบ ($n)', 'Pending ($n)');
   String get adminInboxEmpty => t(
         'ไม่มีแชทรอตอบ — ลูกค้าพิมพ์คำถามละเอียดหรือกด「คุยกับเจ้าหน้าที่」จะขึ้นที่นี่',
@@ -2793,6 +3386,47 @@ class AppStrings {
       t('กรอกความต้องการหาทรัพย์', 'Fill property need form');
   String get chatLinkBookViewing =>
       t('กรอกแบบฟอร์มนัดดู', 'Fill viewing request form');
+  String get chatLinkViewingLocation =>
+      t('เปิดพิกัดจุดนัดชม', 'Open viewing location');
+  String get chatLinkViewingLocationOpenFailed =>
+      t('เปิดแผนที่ไม่สำเร็จ', 'Could not open map');
+  String get chatLinkViewingAppointment =>
+      t('บันทึกการนัดชม', 'Viewing appointment record');
+  String chatLinkViewingAppointmentNotFound(String id) =>
+      t('ไม่พบบันทึกนัดชม $id', 'Viewing record $id not found');
+  String get chatLinkViewingAppointmentDetailTitle =>
+      t('รายละเอียดนัดชม', 'Viewing appointment details');
+  String get chatLinkViewingAppointmentGuide =>
+      t('เอเจ้นพาดู', 'Guide');
+  String chatLinkTagNotFound(String code) =>
+      t('ไม่พบแท็ก $code', 'Tag $code not found');
+  String chatLinkViewingNotFound(String code) =>
+      t('ไม่พบคำขอ $code', 'Request $code not found');
+  String get chatLinkTagDetailTitle =>
+      t('รายละเอียดแท็กโปรไฟล์', 'Profile tag details');
+  String get chatLinkViewingDetailTitle =>
+      t('รายละเอียดคำขอนัดดู', 'Viewing request details');
+  String get chatLinkTagRole => t('ประเภทแท็ก', 'Tag type');
+  String get chatLinkTagSubject => t('ชื่อในคำขอ', 'Subject name');
+  String get chatLinkTagVersion => t('เวอร์ชัน', 'Version');
+  String get chatLinkTagCreated => t('สร้างเมื่อ', 'Created');
+  String get chatLinkTagSnapshot => t('ข้อมูลในแท็ก', 'Tag snapshot');
+  String get chatLinkViewingListing => t('ทรัพย์', 'Listing');
+  String get chatLinkViewingPlace => t('จุดนัดชม', 'Meeting point');
+  String get chatLinkViewingProject => t('โครงการ', 'Project');
+  String get chatLinkViewingSchedule => t('วันเวลานัด', 'Scheduled');
+  String get chatLinkViewingStatus => t('สถานะ', 'Status');
+  String get chatLinkFieldNickname => t('ชื่อเล่น', 'Nickname');
+  String get chatLinkFieldPhone => t('เบอร์โทร', 'Phone');
+  String get chatLinkFieldOccupants => t('จำนวนผู้เข้าพัก', 'Occupants');
+  String get chatLinkFieldOccupation => t('อาชีพ', 'Occupation');
+  String get chatLinkFieldContract => t('สัญญา', 'Contract');
+  String get chatLinkFieldBudget => t('งบประมาณ', 'Budget');
+  String get chatLinkFieldWorkplace => t('ที่ทำงาน', 'Workplace');
+  String get chatLinkFieldDisplayName => t('ชื่อแสดง', 'Display name');
+  String get chatLinkFieldAgency => t('สังกัด', 'Agency');
+  String get chatLinkFieldLicense => t('เลขใบอนุญาต', 'License no.');
+  String get chatLinkTapToOpen => t('แตะเพื่อดูรายละเอียด', 'Tap to view details');
   String get requirementOpenChat =>
       t('เปิดแชทเคสนี้', 'Open case chat');
   String get adminPromoteOfferToListing =>
@@ -2824,6 +3458,69 @@ class AppStrings {
         'ยังไม่มีเคสปิด — กด「ปิดเคส」หลังตอบลูกค้า',
         'No closed cases yet — tap「Close case」after replying',
       );
+  String get adminInboxRoleDirect => t('ลูกค้าตรง', 'Direct customer');
+  String get adminInboxRoleAgent => t('เอเจนต์', 'Agent');
+  String get adminInboxIntentViewing =>
+      t('สนใจนัดดูทรัพย์', 'Interested in viewing');
+  String get adminInboxIntentProperty =>
+      t('สนใจทรัพย์', 'Interested in listing');
+  String get adminInboxIntentDiscovery =>
+      t('ค้นหา/สอบถามทรัพย์', 'Property search');
+  String get adminInboxIntentGeneral =>
+      t('สอบถามข้อมูลทั่วไป', 'General inquiry');
+  String get adminInboxIntentBooking =>
+      t('สนใจจองด่วน', 'Urgent booking');
+  String get adminInboxIntentOffer => t('เสนอทรัพย์', 'Listing offer');
+  String get adminInboxIntentRequirement =>
+      t('ฝากความต้องการ', 'Requirement post');
+  String get adminInboxIntentEscalation =>
+      t('ขอคุยกับทีมงาน', 'Needs staff');
+  String get adminInboxIntentAgentInterest =>
+      t('เอเจนต์สนใจโครงการ', 'Agent project interest');
+  String get adminInboxNoPreview =>
+      t('ยังไม่มีข้อความจากลูกค้า', 'No customer message yet');
+  String get adminInboxPreviewViewingSubmitted => t(
+        'ส่งคำขอนัดดูแล้ว — รอทีมงานตอบ',
+        'Viewing request sent — awaiting reply',
+      );
+  String get adminInboxSortRecentFirst => t('ล่าสุดบน', 'Newest on top');
+  String get adminInboxSortOldestWaiting =>
+      t('รอนานสุดบน', 'Longest wait on top');
+  String get adminInboxFilterAll => t('ทั้งหมด', 'All');
+  String get adminInboxFilterAgent => t('AGENT', 'AGENT');
+  String get adminInboxFilterDirect => t('DIRECT', 'DIRECT');
+  String get adminInboxFilterCoAgent =>
+      t('ลูกค้าโคเอเจนซี่', 'Co-agency customer');
+  String get adminInboxRoleCoAgencyCustomer =>
+      t('ลูกค้าของโคเอเจนซี่', 'Co-agency customer');
+  String get adminInboxFilterViewing => t('นัดดู', 'Viewing');
+  String get adminInboxFilterProperty => t('สนใจทรัพย์', 'Property');
+  String get adminInboxFilterGeneral => t('สอบถามทั่วไป', 'General');
+  String get adminInboxFilterUrgent => t('ด่วน', 'Urgent');
+  String get adminInboxFilterHint =>
+      t('กรองก่อนรับงาน', 'Filter before claim');
+  String adminInboxEmptyFiltered(int n) => t(
+        'ไม่มีแชทตรงตัวกรอง — ทั้งหมด $n เคส',
+        'No chats match filter — $n total',
+      );
+  String get adminChatRenameTitle => t('ตั้งชื่อแชท', 'Rename chat');
+  String get adminChatRenameHint => t(
+        'ชื่อนี้แสดงเฉพาะทีมแอดมิน — ลูกค้าไม่เห็น',
+        'Visible to admins only — customers do not see this',
+      );
+  String get adminChatRenameLabel => t('ชื่อแชท', 'Chat name');
+  String get adminChatRenamePlaceholder =>
+      t('เช่น Mint Patcha — ลูกค้า VIP', 'e.g. Mint Patcha — VIP');
+  String get adminChatRenameClear => t('ล้างชื่อ', 'Clear name');
+  String get adminChatSearchTitle => t('ค้นหาข้อความในแชท', 'Search chat messages');
+  String get adminChatSearchHint =>
+      t('พิมพ์คำค้น (อย่างน้อย 2 ตัวอักษร)', 'Type to search (min 2 chars)');
+  String get adminChatSearchMinChars => t(
+        'พิมพ์อย่างน้อย 2 ตัวอักษร',
+        'Enter at least 2 characters',
+      );
+  String get adminChatSearchEmpty =>
+      t('ไม่พบข้อความที่ตรงกัน', 'No matching messages');
   String get adminClaimWork => t('รับงาน', 'Claim');
   String get adminAssignWork => t('มอบหมาย', 'Assign');
   String get adminAssignTo => t('มอบหมายให้', 'Assign to');
@@ -2833,6 +3530,29 @@ class AppStrings {
         'กด「รับงาน」ก่อนตอบลูกค้า',
         'Tap「Claim」before replying',
       );
+  String get adminReturningCustomerTitle =>
+      t('ลูกค้ารายเดิม', 'Returning customer');
+  String adminReturningCustomerBanner(String adminName, String roomTitle) => t(
+        'ลูกค้ารายนี้กำลังคุยกับ $adminName อยู่ที่「$roomTitle」— แนะนำให้ $adminName รับเคสนี้ต่อ',
+        'This customer is with $adminName in「$roomTitle」— let $adminName continue',
+      );
+  String adminReturningCustomerBannerSelf(String roomTitle) => t(
+        'คุณกำลังดูแลลูกค้ารายนี้ใน「$roomTitle」อยู่ — แนะนำให้รับเคสนี้ต่อเอง',
+        'You are handling this customer in「$roomTitle」— claim this case yourself',
+      );
+  String adminReturningCustomerClaimPrompt(String adminName, String roomTitle) =>
+      t(
+        'ลูกค้ารายนี้มีเคสค้างกับ $adminName ที่「$roomTitle」\nยืนยันรับงานห้องนี้?',
+        'This customer has an open case with $adminName in「$roomTitle」\nClaim this room anyway?',
+      );
+  String adminReturningCustomerClaimPromptSelf(String roomTitle) => t(
+        'คุณกำลังดูแลลูกค้ารายนี้ใน「$roomTitle」อยู่\nรับเคสห้องนี้ต่อเลย?',
+        'You are already handling this customer in「$roomTitle」\nClaim this room too?',
+      );
+  String adminReturningCustomerChip(String adminName) =>
+      t('ลูกค้าเดิม · $adminName', 'Returning · $adminName');
+  String get adminReturningCustomerOpenOther =>
+      t('เปิดแชทเดิม', 'Open prior chat');
   String get adminClaimedByOther => t(
         'มีคนรับงานแล้ว — ใช้「มอบหมาย」ถ้าต้องส่งต่อ',
         'Already claimed — use「Assign」to hand off',
@@ -2877,6 +3597,8 @@ class AppStrings {
         'No viewings yet — open a Lead and tap「Coordinate / confirm viewing」',
       );
   String get adminConfirmAppointment => t('ยืนยัน', 'Confirm');
+  String get adminConfirmGuideAppointment =>
+      t('ยืนยันเอเจ้นพาดู', 'Confirm guide');
   String get adminCompleteAppointment => t('เสร็จสิ้น', 'Complete');
   String get adminNeedRole => t(
         'ต้องเป็นผู้ดูแลระบบในฐานข้อมูล\n(ตั้งสิทธิ์ในหน้าจัดการผู้ใช้)',
@@ -2886,12 +3608,1614 @@ class AppStrings {
   String get adminTabOffers => t('ข้อเสนอ', 'Offers');
   String get adminTabLeads => t('เคสลูกค้า', 'Leads');
   String get adminTabAppointments => t('นัดชม', 'Viewings');
+  String get adminNavViewingCalendar => t('ปฏิทินนัดชม', 'Viewing calendar');
+  String get adminCalendarTitle => t('ปฏิทินนัดชม', 'Viewing calendar');
+  String get adminCalendarSubtitle => t(
+        'ภาพรวมคำขอนัดดู · วันเวลา · เจ้าหน้าที่พาดู',
+        'Overview of viewing requests · date & time · assigned guide',
+      );
+  String adminCalendarTodayCount(int n) =>
+      t('วันนี้ $n นัด', 'Today: $n viewing${n == 1 ? '' : 's'}');
+  String adminCalendarPendingCount(int n) =>
+      t('รอยืนยัน $n', '$n pending');
+  String adminCalendarWeekCount(int n) =>
+      t('สัปดาห์นี้ $n นัด', 'This week: $n');
+  String adminCalendarUnassignedCount(int n) =>
+      t('ยังไม่ระบุคน $n', '$n unassigned');
+  String get adminCalendarTodaySchedule =>
+      t('ตารางวันนี้', 'Today\'s schedule');
+  String adminCalendarMoreSlots(int n) => t('+$n', '+$n');
+  String adminCalendarDayDetail(String date, int n) => t(
+        'นัดวันที่ $date · $n รายการ',
+        '$date · $n appointment${n == 1 ? '' : 's'}',
+      );
+  String adminCalendarDayOverview(String date) => t(
+        'ภาพรวมวันที่ $date',
+        'Overview · $date',
+      );
+  String adminCalendarDayCaseCount(int n) => t(
+        '$n เคส',
+        '$n case${n == 1 ? '' : 's'}',
+      );
+  String adminCalendarCellApptCount(int n) => t('$n นัด', '$n');
+  String adminCalendarDayConfirmedCount(int n) =>
+      t('ยืนยัน $n', '$n confirmed');
+  String adminCalendarDayPendingCount(int n) =>
+      t('รอ $n', '$n pending');
+  String adminCalendarDayUnassignedCount(int n) =>
+      t('ยังไม่ระบุคน $n', '$n unassigned');
+  String get adminCalendarDayTimelineTitle =>
+      t('ตารางเวลา', 'Timeline');
+  String get adminCalendarAiDraftBadge =>
+      t('ร่าง AI', 'AI draft');
+  String get adminCalendarAiDraftHint => t(
+        'AI สร้างร่างให้แล้ว — แก้ไขได้ทุกฟิลด์ ระบบจะไม่ให้ AI ทับส่วนที่คุณแก้',
+        'AI prepared this draft — edit freely; locked fields won’t be overwritten',
+      );
+  String get adminCalendarConfirmAiDraft =>
+      t('ยืนยันร่าง', 'Confirm draft');
+  String get adminCalendarConfirmAiDraftDone =>
+      t('ยืนยันกิจกรรมแล้ว — sync ปฏิทินภายนอก (ถ้าตั้งค่า)', 'Event confirmed — external sync queued');
+  String get adminCalendarEventSaved =>
+      t('บันทึกกิจกรรมแล้ว', 'Event saved');
+  String get adminCalendarEventEditTitle =>
+      t('แก้ไขกิจกรรม', 'Edit event');
+  String get adminCalendarEventTitleLabel =>
+      t('หัวข้อ', 'Title');
+  String get adminCalendarEventLocationLabel =>
+      t('สถานที่', 'Location');
+  String get adminCalendarEventDescriptionLabel =>
+      t('รายละเอียด / เช็กลิสต์ลูกค้า', 'Details / client checklist');
+  String get adminCalendarEventTimeLabel =>
+      t('เวลา', 'Time');
+  String get adminCalendarRefreshAi =>
+      t('รีเฟรช AI', 'Refresh AI');
+  String get adminCalendarVersionConflict => t(
+        'มีคนแก้ไขไปแล้ว — โหลดใหม่แล้วลองอีกครั้ง',
+        'Someone else edited this — reload and try again',
+      );
+  String adminCalendarHumanLockedCount(int n) => t(
+        'มนุษย์แก้แล้ว $n ฟิลด์ (AI จะไม่ทับ)',
+        '$n human-locked fields (AI won’t overwrite)',
+      );
+  String get adminCareGrantTitle =>
+      t('มอบสิทธิ์ดูแลทรัพย์', 'Grant property care access');
+  String get adminCareGrantHint => t(
+        'มอบให้คนดูแลในแอป — ไม่จำเป็นต้องเป็นเจ้าของกฎหมาย',
+        'Assign in-app caretaker — not necessarily legal owner',
+      );
+  String get adminCareCurrentList =>
+      t('ผู้ดูแลปัจจุบัน', 'Current caretakers');
+  String get adminCareUserIdLabel =>
+      t('รหัสผู้ใช้ในแอป (UUID)', 'App user ID (UUID)');
+  String get adminCareUserIdHint => t(
+        'เจ้าของ/โคเอ/ลูกค้าแจ้งหลังสมัคร — วางจากโปรไฟล์',
+        'Paste from profile after signup',
+      );
+  String get adminCareRoleLabel => t('บทบาทดูแล', 'Care role');
+  String get adminCareStatusLabel => t('สถานะสิทธิ์', 'Access status');
+  String get adminCarePrimaryToggle =>
+      t('ตั้งเป็นผู้ดูแลหลัก', 'Set as primary caretaker');
+  String get adminCarePrimaryHint => t(
+        'ผู้ดูแลหลักรับแจ้งเตือนและลำดับงานก่อน',
+        'Primary caretaker gets alerts and priority routing',
+      );
+  String get adminCareNotesLabel => t('หมายเหตุ', 'Notes');
+  String get adminCareGrantButton =>
+      t('มอบสิทธิ์ดูแล', 'Grant care access');
+  String get adminCareGrantDone =>
+      t('มอบสิทธิ์ดูแลแล้ว', 'Care access granted');
+  String get adminOwnerDataStatusComplete =>
+      t('เจ้าของกรอกข้อมูลครบแล้ว', 'Owner data complete');
+  String get adminOwnerDataStatusPending =>
+      t('รอเจ้าของกรอกข้อมูล', 'Awaiting owner data');
+  String adminOwnerDataOccupancyLine(String status) => t(
+        'สถานะทรัพย์จากเจ้าของ: $status',
+        'Owner occupancy: $status',
+      );
+  String adminOwnerDataDescriptionPreview(String text) {
+    final preview = text.length > 120 ? '${text.substring(0, 120)}…' : text;
+    return t('รายละเอียดจากเจ้าของ: $preview', 'Owner description: $preview');
+  }
+
+  String get adminCareOpenGrantSheet =>
+      t('มอบสิทธิ์ดูแลทรัพย์', 'Grant property care');
+  String get adminCareRevokeButton =>
+      t('ถอนสิทธิ์', 'Revoke access');
+  String get adminCareRevokeDone =>
+      t('ถอนสิทธิ์ดูแลแล้ว', 'Care access revoked');
+  String get myCaredPropertiesTitle =>
+      t('ทรัพย์ที่ฉันดูแล', 'Properties I manage');
+  String get myCaredPropertiesMenu =>
+      t('ทรัพย์ที่ฉันดูแล', 'My managed properties');
+  String get myCaredPropertiesEmpty => t(
+        'ยังไม่มีทรัพย์ที่มอบให้คุณ\nแอดมินมอบสิทธิ์หลังทราบ UUID ของคุณ',
+        'No properties assigned yet\nAdmin grants access after you sign up',
+      );
+  String get careAcceptButton =>
+      t('รับสิทธิ์ดูแลทรัพย์', 'Accept care access');
+  String get careAcceptDone =>
+      t('รับสิทธิ์แล้ว — ดูทรัพย์ในรายการนี้', 'Access accepted');
+  String get careOwnerDataPending =>
+      t('รอเติมข้อมูล', 'Data pending');
+  String get careCompleteDataButton =>
+      t('เติมข้อมูลทรัพย์ให้ครบ', 'Complete property data');
+  String get careManageListingsSection =>
+      t('ประกาศในทรัพย์นี้ — จัดการได้', 'Listings you can manage');
+  String careMineDataHint(int n) => t(
+        'มี $n ประกาศรอเติมข้อมูล — ขยายการ์ดด้านล่างเพื่อบันทึก',
+        '$n listing(s) need data — expand a card below to mark complete',
+      );
+  String get careManageListingsEmpty => t(
+        'ยังไม่มีประกาศเชื่อมกับทะเบียนนี้',
+        'No listings linked to this registry yet',
+      );
+  String get careCompleteListingButton =>
+      t('กรอกข้อมูลให้ครบ', 'Complete required data');
+  String careCompleteListingDone(String code) => t(
+        'บันทึกข้อมูลประกาศ $code ครบแล้ว',
+        'Listing $code marked complete',
+      );
+  String get careCompleteDataTitle =>
+      t('เติมข้อมูลทรัพย์', 'Complete property info');
+  String careCompleteDataIntro(String code, int pending) => t(
+        'ทะเบียน $code — มี $pending ประกาศที่รอข้อมูลจากคุณ\n'
+        'สถานะเผยแพร่บนหน้าบ้านไม่เปลี่ยน',
+        'Registry $code — $pending listing(s) need your data\n'
+        'Published status on the app stays the same',
+      );
+  String get careCompleteDataNote => t(
+        'กรอกรายละเอียด ราคา สถานะทรัพย์ และการนัดดูให้ครบ — จึงจะบันทึกได้',
+        'Complete description, price, occupancy, and viewing access before saving',
+      );
+  String get careOwnerDataFormTitle =>
+      t('เติมข้อมูลประกาศให้ครบ', 'Complete listing details');
+  String get careOwnerDataFormEditTitle =>
+      t('แก้ไขข้อมูลประกาศ', 'Edit listing details');
+  String get careOwnerDataFormSaveEdit =>
+      t('บันทึกการแก้ไข', 'Save changes');
+  String get careOwnerDataStepOverview =>
+      t('ภาพรวม', 'Overview');
+  String get careOwnerDataStepDetails =>
+      t('รายละเอียด', 'Details');
+  String get careOwnerDataStepConfirm =>
+      t('ราคา', 'Price');
+  String get careOwnerDataStepPreview =>
+      t('พรีวิว', 'Preview');
+  String get careOwnerDataPreviewTitle =>
+      t('พรีวิวประกาศ', 'Listing preview');
+  String get careOwnerDataPreviewIntro => t(
+        'ตรวจสอบก่อนบันทึก — ตัวอย่างตามข้อมูลที่กรอก (หัวข้อ/รายละเอียด/ราคา)',
+        'Review before saving — preview reflects your title, details, and price',
+      );
+  String get careOwnerDataPreviewListingTypeLabel =>
+      t('ประเภทประกาศ', 'Listing type');
+  String get careOwnerDataPreviewPublicTab =>
+      t('หน้าบ้าน (ลูกค้า)', 'Public view');
+  String get careOwnerDataPreviewOwnerTab =>
+      t('ฉบับเจ้าของ', 'Owner copy');
+  String get careOwnerDataPreviewPublicBanner => t(
+        'ตัวอย่างหน้าบ้าน',
+        'Public preview',
+      );
+  String get careOwnerDataPreviewPublicNote => t(
+        'บันทึกแล้วลูกค้าเห็นตามนี้ — ยกเว้นหัวข้อที่เปลี่ยน ต้องรอทีมตรวจก่อนเผยแพร่',
+        'Customers see this after save — except a changed title, which needs team review',
+      );
+  String get careOwnerDataPreviewOwnerBanner => t(
+        'ข้อมูลที่จะบันทึก',
+        'Data to be saved',
+      );
+  String get careOwnerDataPreviewOwnerNote => t(
+        'เบอร์/ไลน์ในข้อความจะไม่แสดงหน้าบ้านอัตโนมัติ',
+        'Phone/LINE in text will not appear on the public page automatically',
+      );
+  String get createListingPreviewAction =>
+      t('พรีวิวหน้าบ้าน', 'Preview listing');
+  String get careOwnerDataAdminBlockTitle =>
+      t('ข้อมูลเริ่มต้นจากทีม', 'Starting point from team');
+  String get careOwnerDataAdminBlockHint => t(
+        'อ้างอิงหัวข้อ/รูป/ทำเลที่ทีมเตรียมไว้ — ขั้นถัดไปแก้ไขได้ทุกฟิลด์เหมือนลงประกาศใหม่',
+        'Reference title, photos, and location from the team — next steps let you edit everything like a new listing',
+      );
+  String get careOwnerDataOverviewHint => t(
+        'กด「ถัดไป」เพื่อแก้ไขประเภทประกาศ รายละเอียด ราคา และสถานะทรัพย์ได้ตามต้องการ',
+        'Tap Next to edit listing type, details, price, and occupancy like a new listing',
+      );
+  String get careOwnerDataOwnerBlockTitle =>
+      t('ข้อมูลประกาศ', 'Listing details');
+  String get careOwnerDataTitleLabel =>
+      t('หัวข้อประกาศ *', 'Listing title *');
+  String get careOwnerDataTitleOwnerLabel => careOwnerDataTitleLabel;
+  String get careOwnerDataTitleReviewWarning => t(
+        'เปลี่ยนหัวข้อแล้ว — หลังบันทึกระบบจะส่งให้ทีมตรวจสอบอีกครั้งก่อนเผยแพร่',
+        'Title changed — after saving, the listing will be sent for team review before going live',
+      );
+  String get careOwnerDataTitleReviewSaved => t(
+        'บันทึกแล้ว — ส่งหัวข้อใหม่ให้ทีมตรวจสอบ (สถานะรอตรวจ)',
+        'Saved — new title sent for team review (pending)',
+      );
+  String get careOwnerDataTitleTooShort => t(
+        'หัวข้อสั้นเกินไป — อย่างน้อย 5 ตัวอักษร',
+        'Title too short — at least 5 characters',
+      );
+  String get careOwnerDataSpecsRequired => t(
+        'กรุณาระบุห้องนอน ห้องน้ำ และพื้นที่ (ตร.ม.)',
+        'Enter bedrooms, bathrooms, and area (sqm)',
+      );
+  String get careOwnerDataPetTypesRequired => t(
+        'เลือกประเภทสัตว์ที่อนุญาต หรือปิดการเลี้ยงสัตว์',
+        'Select allowed pet types or disable pets',
+      );
+  String get careOwnerDataContactLeakWarning => t(
+        'พบเบอร์หรือไลน์ในข้อความ — ระบบจะเก็บไว้หลังบ้านเท่านั้น ไม่แสดงหน้าบ้านจนกว่าทีมจะ sync',
+        'Phone or LINE detected — stored in back-office only until the team syncs public copy',
+      );
+  String get careOwnerDataEditIntro => t(
+        'แก้ไขได้ทุกส่วน — ข้อมูลเริ่มจากที่ทีมเตรียมไว้ · เปลี่ยนหัวข้อแล้วต้องรอทีมตรวจอีกครั้ง',
+        'Edit anything — pre-filled from the team · changing the title sends it for review again',
+      );
+  String get careOwnerDataFirstIntro => t(
+        'กรอก/ปรับข้อมูลให้ครบเหมือนลงประกาศใหม่ — เปลี่ยนหัวข้อแล้วต้องรอทีมตรวจ',
+        'Complete or adjust all fields like a new listing — title changes need team review',
+      );
+  String get careOwnerDataPromoPriceLabel =>
+      t('ราคาโปรโมชั่น (ถ้ามี)', 'Promo price (optional)');
+  String get createListingRentPriceSection => t('ราคาเช่า', 'Rent price');
+  String get createListingSalePriceSection => t('ราคาขาย', 'Sale price');
+  String get createListingFullPriceLabel =>
+      t('ราคาเต็ม', 'Full price');
+  String get createListingPromoPriceLabel =>
+      t('ราคาลดโปรโมชั่น *', 'Promo price *');
+  String get createListingPromoToggle =>
+      t('ตั้งราคาโปรโมชั่น', 'Set promotion price');
+  String get createListingPromoMustBeLower =>
+      t('ราคาโปรโมชั่นต้องต่ำกว่าราคาเต็ม', 'Promo must be below full price');
+  String get bahtUnit => t('บาท', 'THB');
+  String get careOwnerDataFloorLabel => t('ชั้น', 'Floor');
+  String careOwnerDataFormIntro(String code) => t(
+        'ประกาศ $code — กรอกข้อมูลที่จำเป็นก่อนเผยแพร่เต็มรูปแบบ',
+        'Listing $code — required fields before full publish',
+      );
+  String get careOwnerDataFormSubmit =>
+      t('บันทึกข้อมูลครบแล้ว', 'Save completed data');
+  String get careOwnerDataValidationError => t(
+        'กรอกหัวข้อ รายละเอียด สเปก ราคา สถานะทรัพย์ และการนัดดูให้ครบ',
+        'Complete title, description, specs, price, occupancy, and viewing access',
+      );
+  String get careOwnerDataRequiredBeforeBump => t(
+        'กรอกข้อมูลให้ครบก่อนดันประกาศ',
+        'Complete data before bumping',
+      );
+  String get careOwnerDataRequiredHint => t(
+        'ต้องกรอกรายละเอียด ราคา และสถานะทรัพย์ก่อน — จึงจะดันประกาศได้',
+        'Fill description, price, and occupancy first — then you can bump',
+      );
+  String careOwnerDataDescCounter(int n) => t(
+        'อย่างน้อย 20 ตัวอักษร ($n/20)',
+        'At least 20 characters ($n/20)',
+      );
+  String get careOwnerDataDescTooShort => t(
+        'รายละเอียดสั้นเกินไป — กรุณากรอกอย่างน้อย 20 ตัวอักษร',
+        'Description too short — enter at least 20 characters',
+      );
+  String get careOwnerDataPriceRequired =>
+      t('กรุณาระบุราคา', 'Enter a price');
+  String get careOwnerDataOccupancyDateRequired => t(
+        'กรุณาระบุวันที่ว่าง/พร้อมเข้าอยู่ตามสถานะทรัพย์',
+        'Set available date for the selected occupancy status',
+      );
+  String get careOwnerDataInventoryMissing => t(
+        'ไม่พบทะเบียนทรัพย์ — ลองรีเฟรชหน้า',
+        'Registry not found — try refreshing',
+      );
+  String get careOwnerDataListingRefMissing => t(
+        'ไม่พบรหัสประกาศ — ปิดแล้วเปิดฟอร์มใหม่ หรือรีเฟรชหน้า',
+        'Listing reference missing — reopen the form or refresh',
+      );
+  String get careCompleteDataConfirm =>
+      t('บันทึกว่าเติมข้อมูลครบแล้ว', 'Mark all as complete');
+  String get careCompleteDataAllDone => t(
+        'ครบทุกประกาศแล้ว — ใช้ปุ่มด้านล่างการ์ดเพื่อดัน/ปิดประกาศ',
+        'All listings complete — use card actions to bump or close',
+      );
+  String careCompleteDataDone(int n) => t(
+        'บันทึกครบแล้ว $n ประกาศ',
+        'Marked $n listing(s) complete',
+      );
+  String careBannerClaim(int n) => t(
+        'มีทรัพย์ $n รายการรอรับสิทธิ์ — แตะเพื่อรับ',
+        '$n propert(ies) waiting — tap to accept',
+      );
+  String careBannerData(int n) => t(
+        'มีทรัพย์ $n รายการรอเติมข้อมูล — แตะเพื่อเปิด',
+        '$n propert(ies) need data — tap to open',
+      );
+  String get careMineTabTitle => t(
+        'ทรัพย์ที่แอดมินมอบให้ดูแล',
+        'Properties assigned by admin',
+      );
+  String careMineTabBody(int claim, int data) => t(
+        claim > 0
+            ? 'มี $claim ทรัพย์รอคุณกดรับสิทธิ์'
+                '${data > 0 ? ' · อีก $data รายการรอเติมข้อมูล' : ''}\n'
+                'ไม่ใช่ประกาศที่คุณลงเอง — อยู่ในเมนู「ทรัพย์ที่ฉันดูแล」'
+            : 'มี $data ทรัพย์รอเติมข้อมูลให้ครบ\n'
+                'สถานะเผยแพร่บนหน้าบ้านไม่เปลี่ยน',
+        claim > 0
+            ? '$claim propert(ies) waiting for you to accept'
+                '${data > 0 ? ' · $data need data' : ''}\n'
+                'Not your self-posted listings — see「Properties I manage」'
+            : '$data propert(ies) need your data\n'
+                'Public listing status stays the same',
+      );
+  String get careMineTabOpenButton =>
+      t('เปิดทรัพย์ที่ฉันดูแล', 'Open managed properties');
+  String get careNotifTitle =>
+      t('มอบสิทธิ์ดูแลทรัพย์แล้ว', 'Property care access granted');
+  String careNotifBody(String code) => t(
+        'ทะเบียน $code รอคุณกดรับ — เปิดหน้าของฉันเพื่อดูทรัพย์',
+        'Registry $code awaits your acceptance — open My tab to view',
+      );
+  String careNotifToast(String code) => t(
+        'ได้รับมอบสิทธิ์ดูแล $code แล้ว',
+        'You received care access for $code',
+      );
+  String get careNotifCta =>
+      t('เปิดหน้าของฉัน', 'Open My tab');
+  String get careMineSectionTitle =>
+      t('ทรัพย์ที่มอบให้ดูแล', 'Assigned properties');
+  String get careAssignedListingTag =>
+      t('ทรัพย์ที่ได้รับมอบดูแล', 'Care-assigned property');
+  String adminCalendarAiDraftCount(int n) =>
+      t('ร่าง AI $n', '$n AI drafts');
+  String get adminCalendarDayListTitle =>
+      t('รายการนัดทั้งหมด', 'All appointments');
+  String adminCalendarCompactLine({
+    required String guide,
+    required String place,
+  }) =>
+      t(
+        '$guide พาลูกค้านัดชม $place',
+        '$guide · customer viewing · $place',
+      );
+  String get adminCalendarGuideUnset =>
+      t('ยังไม่ระบุคนพา', 'Guide not assigned');
+  String get adminCalendarRowGuide =>
+      t('เอเจ้นที่ได้รับมอบหมาย', 'Assigned guide');
+  String get adminCalendarRowDirectChannel =>
+      t('ลูกค้าตรง', 'Direct customer');
+  String get adminCalendarRowCoAgencyChannel =>
+      t('ลูกค้าตรง, โคเอเจนซี่', 'Direct / co-agency');
+  String get adminCalendarRowProject =>
+      t('สนใจนัดดูโครงการ', 'Viewing project');
+  String get adminCalendarRowViewingProfile =>
+      t('โปรไฟล์สำหรับนัดดู', 'Viewing profile');
+  String get adminCalendarRowCoAgencyClient =>
+      t('โปรไฟล์ของลูกค้าโคเอเจนซี่', 'Co-agency client profile');
+  String get adminCalendarRowContactAdmin =>
+      t('แอดมินที่เป็นคนติดต่อ', 'Contact admin');
+  String get adminCalendarContactAdminUnset =>
+      t('ยังไม่มีคนรับแชท', 'Chat not claimed yet');
+  String get adminCalendarBtnViewChat =>
+      t('ดูแชท', 'View chat');
+  String get adminCalendarBtnOwnerChat =>
+      t('แชทเจ้าของ', 'Owner chat');
+  String get adminCalendarBtnAdminOwnerChat =>
+      t('แอดมินคุยกับเจ้าของ', 'Admin–owner chat');
+  String adminBackToPage(String page) =>
+      t('กลับ$page', 'Back to $page');
+  String get adminCalendarTapForDetail =>
+      t('แตะรายการเพื่อดูรายละเอียด', 'Tap a row for full details');
+  String get adminCalendarDetailTitle =>
+      t('รายละเอียดนัดชม', 'Viewing details');
+  String get adminCalendarDayEmpty =>
+      t('ไม่มีนัดในวันนี้', 'No viewings on this day');
+  String adminCalendarStatusLabel(String status) {
+    switch (status) {
+      case 'confirmed':
+        return t('ยืนยันแล้ว', 'Confirmed');
+      case 'completed':
+        return t('เสร็จสิ้น', 'Completed');
+      case 'cancelled':
+        return t('ยกเลิก', 'Cancelled');
+      default:
+        return t('รอยืนยัน', 'Pending');
+    }
+  }
+
+  String adminCalendarStaffGuide(String name) =>
+      t('เจ้าหน้าที่พาดู: $name', 'Guide: $name');
+  String adminCalendarChatAdminLine(String name) =>
+      t('แอดมินคุย: $name', 'Chat admin: $name');
+  String get adminCalendarChatAdminUnset => t(
+        'แอดมินคุย: ยังไม่มีคนรับแชท',
+        'Chat admin: not claimed yet',
+      );
+  String get adminCompCardIntro => t(
+        'คอมพ์การ์ด = โปรไฟล์ย่อยของทีมงาน แต่ละคนมีแท็ก PR ผูกไว้ '
+        'ส่งให้ลูกค้าในแชทได้ — ลูกค้ากดแท็กเพื่อดูข้อมูลสาธารณะ',
+        'Comp cards are staff sub-profiles with linked PR tags '
+        'you can send in chat — customers tap the tag to view public info',
+      );
+  String adminCompCardListTitle(int n) =>
+      t('คอมพ์การ์ดทีมงาน ($n)', 'Team comp cards ($n)');
+  String get adminCompCardEmpty =>
+      t('ยังไม่มีคอมพ์การ์ด', 'No comp cards yet');
+  String get adminCompCardEditTitle =>
+      t('แก้ไขคอมพ์การ์ด', 'Edit comp card');
+  String adminCompCardEditHint(String tag) => t(
+        'แท็กที่ผูก: $tag — บันทึกแล้วสร้างเวอร์ชันแท็กใหม่',
+        'Linked tag: $tag — save creates a new tag version',
+      );
+  String get adminCompCardSendTag =>
+      t('ส่งแท็กในแชท', 'Send tag in chat');
+  String adminCompCardSendTagMessage(String name) => t(
+        'ข้อมูลผู้ดูแลจากทีมงาน — $name',
+        'Your contact from our team — $name',
+      );
+  String get adminCompCardSendTagDone =>
+      t('ส่งแท็กในแชทแล้ว', 'Tag sent in chat');
+  String get adminCompCardTab => t('คอมพ์การ์ด', 'Comp cards');
+  String get adminCalendarAssignStaff => t('ระบุคนพา', 'Assign guide');
+  String adminCalendarStaffAssigned(String name) =>
+      t('ระบุคนพาแล้ว: $name', 'Guide assigned: $name');
+  String get adminCalendarStaffNotifySent => t(
+        'แจ้งลูกค้าในแชทแล้ว — ยืนยันนัดพร้อมชื่อเอเจ้นต์',
+        'Customer notified in chat with guide details',
+      );
+  String get adminCalendarStaffNotifyMissingChat => t(
+        'ระบุคนพาแล้ว — ยังหาแชทลูกค้าไม่เจอ',
+        'Guide saved — customer chat thread not found',
+      );
+  String get adminOpenCustomerChat => t('เปิดแชทลูกค้า', 'Open customer chat');
+  String get adminCalendarAssignConfirmed => t(
+        'มอบหมายเอเจ้นและยืนยันนัดแล้ว — แจ้งลูกค้าในแชทแล้ว',
+        'Guide assigned & viewing confirmed — customer notified',
+      );
+  String get adminCalendarStaffAssignNeedConfirm => t(
+        'ระบุคนพาแล้ว — กด「ยืนยันนัด」เพื่อแจ้งลูกค้าในแชท',
+        'Guide saved — tap Confirm viewing to notify customer in chat',
+      );
+  String get adminCalendarConfirmNeedStaff => t(
+        'กรุณาระบุคนพาก่อนยืนยันนัด',
+        'Assign a guide before confirming the viewing',
+      );
+  String adminCalendarAlertOverview({
+    required int unassigned,
+    required int awaitingConfirm,
+    required int newCases,
+    required int postViewing,
+  }) {
+    final parts = <String>[];
+    if (unassigned > 0) {
+      parts.add(t('$unassigned นัดยังไม่ระบุคนพา', '$unassigned need guide'));
+    }
+    if (awaitingConfirm > 0) {
+      parts.add(t('$awaitingConfirm นัดรอยืนยัน', '$awaitingConfirm awaiting confirm'));
+    }
+    if (newCases > 0) {
+      parts.add(t('$newCases เคสใหม่', '$newCases new'));
+    }
+    if (postViewing > 0) {
+      parts.add(t('$postViewing อัปเดทหลังนัดดู', '$postViewing post-viewing'));
+    }
+    final body = parts.join(' · ');
+    return t('ปฏิทินนัดชม: $body', 'Viewing calendar: $body');
+  }
+  String get adminCalendarAlertBannerTitle =>
+      t('งานปฏิทินที่ต้องดูแล', 'Calendar tasks');
+  String adminViewingGuideAssignedCustomerNotice({
+    required String dateLine,
+    required String timeSlot,
+    required String place,
+    required String guideName,
+    required String guidePhone,
+  }) =>
+      t(
+        '✅ ยืนยันนัดชมทรัพย์แล้ว\n'
+        '📅 $dateLine · $timeSlot\n'
+        '📍 $place\n'
+        '👤 เอเจ้นต์พาชมทรัพย์: $guideName\n'
+        '📞 ติดต่อ $guidePhone (วันนัดชม)\n'
+        'หากต้องการเลื่อนนัด กรุณาแจ้งล่วงหน้าอย่างน้อย 3 ชั่วโมง\n'
+        '\n'
+        '⏰ ก่อนถึงเวลานัด 1 ชั่วโมง ระบบจะส่งการแจ้งเตือนให้กดยืนยันนัดครั้งสุดท้าย\n'
+        'กรุณากดยืนยันนัดเมื่อได้รับแจ้งเตือน',
+        '✅ Your viewing is confirmed\n'
+        '📅 $dateLine · $timeSlot\n'
+        '📍 $place\n'
+        '👤 Viewing guide: $guideName\n'
+        '📞 $guidePhone (on viewing day)\n'
+        'To reschedule, please notify us at least 3 hours in advance.\n'
+        '\n'
+        '⏰ 1 hour before your slot we will send a final confirmation reminder.\n'
+        'Please confirm when notified.',
+      );
+  String viewingFinalConfirmReminderPush({
+    required String time,
+    required String place,
+  }) =>
+      t(
+        'ใกล้ถึงเวลานัดชมแล้ว ($time) — กรุณากดยืนยันนัดครั้งสุดท้ายที่ $place',
+        'Viewing soon ($time) — please confirm your appointment at $place',
+      );
+  String viewingFinalConfirmReminderChatMessage({
+    required String time,
+    required String place,
+  }) =>
+      t(
+        '🔔 ใกล้ถึงเวลานัดชมแล้ว ($time)\n'
+        '📍 $place\n'
+        'กรุณากด「ยืนยันนัด」ครั้งสุดท้าย เพื่อให้เอเจ้นท์ RealXtate ไปแสตนบายรอเปิดทรัพย์ให้\n'
+        '(แจ้งเตือนนี้ส่งก่อนเวลานัด 1 ชั่วโมง)',
+        '🔔 Your viewing is coming up ($time)\n'
+        '📍 $place\n'
+        'Please tap「Confirm appointment」so your RealXtate guide can be on-site to open the property.\n'
+        '(Sent 1 hour before your scheduled time)',
+      );
+  String get adminCalendarClearStaff => t('ล้างการระบุ', 'Clear assignment');
+  String get adminCalendarNoShowBadge =>
+      t('ลูกค้าไม่มาตามนัด', 'Customer no-show');
+  String get adminCalendarOpenFromDashboard =>
+      t('เปิดปฏิทินนัดชม', 'Open viewing calendar');
+  String adminCalendarDashboardHint(int pending) => pending > 0
+      ? t(
+          'มีคำขอนัด $pending รายการ — ดูวันเวลาและเจ้าหน้าที่พาดู',
+          '$pending viewing request${pending == 1 ? '' : 's'} — see schedule & guides',
+        )
+      : t(
+          'ดูภาพรวมนัดชมทั้งเดือน · วันนี้กี่โมง · ใครพาดู',
+          'Monthly overview · today\'s slots · assigned guides',
+        );
+  String get adminCalendarListMapLink =>
+      t('รายการนัด + แผนที่', 'List & map view');
+
+  String get adminViewingReportTitle =>
+      t('บันทึกผลหลังพาชม', 'Post-viewing report');
+  String get adminViewingReportIntro => t(
+        'ผู้พาชมต้องบันทึกทุกครั้งหลังพาดู — โน้ตนี้เห็นเฉพาะทีมแอดมิน',
+        'Guides must log after every viewing — admin-only notes',
+      );
+  String get adminViewingFollowUpContinue =>
+      t('ติดตามต่อ', 'Follow up');
+  String get adminViewingFollowUpClose =>
+      t('ไม่ต้องติดตามแล้ว', 'Close follow-up');
+  String get adminViewingFollowUpIntentConsider =>
+      t('พิจารณาทรัพย์นี้ก่อน', 'More time to decide');
+  String get adminViewingFollowUpIntentFindMore =>
+      t('ช่วยหาทรัพย์เพิ่ม', 'Find more options');
+  String get adminViewingFollowUpIntentBoth =>
+      t('พิจารณา + หาตัวเลือกเพิ่ม', 'Decide + more options');
+  String get adminViewingReportOutcomeLabel =>
+      t('ผลการพาชม', 'Viewing outcome');
+  String get adminViewingReportOutcomeHint => t(
+        'สรุปว่าพาชมเป็นอย่างไร — เข้าห้องได้ไหม ลูกค้าเห็นทรัพย์ครบไหม',
+        'How did the viewing go — access, full tour, etc.',
+      );
+  String get adminViewingReportFeedbackLabel =>
+      t('ฟีดแบ็กลูกค้า', 'Customer feedback');
+  String get adminViewingReportFeedbackHint => t(
+        'ลูกค้าพูดว่าอะไร — ชอบ/ไม่ชอบจุดไหน ข้อกังวล',
+        'What the customer said — likes, concerns',
+      );
+  String get adminViewingReportWantsLabel =>
+      t('ลูกค้าต้องการอะไรต่อ', 'What they want next');
+  String get adminViewingReportWantsHint => t(
+        'เช่น เปรียบเทียบกับทรัพย์อื่น ลดราคา ห้องใหญ่ขึ้น ย้ายเข้าเมื่อไหร่',
+        'e.g. compare units, lower price, larger unit, move-in date',
+      );
+  String get adminViewingReportNotesLabel =>
+      t('หมายเหตุทีมเพิ่มเติม', 'Extra team notes');
+  String get adminViewingReportNotesHint => t(
+        'รายละเอียดอื่นที่ทีมควรรู้ (ไม่ส่งลูกค้า)',
+        'Other internal details (not sent to customer)',
+      );
+  String get adminViewingReportNextStepLabel =>
+      t('ขั้นตอนถัดไป', 'Next step');
+  String get adminViewingReportNeedOutcome =>
+      t('กรุณาระบุผลการพาชม', 'Please describe the viewing outcome');
+  String get adminViewingReportNeedFeedback =>
+      t('กรุณาระบุฟีดแบ็กลูกค้า', 'Please enter customer feedback');
+  String get adminViewingReportNeedWants =>
+      t('กรุณาระบุว่าลูกค้าต้องการอะไรต่อ', 'Please enter what they want next');
+  String get adminViewingReportNeedNoShowNote => t(
+        'กรณีลูกค้าไม่มา — กรุณาระบุหมายเหตุ',
+        'Customer no-show — please add a note',
+      );
+  String get adminViewingReportNoShowNotesHint => t(
+        'เช่น รอ 30 นาที / โทรไม่รับ / แจ้งเลื่อนแล้วไม่มา',
+        'e.g. waited 30 min / no answer / rescheduled but absent',
+      );
+  String viewingReportNoShowPreset(bool isEn) =>
+      isEn ? 'Customer no-show' : 'ลูกค้าไม่มา';
+  String get adminViewingReportChatHintContinue => t(
+        'ถ้าเลือก「ติดตามต่อ」ระบบจะส่งข้อความยืนยันในแชทลูกค้า (ไม่รวมรายละเอียดภายใน)',
+        'If you follow up, a short confirmation is posted to the customer chat (no internal details)',
+      );
+  String get adminViewingReportAdminOnlyHint => t(
+        'บันทึกภายในเท่านั้น — ไม่ส่งข้อความหาลูกค้า',
+        'Internal only — no message to the customer',
+      );
+  String get adminViewingReportSubmitContinue =>
+      t('บันทึกและแจ้งลูกค้าในแชท', 'Save & notify customer');
+  String get adminViewingReportSubmitClose =>
+      t('บันทึก (โน้ตแอดมิน)', 'Save (admin note)');
+  String get adminViewingReportSavedContinue => t(
+        'บันทึกแล้ว — แจ้งลูกค้าในแชทแล้ว',
+        'Saved — customer notified in chat',
+      );
+  String get adminViewingReportSavedClose => t(
+        'บันทึกโน้ตแอดมินแล้ว',
+        'Admin note saved',
+      );
+  String get adminViewingFollowUpAlreadyRecorded => t(
+        'บันทึกผลหลังพาชมแล้ว',
+        'Post-viewing report already recorded',
+      );
+  String get adminViewingFollowUpBtn =>
+      t('บันทึกผลหลังพาชม', 'Log post-viewing');
+  String get adminViewingReportViewDetail =>
+      t('ดูบันทึกผลพาชม', 'View post-viewing log');
+  String get adminViewingReportSavedChatPending => t(
+        'บันทึกแล้ว — ยังหาแชทลูกค้าไม่เจอ เปิดจาก Lead หรือแชทคอนโซล',
+        'Saved — customer chat not found; open from Lead or chat console',
+      );
+  List<String> get adminViewingReportOutcomePresets => isEnglish
+      ? const [
+          'Viewed successfully',
+          'Partial tour only',
+          'Customer no-show',
+          'Owner/access issue',
+        ]
+      : const [
+          'พาชมครบ',
+          'ดูได้บางส่วน',
+          'ลูกค้าไม่มา',
+          'ปัญหาเข้าห้อง/เจ้าของ',
+        ];
+
+  String adminViewingFollowUpCustomerAck(ViewingFollowUpIntent intent) {
+    return switch (intent) {
+      ViewingFollowUpIntent.consider => t(
+            'ได้ค่ะ ขอพิจารณาทรัพย์นี้เพิ่มเติมนะคะ รอทีมช่วยติดตามด้วยค่ะ',
+            'Thanks — I\'d like more time to decide on this unit.',
+          ),
+      ViewingFollowUpIntent.findMore => t(
+            'อยากให้ช่วยหาตัวเลือกทรัพย์เพิ่มด้วยค่ะ ขอบคุณค่ะ',
+            'Please help me find more options too, thanks.',
+          ),
+      ViewingFollowUpIntent.both => t(
+            'ขอพิจารณาทรัพย์นี้และอยากดูตัวเลือกอื่นเพิ่มด้วยค่ะ',
+            'I\'d like to decide on this one and see more options.',
+          ),
+    };
+  }
+
+  String get adminViewingReportChatNotFound => t(
+        'ไม่พบแชทลูกค้าที่ผูกกับเคสนี้ — เปิดแชทจากหน้า Lead หรือให้ลูกค้าส่งคำขอนัดดูก่อน',
+        'No customer chat linked to this case — open from Lead or ask customer to request a viewing first',
+      );
+
+  /// โน้ตภายในแอดมินในแชท — ลูกค้าไม่เห็น
+  String adminViewingReportChatInternalNote({
+    required String outcome,
+    required String feedback,
+    required String wants,
+    String? teamNotes,
+    String? timeSlot,
+    DateTime? viewedDate,
+  }) {
+    final y = viewedDate != null
+        ? (isEnglish ? viewedDate.year : viewedDate.year + 543)
+        : null;
+    final when = viewedDate != null && timeSlot != null && timeSlot.isNotEmpty
+        ? '${viewedDate.day}/${viewedDate.month}/$y · $timeSlot'
+        : (timeSlot ?? '');
+    final lines = <String>[
+      t('[บันทึกผลหลังพาชม — ภายใน]', '[Post-viewing — internal]'),
+      if (when.isNotEmpty) t('เมื่อ: $when', 'When: $when'),
+      t('ผล: $outcome', 'Outcome: $outcome'),
+      t('ฟีดแบ็ก: $feedback', 'Feedback: $feedback'),
+      t('ต้องการ: $wants', 'Wants: $wants'),
+      if (teamNotes != null && teamNotes.trim().isNotEmpty)
+        t('โน้ตทีม: ${teamNotes.trim()}', 'Team notes: ${teamNotes.trim()}'),
+    ];
+    return lines.join('\n');
+  }
+
+  String adminViewingFollowUpChatContinue({
+    required ViewingFollowUpIntent intent,
+    String? listingCode,
+  }) {
+    final code = listingCode != null && listingCode.isNotEmpty
+        ? ' ($listingCode)'
+        : '';
+    return switch (intent) {
+      ViewingFollowUpIntent.consider => t(
+            'ผลการนัดดูวันนี้$code — ทีมรับทราบว่าคุณต้องการพิจารณาทรัพย์นี้เพิ่มเติม เราจะติดตามและแจ้งอัปเดตในแชทนี้ครับ',
+            'Post-viewing result today$code — we noted you\'d like more time to decide. We\'ll follow up here.',
+          ),
+      ViewingFollowUpIntent.findMore => t(
+            'ผลการนัดดูวันนี้$code — ทีมรับทราบว่าคุณต้องการตัวเลือกทรัพย์เพิ่มเติม เราจะคัดเลือกที่เหมาะและส่งให้ต่อไปครับ',
+            'Post-viewing result today$code — we\'ll find more matching options and share them here.',
+          ),
+      ViewingFollowUpIntent.both => t(
+            'ผลการนัดดูวันนี้$code — ทีมรับทราบว่าคุณต้องการพิจารณาทรัพย์นี้พร้อมดูตัวเลือกอื่นเพิ่ม เราจะติดตามและแนะนำทรัพย์ที่เหมาะต่อไปครับ',
+            'Post-viewing result today$code — we\'ll help you decide on this unit and share more options.',
+          ),
+    };
+  }
+
+  String adminViewingReportAdminNoteSummary({
+    required String outcome,
+    required String feedback,
+    required String wants,
+    required String decision,
+  }) {
+    final step = decision == 'continue'
+        ? t('ติดตามต่อ', 'Follow up')
+        : t('ไม่ต้องติดตามแล้ว', 'Closed');
+    return t(
+      '[ผลหลังพาชม] $step\n'
+      'ผล: $outcome\n'
+      'ฟีดแบ็ก: $feedback\n'
+      'ต้องการ: $wants',
+      '[Post-viewing] $step\n'
+      'Outcome: $outcome\n'
+      'Feedback: $feedback\n'
+      'Wants: $wants',
+    );
+  }
+
+  String adminViewingFollowUpBadge(String decision) {
+    if (decision == 'continue') {
+      return t('ติดตามต่อ', 'Following up');
+    }
+    return t('ปิดการติดตาม', 'Closed');
+  }
+
+  String get adminViewingHistoryTitle =>
+      t('ประวัติพาชมทรัพย์', 'Viewing history');
+  String get adminViewingHistorySubtitle => t(
+        'เชื่อมเคสนี้และเบอร์ลูกค้าเดียวกัน — วัน เวลา ทรัพย์ ผลพาชม',
+        'Linked to this case and same phone — date, time, property, outcomes',
+      );
+  String adminViewingHistoryCount(int n) =>
+      t('$n ครั้ง', '$n visit${n == 1 ? '' : 's'}');
+  String get adminViewingHistoryEmpty =>
+      t('ยังไม่มีบันทึกผลหลังพาชม', 'No post-viewing reports yet');
+  String adminViewingHistoryGuideLine(String name) =>
+      t('ผู้พาชม: $name', 'Guide: $name');
+  String get adminViewingReportOutcomeShort => t('ผล', 'Outcome');
+  String get adminViewingReportFeedbackShort => t('ฟีดแบ็ก', 'Feedback');
+  String get adminViewingReportWantsShort => t('ต้องการ', 'Wants');
+  String get adminViewingReportNotesShort => t('โน้ต', 'Notes');
   String get adminTabReports => t('รายงาน', 'Reports');
   String get adminTabModeration => t('ตรวจสอบ', 'Moderation');
   String get adminTabCreateBoard => t('สร้างบอร์ด', 'Create board');
+  String get adminNavPinned => t('เร่งด่วน', 'Urgent');
+  String get adminNavMenu => t('เมนู', 'Menu');
+  String get adminNavOpenMenu => t('เปิดเมนูนำทาง', 'Open navigation menu');
+  String get adminNavGroupAssets => t('ทรัพย์ & โพสต์', 'Listings');
+  String get adminNavGroupCustomers => t('ลูกค้า & เคส', 'Customers');
+  String get adminNavGroupSystem => t('ระบบ & ตั้งค่า', 'System');
+  String get adminNavGroupVault => t('คลังลับ', 'Vault');
+  String get adminNavRequirements => t('ความต้องการลูกค้า', 'Requirements');
+  String get adminRequirementsIntro => t(
+        'ลูกค้าส่งความต้องการหาทรัพย์ — ทีมเลือกเคสแล้วสร้างประกาศบนบอร์ด',
+        'Customers submit property needs — pick a case and publish on the demand board',
+      );
+  String get adminAccessRequestsIntro => t(
+        'คำขอเข้าถึงข้อมูลลับ — อนุมัติโดย SUPER+',
+        'Vault access requests — approved by SUPER+',
+      );
+  String get adminAccessRequestPending => t('รออนุมัติ', 'Pending');
+  String get adminAccessRequestApproved => t('อนุมัติแล้ว', 'Approved');
+  String get adminAccessRequestsEmpty => t(
+        'ไม่มีคำขอรออนุมัติ',
+        'No pending access requests',
+      );
+  String get adminDemoDataNote => t(
+        'แสดงข้อมูลตัวอย่าง — โหมดทดลองหรือ DB ว่าง',
+        'Showing sample data — trial mode or empty DB',
+      );
+  String get adminOrgIntro => t(
+        'โครงสร้างทีมปฏิบัติการ (ตัวอย่าง)',
+        'Operations team structure (sample)',
+      );
+  String get adminOrgLead => t('หัวหน้า', 'Lead');
+  String get adminOrgMembers => t('คน', 'members');
+  String get adminNavVault => t('ข้อมูลลับ', 'Confidential data');
+  String get adminNavAssetRegistry => t('คลังทรัพย์', 'Asset registry');
+  String get adminNavAvailabilityAlerts => t(
+        'แจ้งเตือนกำลังจะว่าง',
+        'Becoming available',
+      );
+  String get adminAvailabilityAlertsIntro => t(
+        'เบอร์โทรอยู่ในคลังลับ — แอดมินระดับล่างกด「ขอสิทธิ์ติดต่อ」ให้ SUPER+ อนุมัติ · ตั้งเตือนซ้ำได้ถ้ายังติดต่อไม่ได้',
+        'Phone numbers stay in the confidential vault — lower-tier admins request access from SUPER+ · set repeat reminders if unreachable',
+      );
+  String get adminAvailabilityAlertsEmpty => t(
+        'ยังไม่มีประกาศที่จะว่างในช่วงที่เลือก — ระบุวันว่างตอนปิดประกาศหรือในรายละเอียดทรัพย์',
+        'No listings becoming available in this window — set available date when closing or in listing details',
+      );
+  String get adminAvailabilityVaultPhoneHint => t(
+        'เบอร์/Line ดูในคลังลับหลังได้รับสิทธิ์',
+        'Phone/Line in confidential vault after access granted',
+      );
+  String get adminAvailabilityFilterDue =>
+      t('ถึงกำหนดติดตาม', 'Due for follow-up');
+  String get adminAvailabilityFilterSnoozed =>
+      t('เลื่อนเตือนแล้ว', 'Snoozed');
+  String get adminAvailabilityFilterMonth => t('ภายใน 30 วัน', 'Within 30 days');
+  String get adminAvailabilityFilterWeek => t('ภายใน 7 วัน', 'Within 7 days');
+  String get adminAvailabilityFilterAll => t('ภายใน 60 วัน', 'Within 60 days');
+  String get adminAvailabilityDueNow =>
+      t('ถึงกำหนดติดต่อเจ้าของ', 'Due to contact owner');
+  String adminAvailabilityRemindOn(String date) =>
+      t('เตือนอีกครั้ง: $date', 'Remind again: $date');
+  String adminAvailabilityContactedOn(String date) =>
+      t('ติดต่อแล้ว ($date)', 'Contacted ($date)');
+  String get adminAvailabilityRequestContactTitle => t(
+        'ขอสิทธิ์เบอร์/ติดต่อเจ้าของ',
+        'Request phone / owner contact',
+      );
+  String get adminAvailabilityRequestContact => t(
+        'ขอสิทธิ์ติดต่อ',
+        'Request contact access',
+      );
+  String adminAvailabilityRequestDefaultReason(String code) => t(
+        'แจ้งเตือนประกาศ $code กำลังจะว่าง — ขอเบอร์ติดต่อเจ้าของล่วงหน้า',
+        'Listing $code becoming available — request owner phone for early outreach',
+      );
+  String get adminAvailabilityOpenRegistryFallback => t(
+        'เปิดรายละเอียดจากข้อมูลทดลอง — ซิงค์คลังเพื่อดูข้อมูลจริง',
+        'Opened demo detail — sync vault for live data',
+      );
+  String get adminAvailabilitySnoozeTitle =>
+      t('ตั้งเตือนซ้ำ', 'Set repeat reminder');
+  String get adminAvailabilitySnoozeHint => t(
+        'ติดต่อเจ้าของไม่ได้ — เลือกว่าอีกกี่วันค่อยติดตามอีกครั้ง',
+        'Could not reach owner — choose days until next follow-up',
+      );
+  String get adminAvailabilitySnoozeNote =>
+      t('หมายเหตุ (ไม่บังคับ)', 'Note (optional)');
+  String get adminAvailabilitySnoozeConfirm => t('บันทึก', 'Save');
+  String get adminAvailabilitySnoozeBtn =>
+      t('เตือนซ้ำ', 'Snooze');
+  String adminAvailabilitySnoozeDays(int days) =>
+      t('$days วัน', '$days days');
+  String adminAvailabilitySnoozeSaved(int days) => t(
+        'ตั้งเตือนซ้ำใน $days วันแล้ว',
+        'Reminder set for $days days from now',
+      );
+  String get adminAvailabilityMarkContacted =>
+      t('ติดต่อแล้ว', 'Contacted');
+  String adminAvailabilityDaysLeft(int days) => t(
+        days == 0 ? 'ว่างวันนี้' : 'ว่างในอีก $days วัน',
+        days == 0 ? 'Available today' : 'Available in $days days',
+      );
+  String adminAvailabilityOnDate(String date) =>
+      t('ว่างวันที่ $date', 'Available on $date');
+  String adminAvailabilityOwner(String name) =>
+      t('เจ้าของ/ผู้โพส: $name', 'Owner/poster: $name');
+  String adminAvailabilityChatHint(String code) => t(
+        'ยังไม่มีแชทเคส $code — เปิดศูนย์แชทแล้วค้นหาจากรหัส',
+        'No chat thread for $code yet — open console and search by code',
+      );
+  String adminAvailabilityContactCount(int n) =>
+      t('ติดต่อแล้ว $n ครั้ง', 'Contacted $n times');
+  String get adminAvailabilityContactHistoryTitle =>
+      t('ประวัติการติดต่อ', 'Contact history');
+  String get adminAvailabilityContactHistoryEmpty =>
+      t('ยังไม่มีบันทึกการติดต่อ', 'No contact records yet');
+  String get adminAvailabilityContactChannelChat =>
+      t('แชทในระบบ', 'In-app chat');
+  String get adminAvailabilityContactChannelPhone =>
+      t('โทรนอกระบบ', 'External call');
+  String get adminAvailabilityContactChannelOther => t('อื่นๆ', 'Other');
+  String get adminAvailabilityRecordCallTitle =>
+      t('บันทึกโทรนอกระบบ', 'Log external call');
+  String get adminAvailabilityRecordCallHint => t(
+        'บันทึกวันเวลาอัตโนมัติ — ใส่หมายเหตุสั้นๆ ได้',
+        'Timestamp saved automatically — optional note',
+      );
+  String get adminAvailabilityRecordCallNote => t('หมายเหตุ', 'Note');
+  String get adminAvailabilityRecordCallSave => t('บันทึก', 'Save');
+  String get adminAvailabilityStopFollowUpTitle =>
+      t('ไม่ต้องติดตามเพิ่ม', 'Stop follow-up');
+  String get adminAvailabilityStopFollowUpHint => t(
+        'ทรัพย์จะถูกย้ายไปคลังซ่อน · ติดแท็กติดต่อเจ้าของไม่ได้ · ไม่แสดงในคลังหลัก',
+        'Asset moves to hidden vault · tagged unreachable · removed from main registry',
+      );
+  String get adminAvailabilityStopFollowUpReason => t('สาเหตุ', 'Reason');
+  String get adminAvailabilityStopFollowUpDefaultReason => t(
+        'ไม่สามารถติดต่อเจ้าของได้แล้ว',
+        'Cannot reach owner anymore',
+      );
+  String get adminAvailabilityStopFollowUpConfirm =>
+      t('ยืนยันหยุดติดตาม', 'Confirm stop');
+  String get adminAvailabilityStopFollowUpBtn =>
+      t('หยุดติดตาม', 'Stop follow-up');
+  String get adminAvailabilityEditListing =>
+      t('แก้ไขทรัพย์', 'Edit listing');
+  String get adminNavHiddenRegistry =>
+      t('คลังซ่อน', 'Hidden vault');
+  String get adminHiddenRegistryIntro => t(
+        'ทรัพย์ที่ติดต่อเจ้าของไม่ได้ — ไม่แสดงในคลังหลัก แต่ค้นหาจากคลังหลักยังพบได้',
+        'Unreachable owner assets — hidden from main registry but searchable',
+      );
+  String get adminHiddenRegistryEmpty =>
+      t('ยังไม่มีทรัพย์ในคลังซ่อน', 'No hidden assets');
+  String adminHiddenRegistryReason(String reason) =>
+      t('สาเหตุ: $reason', 'Reason: $reason');
+  String adminHiddenRegistryArchivedOn(String when) =>
+      t('ย้ายเมื่อ $when', 'Archived $when');
+  String get adminHiddenRegistryRestore =>
+      t('นำกลับคลังหลัก', 'Restore to main');
+  String get adminHiddenRegistryRestored =>
+      t('นำกลับคลังหลักแล้ว', 'Restored to main registry');
+  String get adminRegistryTagOwnerUnreachable => t(
+        'ติดต่อเจ้าของไม่ได้',
+        'Owner unreachable',
+      );
+
+  // —— Phase 27: Rental management + group chat ——
+  String get rentalManagementTitle =>
+      t('บริหารจัดการทรัพย์ให้เช่า', 'Rental management');
+  String get rentalManagementIntro => t(
+        'แชทกลุ่มสำหรับสัญญาเช่า active — ผู้เช่า · เจ้าของ · เอเจ้นท์ · แอดมิน',
+        'Group chat for active leases — tenant · owner · agent · admin',
+      );
+  String get rentalManagementEmpty =>
+      t('ยังไม่มีสัญญาเช่า active', 'No active leases yet');
+  String get rentalGroupBlindHint => t(
+        'แชทกลุ่มไม่แสดงเบอร์/Line/ข้อมูลหวงห้ามของกันและกัน — ติดต่อส่วนตัวผ่านระบบนอกกลุ่ม',
+        'Group chat hides phones, Line and private contact info between members',
+      );
+  String get rentalGroupChatTitle => t('แชทกลุ่มเช่า', 'Lease group chat');
+  String rentalGroupWelcome(String code) => t(
+        'เปิดห้องกลุ่มสัญญา $code — สมาชิกเห็นเฉพาะชื่อและบทบาท',
+        'Lease group $code opened — members see names and roles only',
+      );
+  String get rentalGroupPhaseNote => t(
+        'Phase 27 — ข้อความ/ไฟล์/แจ้งเตือนชำระจะเปิดใช้ในเวอร์ชันถัดไป',
+        'Phase 27 — messaging, files and payment reminders coming next',
+      );
+  String get rentalTabChat => t('แชท', 'Chat');
+  String get rentalTabDocuments => t('เอกสาร', 'Documents');
+  String get rentalTabAlbum => t('อัลบั้ม', 'Album');
+  String get rentalTabPayments => t('ชำระค่าเช่า', 'Payments');
+  String get rentalTabMaintenance => t('แจ้งซ่อม', 'Maintenance');
+  String get rentalDocumentsHint => t(
+        'อัปโหลดสัญญา · ใบเสร็จ · โน้ตต่อเอกสารในกลุ่ม',
+        'Upload contracts, receipts and document notes in the group',
+      );
+  String get rentalAlbumHint => t(
+        'อัลบั้มรูปสภาพห้องก่อนเข้าอยู่ · มิเตอร์ · โน้ตประกอบ',
+        'Pre-move-in room condition album · meters · notes',
+      );
+  String get rentalAlbumNoteTitle => t('โน้ต', 'Note');
+  String get rentalAlbumNoteEmpty =>
+      t('ยังไม่มีโน้ต — แอดมินเขียนอธิบายสภาพห้องได้', 'No note yet — admin can write a long description');
+  String get rentalAlbumNoteEdit => t('แก้ไขโน้ต', 'Edit note');
+  String get rentalAlbumNoteEditTitle =>
+      t('โน้ตสภาพห้องก่อนเข้าอยู่', 'Pre-move-in room note');
+  String get rentalAlbumNoteEditHint => t(
+        'เขียนข้อความยาวๆ อธิบายสภาพห้อง — แบบโน้ต LINE (ไม่ผูกกับรูปแต่ละใบ)',
+        'Long-form room description — like a LINE note (not per photo)',
+      );
+  String get rentalAlbumNotePlaceholder => t(
+        'อธิบายสภาพห้องก่อนเข้าอยู่…\n\n• ห้องนอน\n• ห้องน้ำ\n• มิเตอร์\n• ตำหนิเดิม',
+        'Describe room condition before move-in…',
+      );
+  String get rentalAlbumNoteSave => t('บันทึกโน้ต', 'Save note');
+  String get rentalAlbumNoteSaved => t('บันทึกโน้ตแล้ว', 'Note saved');
+  String rentalAlbumNoteUpdated(String when, String who) =>
+      t('แก้ไขล่าสุด $when · $who', 'Updated $when · $who');
+  String get rentalAlbumAddPhotosBulk =>
+      t('เพิ่มรูปหลายใบ', 'Add many photos');
+  String get rentalAlbumBulkHint => t(
+        'วางชื่อไฟล์ทีละบรรทัด — ไม่ต้องใส่คำอธิบายต่อรูป · อัปโหลดจริงใน 27b',
+        'One filename per line — no caption per photo · real upload in 27b',
+      );
+  String get rentalAlbumBulkPlaceholder => t(
+        'photo-001.jpg\nphoto-002.jpg\nphoto-003.jpg',
+        'photo-001.jpg\nphoto-002.jpg',
+      );
+  String get rentalAlbumBulkAdd => t('เพิ่มเข้าอัลบั้ม', 'Add to album');
+  String rentalAlbumBulkAdded(int n) =>
+      t('เพิ่ม $n รูปเข้าอัลบั้มแล้ว', 'Added $n photo(s) to album');
+  String rentalAlbumPhotosTitle(int n) =>
+      t('อัลบั้มรูป ($n)', 'Photo album ($n)');
+  String get rentalAlbumPhotosNoCaption => t(
+        'รูปรวมในอัลบั้มเดียว — ไม่มีคำกำกับต่อรูป',
+        'Single album — no caption per photo',
+      );
+  String get rentalAlbumPhotosEmpty =>
+      t('ยังไม่มีรูป — กดเพิ่มรูปหลายใบ', 'No photos — tap add many photos');
+  String get rentalMaintenanceHint => t(
+        'เปิดเคสแจ้งซ่อมและติดตามสถานะในกลุ่ม',
+        'Open maintenance tickets and track status in the group',
+      );
+  String get rentalChatInputHint =>
+      t('พิมพ์ข้อความ…', 'Type a message…');
+  String get rentalAttachDocument => t('แนบเอกสาร', 'Attach document');
+  String get rentalFeatureComingSoon =>
+      t('เปิดใช้ในเวอร์ชันถัดไป', 'Coming in a future release');
+  String rentalRentAmount(int amount) {
+    final fmt = NumberFormat.decimalPattern(isEnglish ? 'en' : 'th');
+    final n = fmt.format(amount);
+    return t('ค่าเช่า ฿$n / เดือน', 'Rent ฿$n / month');
+  }
+  String get rentalRentAmountLabel => t('ค่าเช่า', 'Rent');
+  String rentalNextPayment(String date) =>
+      t('ครบกำหนดชำระ $date', 'Payment due $date');
+  String get rentalPaymentSchedule => t('รอบชำระ', 'Payment schedule');
+  String rentalPaymentDay(int day) =>
+      t('วันชำระทุกเดือน: วันที่ $day', 'Due day each month: day $day');
+  String rentalBillingCycle(String label) =>
+      t('รอบบิล: $label', 'Billing: $label');
+  String get rentalBillingMonthly => t('รายเดือน', 'Monthly');
+  String get rentalBillingCustom => t('กำหนดเอง', 'Custom');
+  String get rentalBankAccountNote =>
+      t('เลขที่บัญชี (โน้ตในกลุ่ม)', 'Bank account (group note)');
+  String get rentalSendPaymentReminder =>
+      t('ส่งแจ้งเตือนชำระ', 'Send payment reminder');
+  String get adminNavGroupRentalManagement =>
+      t('บริหารจัดการทรัพย์ให้เช่า', 'Rental management');
+  String get adminNavRentalManagement =>
+      t('สัญญาเช่า & แชทกลุ่ม', 'Leases & group chat');
+  String get adminRentalManagementIntro => t(
+        'จัดการสัญญาเช่า active · ดึงผู้เช่า/เอเจ้นท์/เจ้าของ/แอดมินเข้ากลุ่มเดียวกัน',
+        'Manage active leases · add tenant, agent, owner and admin to one group',
+      );
+  String get adminRentalManagementEmpty =>
+      t('ยังไม่มีสัญญาเช่า', 'No leases yet');
+  String get adminRentalSearchHint => t(
+        'ค้นหารหัส RXT / ชื่อทรัพย์…',
+        'Search RXT code / property title…',
+      );
+  String get adminRentalStatusActive => t('active', 'Active');
+  String get adminRentalStatusEnded => t('สิ้นสุด', 'Ended');
+  String get adminRentalOpenGroupChat =>
+      t('เปิดแชทกลุ่ม', 'Open group chat');
+  String get adminRentalAddMember =>
+      t('เพิ่มสมาชิก', 'Add member');
+  String get rentalContractSignedLabel =>
+      t('ทำสัญญา:', 'Contract signed:');
+  String get rentalLeaseStartLabel =>
+      t('เริ่มสัญญา:', 'Lease start:');
+  String get rentalLeaseEndLabel =>
+      t('สิ้นสุด:', 'Lease end:');
+  String get adminRentalEditContract =>
+      t('ตั้งค่าสัญญา', 'Contract settings');
+  String get adminRentalLeaseSheetTitle =>
+      t('ตั้งค่าสัญญาเช่า', 'Lease contract settings');
+  String get adminRentalDatesSection =>
+      t('วันที่สัญญา', 'Contract dates');
+  String get adminRentalContractFilesSection =>
+      t('ไฟล์สัญญา', 'Contract files');
+  String get adminRentalSaveDates =>
+      t('บันทึกวันที่', 'Save dates');
+  String get adminRentalDatesSaved =>
+      t('บันทึกวันที่สัญญาแล้ว', 'Contract dates saved');
+  String get adminRentalNoEndDate =>
+      t('ยังไม่กำหนด', 'Not set');
+  String get adminRentalClearDate =>
+      t('ล้างวันที่', 'Clear date');
+  String get adminRentalAttachContract =>
+      t('แนบไฟล์สัญญา', 'Attach contract file');
+  String get adminRentalAttachContractHint => t(
+        'ระบุชื่อไฟล์ (เช่น สัญญาเช่า.pdf) — อัปโหลด Storage จริงใน Phase 27b',
+        'Enter file name (e.g. lease.pdf) — real upload in Phase 27b',
+      );
+  String get adminRentalAttachFileName =>
+      t('ชื่อไฟล์', 'File name');
+  String get adminRentalAttachNote =>
+      t('หมายเหตุ', 'Note');
+  String get adminRentalAttachSave => t('แนบ', 'Attach');
+  String get adminRentalAttachDone =>
+      t('แนบไฟล์สัญญาแล้ว', 'Contract file attached');
+  String get adminRentalNoContractFiles =>
+      t('ยังไม่มีไฟล์สัญญา', 'No contract files yet');
+  String get adminRentalPreviewDates =>
+      t('ตัวอย่างที่สมาชิกเห็น:', 'Preview for members:');
+  String adminRentalContractFileCount(int n) =>
+      t('ไฟล์สัญญา $n ฉบับ', '$n contract file(s)');
+  String get rentalDocumentsEmpty =>
+      t('ยังไม่มีเอกสารสัญญา', 'No contract documents yet');
+  String get rentalDocumentsAdminOnly => t(
+        'แอดมินแนบไฟล์สัญญาได้จากหน้าตั้งค่าสัญญา',
+        'Admins attach contract files from contract settings',
+      );
+  String get rentalContractViewSoon =>
+      t('เปิดดูไฟล์จริงใน Phase 27b', 'File preview in Phase 27b');
+
+  // —— Rental payment policy & slips ——
+  String get adminRentalPaymentSettings =>
+      t('ตั้งค่าชำระค่าเช่า', 'Payment settings');
+  String get adminRentalPaymentSettingsHint => t(
+        'แจ้งเตือนผู้เช่าก่อนครบกำหนด · หยุดเมื่อได้รับสลิป · กำหนดค่าปรับล่าช้า',
+        'Remind tenant before due · stop on slip · configure late penalties',
+      );
+  String get adminRentalPaymentRemindSection =>
+      t('แจ้งเตือนผู้เช่า', 'Tenant reminders');
+  String get adminRentalPaymentRemindDaysLabel => t(
+        'ก่อนครบกำหนด (วัน) คั่นด้วยจุลภาค',
+        'Days before due (comma-separated)',
+      );
+  String get adminRentalPaymentRemindHint => t(
+        'เช่น 2, 1 = แจ้ง 2 วันก่อนและ 1 วันก่อน · หยุดเมื่อผู้เช่าส่งสลิป',
+        'e.g. 2, 1 = remind 2 days and 1 day before · stops when slip uploaded',
+      );
+  String get adminRentalPaymentYearSection =>
+      t('รอบชำระทั้งปี', 'Annual schedule');
+  String get adminRentalPaymentYearLabel => t('ปี', 'Year');
+  String get adminRentalPaymentInstallmentsLabel =>
+      t('เก็บสลิปกี่ครั้ง/ปี', 'Slips per year');
+  String get adminRentalPaymentLateSection =>
+      t('ล่าช้า & ค่าปรับ', 'Late payment');
+  String get adminRentalPaymentGraceLabel =>
+      t('ล่าช้าได้ไม่เกิน (วัน)', 'Grace days');
+  String get adminRentalPaymentPenaltyLabel =>
+      t('ค่าปรับ/วัน หลัง grace (บาท)', 'Penalty/day after grace (THB)');
+  String get adminRentalPaymentSavePolicy =>
+      t('บันทึกนโยบาย', 'Save policy');
+  String get adminRentalPaymentRegenerate =>
+      t('สร้างรอบชำระใหม่ทั้งปี', 'Regenerate year schedule');
+  String get adminRentalPaymentRunReminders =>
+      t('ส่งแจ้งเตือนที่ครบกำหนดวันนี้', 'Send due reminders today');
+  String get adminRentalPaymentSaved =>
+      t('บันทึกตั้งค่าชำระค่าเช่าแล้ว', 'Payment settings saved');
+  String get adminRentalPaymentRemindersRun =>
+      t('ส่งแจ้งเตือนผู้เช่าแล้ว', 'Reminders sent to tenant');
+  String get adminRentalPaymentRemindInvalid => t(
+        'ระบุวันแจ้งเตือนก่อนครบกำหนด เช่น 2, 1',
+        'Enter reminder days before due, e.g. 2, 1',
+      );
+  String get adminRentalPaymentSchedulePreview =>
+      t('ตารางรอบชำระ', 'Payment schedule');
+  String get rentalPaymentPolicyTitle =>
+      t('นโยบายชำระค่าเช่า', 'Payment policy');
+  String rentalPaymentRemindBefore(String days) =>
+      t('แจ้งเตือนก่อนครบกำหนด: $days วัน', 'Remind before due: $days day(s)');
+  String rentalPaymentInstallmentsCount(int n) =>
+      t('เก็บสลิป $n ครั้ง/ปี', '$n slip(s) per year');
+  String rentalPaymentGraceDays(int n) =>
+      t('ล่าช้าได้ไม่เกิน $n วัน', 'Grace period: $n day(s)');
+  String rentalPaymentPenaltyPerDay(int baht) =>
+      t('ค่าปรับ $baht บาท/วัน หลัง grace', 'Penalty ฿$baht/day after grace');
+  String rentalPaymentPolicyYear(int year) =>
+      t('ปี $year', 'Year $year');
+  String rentalPaymentRemindersDue(int n) =>
+      t('มีแจ้งเตือนควรส่ง $n รายการวันนี้', '$n reminder(s) due today');
+  String get rentalPaymentInstallmentsTitle =>
+      t('รอบชำระค่าเช่า', 'Payment rounds');
+  String get rentalPaymentNoInstallments =>
+      t('ยังไม่มีตารางรอบชำระ — แอดมินสร้างจากตั้งค่า', 'No schedule yet — admin generates from settings');
+  String get rentalPaymentSlipSection =>
+      t('สลิปค่าเช่า', 'Rent payment slips');
+  String get rentalPaymentSlipHint => t(
+        'ผู้เช่าอัปโหลดสลิปในรอบที่ตรงกับวันครบกำหนด',
+        'Tenant uploads slip for the matching due round',
+      );
+  String get rentalPaymentSlipStopsReminders => t(
+        'ส่งสลิปแล้ว → หยุดแจ้งเตือนรอบนั้น',
+        'Slip submitted → reminders stop for that round',
+      );
+  String rentalPaymentRound(int n) => t('รอบที่ $n', 'Round $n');
+  String get rentalPaymentPending => t('รอชำระ', 'Pending');
+  String get rentalPaymentSlipReceived =>
+      t('ได้รับสลิปแล้ว', 'Slip received');
+  String get rentalPaymentConfirmed => t('ยืนยันแล้ว', 'Confirmed');
+  String get rentalPaymentRemindersPaused =>
+      t('หยุดแจ้งเตือน', 'Reminders paused');
+  String rentalPaymentReminded(String days) =>
+      t('แจ้งเตือนแล้ว: ก่อน $days วัน', 'Reminded: $days day(s) before');
+  String rentalPaymentLateDays(int days) =>
+      t('ล่าช้า $days วัน', '$days day(s) late');
+  String rentalPaymentPenaltyAmount(int baht) {
+    final fmt = NumberFormat.decimalPattern(isEnglish ? 'en' : 'th');
+    return t('ค่าปรับสะสม ฿${fmt.format(baht)}', 'Penalty due ฿${fmt.format(baht)}');
+  }
+  String rentalPaymentSendRemind(int days) =>
+      t('แจ้ง $days วันก่อน', 'Remind $days d before');
+  String rentalPaymentReminderSent(int days) =>
+      t('ส่งแจ้งเตือน $days วันก่อนแล้ว', 'Sent $days-day reminder');
+  String get rentalPaymentSelectRound =>
+      t('เลือกรอบชำระ', 'Select payment round');
+  String get rentalPaymentUploadSlip =>
+      t('อัปโหลดสลิปค่าเช่า', 'Upload rent slip');
+  String get rentalPaymentSubmitSlip => t('ส่งสลิป', 'Submit slip');
+  String get rentalPaymentSlipSubmitted =>
+      t('ส่งสลิปแล้ว — หยุดแจ้งเตือนรอบนี้', 'Slip submitted — reminders stopped');
+  String get rentalPaymentAllSlipsReceived =>
+      t('รับสลิปครบทุกรอบแล้ว', 'All slips received');
+  String get rentalPaymentAdminConfirmBtn =>
+      t('ยืนยันรับเงินแล้ว', 'Confirm payment received');
+  String get rentalPaymentAdminConfirmTitle =>
+      t('ยืนยันโอนค่าเช่าแล้ว', 'Confirm rent paid');
+  String get rentalPaymentAdminConfirmHint => t(
+        'กรณีผู้เช่าส่งสลิปในแอปไม่ได้ แต่เจ้าของได้รับเงินแล้ว — ปิดการเตือนรอบนี้',
+        'Tenant could not upload slip but owner received payment — stop reminders',
+      );
+  String get rentalPaymentAdminConfirmNote => t('หมายเหตุ', 'Note');
+  String get rentalPaymentAdminConfirmNoteHint => t(
+        'เช่น โอนตรงเจ้าของแล้ว · รับเงินสด',
+        'e.g. Paid owner directly · cash received',
+      );
+  String get rentalPaymentAdminConfirmSave =>
+      t('ยืนยันและปิดการเตือน', 'Confirm and stop reminders');
+  String get rentalPaymentAdminConfirmDone => t(
+        'ยืนยันรับเงินแล้ว — ปิดการเตือนรอบนี้',
+        'Payment confirmed — reminders stopped for this round',
+      );
+  String get rentalPaymentAdminConfirmed =>
+      t('แอดมินยืนยันรับเงินแล้ว', 'Admin confirmed payment');
+  String rentalPaymentAdminConfirmedBy(String who, String when) =>
+      t('ยืนยันโดย $who · $when', 'Confirmed by $who · $when');
+  String rentalPaymentAdminConfirmedOn(String when) =>
+      t('ยืนยันรับเงินแล้ว · $when', 'Payment confirmed · $when');
+  String get rentalPushReminderTitle =>
+      t('RealXtate — ใกล้ครบชำระค่าเช่า', 'RealXtate — Rent due soon');
+  String rentalPushReminderBody(
+    String code,
+    int round,
+    int daysBefore,
+    String dueDate,
+  ) =>
+      t(
+        '$code · รอบที่ $round · อีก $daysBefore วัน · ครบ $dueDate',
+        '$code · Round $round · $daysBefore day(s) left · Due $dueDate',
+      );
+  String get rentalPushAdminConfirmedTitle =>
+      t('RealXtate — ยืนยันรับเงินแล้ว', 'RealXtate — Payment confirmed');
+  String rentalPushAdminConfirmedBody(String code, int round, String dueDate) =>
+      t(
+        '$code · รอบที่ $round · แอดมินยืนยันรับเงินแล้ว ($dueDate)',
+        '$code · Round $round · Admin confirmed payment ($dueDate)',
+      );
+  String get rentalPushSlipTitle =>
+      t('RealXtate — ส่งสลิปค่าเช่าแล้ว', 'RealXtate — Rent slip submitted');
+  String rentalPushSlipBody(String code, int round, String by) =>
+      t(
+        '$code · รอบที่ $round · $by',
+        '$code · Round $round · $by',
+      );
+  String get rentalPaymentAdminConfirmedTenantBanner => t(
+        'รอบนี้แอดมินยืนยันรับเงินแล้ว — ไม่ต้องส่งสลิปซ้ำ',
+        'Admin confirmed payment for this round — no need to upload slip again',
+      );
+  String rentalPaymentHomeAdminConfirmed(int round) =>
+      t('แอดมินยืนยันรับเงินแล้ว — รอบที่ $round', 'Admin confirmed — round $round');
+  String rentalPaymentHomeSlipReceived(int round) =>
+      t('ส่งสลิปแล้ว — รอบที่ $round', 'Slip received — round $round');
+  String get adminCallOwner => t('โทร', 'Call');
+  String get adminCopyPhone => t('คัดลอกเบอร์', 'Copy phone');
+  String get adminPhoneCopied => t('คัดลอกเบอร์แล้ว', 'Phone copied');
+  String get adminRegistryColSeq => t('ลำดับ', '#');
+  String get adminRegistryColCode => t('รหัส', 'Code');
+  String get adminRegistryColType => t('ประเภท', 'Type');
+  String get adminRegistryColDate => t('วันที่เพิ่ม', 'Added');
+  String get adminRegistryColLastEdit =>
+      t('แก้ไขล่าสุด', 'Last edited');
+  String get adminRegistryColSource => t('แหล่ง', 'Source');
+  String get adminRegistryColTitle => t('หัวข้อ', 'Title');
+  String get adminRegistrySearchHint => t(
+        'ค้นหารหัส RXT / IMP / หัวข้อ / แหล่ง…',
+        'Search RXT / IMP / title / source…',
+      );
+  String adminRegistryShowing(int shown, int total) => t(
+        'แสดง $shown จาก $total รายการ',
+        'Showing $shown of $total',
+      );
+  String get adminRegistryEmpty => t('ไม่มีรายการในคลัง', 'No registry rows');
+  String get adminRegistryNoSearchResults => t(
+        'ไม่พบรหัสที่ค้นหา — ลองรหัส RXT หรือ IMP',
+        'No match — try RXT or IMP code',
+      );
+  String get adminRegistryDetailTitle => t('รายละเอียดทรัพย์', 'Asset details');
+  String get adminRegistryCensoredHint => t(
+        'มุมมองปฏิบัติการ — ไม่แสดงเบอร์/Line/ลิงก์ต้นทาง',
+        'Ops view — phones, Line and source links hidden',
+      );
+  String get adminRegistryLockedFields => t(
+        'ข้อมูลลับ (เบอร์ · Line · ลิงก์ต้นทาง · ข้อความโพสต์เต็ม) ต้องขอสิทธิ์จาก SUPER+ หรือเปิดจากคลังลับ',
+        'Confidential fields require SUPER+ approval or vault access',
+      );
+  String get adminRegistryPublicBanner => t(
+        'คลังทรัพย์ปฏิบัติการ — ตารางเดียวกับคลังลับ แต่ซ่อนข้อมูลสำคัญ · ค้นหารหัสแล้วกดแถวเพื่อดูรายละเอียด',
+        'Ops asset registry — same table as vault, sensitive fields hidden · search code, tap row for details',
+      );
+  String get adminRegistryOpsTitle => t('จัดการทรัพย์', 'Manage asset');
+  String get adminRegistryEdit => t('แก้ไข', 'Edit');
+  String get adminRegistryBumpNow => t('ดันประกาศ (มือ)', 'Bump now');
+  String get adminRegistryBumpDone => t('ดันประกาศแล้ว', 'Listing bumped');
+  String get adminRegistryBumpFailed => t('ดันประกาศไม่สำเร็จ', 'Bump failed');
+  String get adminRegistryBumpNeedListing =>
+      t('ต้องมีประกาศเผยแพร่ก่อนจึงดันได้', 'Needs a published listing');
+  String adminRegistryLastBump(String when) =>
+      t('ดันล่าสุด: $when', 'Last bump: $when');
+  String get adminRegistryTagsTitle => t('แท็กปฏิบัติการ', 'Ops tags');
+  String get adminRegistryTagHot => t('ติดไฟฮอต', 'Hot');
+  String get adminRegistryTagExclusive =>
+      t('ฝากพิเศษ (ปฏิบัติการ)', 'Ops mandate');
+  String get adminRegistryTagFeatured => t('แนะนำ', 'Featured');
+  String get adminRegistryTagVerified => t('ยืนยันแล้ว', 'Verified');
+  String get adminRegistryTagUrgent => t('เร่งด่วน', 'Urgent');
+  String get adminRegistryOverlayTitle => t('ป้ายทับบนแผนที่/ฟีด', 'Map & feed overlay');
+  String get adminRegistryOverlayNormal => t('ปกติ', 'Normal');
+  String get adminRegistryOverlaySold => t('SOLD', 'SOLD');
+  String get adminRegistryOverlayNotAvailable => t('NOT AVAILABLE', 'NOT AVAILABLE');
+  String adminRegistryOverlayPreview(String label) =>
+      t('แสดงป้ายทับ: $label', 'Overlay: $label');
+  String get adminRegistryAutoBumpTitle => t('ดันประกาศอัตโนมัติ', 'Auto bump');
+  String get adminRegistryAutoBumpHint => t(
+        'ตั้งช่วงดันซ้ำ — ใช้กับ Exclusive / ฝากเจ้าของ (Cron process_exclusive_auto_bumps)',
+        'Repeat bump interval — for Exclusive mandates (process_exclusive_auto_bumps cron)',
+      );
+  String get adminRegistryAutoBumpEnable => t('เปิดดันอัตโนมัติ', 'Enable auto bump');
+  String adminRegistryAutoBumpEvery(int h) => t('ทุก $h ชม.', 'Every $h h');
+  String get adminRegistryInternalLinks => t('ลิงก์ภายในระบบ', 'Internal links');
+  String get adminRegistryAdminNote => t('โน้ตแอดมิน', 'Admin note');
+  String get adminRegistryAdminNoteHint =>
+      t('บันทึกภายใน — ไม่แสดงต่อผู้ใช้', 'Internal note — not shown to users');
+  String get adminRegistryEditProfileSoon =>
+      t('แก้ไขโปรไฟล์ — เปิดจากเมนูลูกค้าเร็วๆ นี้', 'Edit profile — coming via Customers menu');
+  String get adminRegistryEditDemoImport => t(
+        'ข้อมูลจำลอง — เปิดแท็บนำเข้าเพื่อแก้รายการจริง',
+        'Demo data — open Import tab to edit real records',
+      );
+  String get adminRegistryImportNotFound => t(
+        'ไม่พบรายการนำเข้า — อาจเป็น ID จำลองหรือถูกลบแล้ว',
+        'Import not found — demo ID or deleted',
+      );
+  String get adminRegistryDetailSection =>
+      t('ข้อมูลในคลัง', 'Registry record');
+  String get adminRegistryRecordedBy =>
+      t('ผู้บันทึก / ที่มา', 'Recorded by');
+  String get adminRegistryRecordedByLabel =>
+      t('บันทึกโดย', 'Recorded by');
+  String get adminRegistryRecordedAt => t('วันที่บันทึก', 'Recorded at');
+  String get adminRegistryOwnerName => t('เจ้าของทรัพย์', 'Owner');
+  String get adminRegistryChatTag => t('แท็กแชท', 'Chat tag');
+  String get adminRegistryEditHistory =>
+      t('ประวัติการแก้ไข', 'Edit history');
+  String get adminRegistryEditTitle =>
+      t('แก้ไขข้อมูลในคลัง', 'Edit registry record');
+  String get adminRegistryEditDescription =>
+      t('คำอธิบายสาธารณะ', 'Public description');
+  String get adminRegistrySave => t('บันทึก', 'Save');
+  String get adminRegistryEditSaved =>
+      t('บันทึกการแก้ไขแล้ว', 'Changes saved');
+  String get adminRegistryChatOwner =>
+      t('คุยกับเจ้าของ', 'Chat owner');
+  String get adminRegistryChatOwnerRequest =>
+      t('ขอสิทธิ์คุยเจ้าของ', 'Request owner chat');
+  String get adminRegistryChatRequestPending =>
+      t('รออนุมัติสิทธิ์แชท', 'Chat access pending');
+  String get adminRegistryChatOwnerGate => t(
+        'แอดมินระดับล่างต้องขอสิทธิ์จาก SUPER+ ก่อนคุยเจ้าของ',
+        'Lower-tier admins must request SUPER+ approval before owner chat',
+      );
+  String get adminRegistryChatRequestTitle =>
+      t('ขอสิทธิ์คุยเจ้าของทรัพย์', 'Request owner chat access');
+  String get adminRegistryChatRequestHint => t(
+        'ระบุเหตุผล — SUPER+ จะอนุมัติผ่านเมนูคำขอสิทธิ์',
+        'State a reason — SUPER+ approves via Access requests',
+      );
+  String get adminRegistryChatRequestReason => t('เหตุผล', 'Reason');
+  String get adminRegistryChatRequestSubmit => t('ส่งคำขอ', 'Submit');
+  String get adminRegistryChatRequestNeedReason =>
+      t('กรุณาระบุเหตุผล', 'Please enter a reason');
+  String get adminRegistryChatRequestSent => t(
+        'ส่งคำขอแล้ว — รอ SUPER+ อนุมัติ',
+        'Request sent — awaiting SUPER+ approval',
+      );
+  String adminRegistryChatTagHint(String tag) => t(
+        'เปิดคอนโซลแชท — ค้นหาด้วยรหัส $tag',
+        'Chat console opened — search by code $tag',
+      );
+  // Phase 24–26 — Profile tags, hubs, viewing requests
+  String get hubSeekerTitle => t('แชทกลางของฉัน', 'My hub');
+  String get hubAgentTitle => t('แชทกลางงานโคเอ', 'Agent hub');
+  String get hubEntryHint => t(
+        'สรุปคำขอนัดดูและแท็กโปรไฟล์ — ไม่มีบอท',
+        'Viewing requests & profile tags — no bot',
+      );
+  String hubViewingRecap({
+    required String propertyLabel,
+    required String schedule,
+    required String clientCode,
+    required String viewingCode,
+    String? presenterCode,
+  }) =>
+      t(
+        'คำขอนัดดู: $propertyLabel\nวันเวลา: $schedule\nลูกค้า: $clientCode'
+        '${presenterCode != null ? '\nผู้พานัด: $presenterCode' : ''}\nรหัสคำขอ: $viewingCode',
+        'Viewing: $propertyLabel\nWhen: $schedule\nClient: $clientCode'
+        '${presenterCode != null ? '\nPresenter: $presenterCode' : ''}\nRequest: $viewingCode',
+      );
+  String viewingTagRecap({
+    required String schedule,
+    required String clientCode,
+    required String viewingCode,
+    String? presenterCode,
+  }) =>
+      t(
+        'รับคำขอนัดดูแล้ว · $schedule\nโปรไฟล์: $clientCode'
+        '${presenterCode != null ? ' · ผู้พานัด: $presenterCode' : ''}\nคำขอ: $viewingCode',
+        'Viewing received · $schedule\nProfile: $clientCode'
+        '${presenterCode != null ? ' · Presenter: $presenterCode' : ''}\nRequest: $viewingCode',
+      );
+  String viewingAppointmentRecordRecap({
+    required String propertyLabel,
+    required String schedule,
+    required String place,
+    required String clientCode,
+    required String viewingCode,
+    required String appointmentRef,
+    String? guideName,
+    String? presenterCode,
+  }) =>
+      t(
+        '📋 บันทึกการนัดชม · $appointmentRef\n'
+        'ทรัพย์: $propertyLabel\n'
+        'วันเวลา: $schedule · $place\n'
+        'แท็กลูกค้า: $clientCode'
+        '${presenterCode != null ? ' · ผู้พานัด: $presenterCode' : ''}\n'
+        'คำขอนัดดู: $viewingCode'
+        '${guideName != null && guideName.isNotEmpty ? '\nเอเจ้นพาดู: $guideName' : ''}',
+        '📋 Viewing record · $appointmentRef\n'
+        'Property: $propertyLabel\n'
+        'When: $schedule · $place\n'
+        'Client tag: $clientCode'
+        '${presenterCode != null ? ' · Presenter: $presenterCode' : ''}\n'
+        'Viewing request: $viewingCode'
+        '${guideName != null && guideName.isNotEmpty ? '\nGuide: $guideName' : ''}',
+      );
+  String get profileTagFormSeeker =>
+      t('โปรไฟล์นัดดู (คุณ)', 'Your viewing profile');
+  String get profileTagFormPresenter =>
+      t('โปรไฟล์ผู้พานัด', 'Presenter profile');
+  String get profileTagFormClient =>
+      t('โปรไฟล์ลูกค้า', 'Client profile');
+  String get profileTagRoleCoAgencyCustomer =>
+      t('ลูกค้าของโคเอเจนซี่', 'Co-agency customer');
+  String get profileTagEditCreatesNew => t(
+        'แก้ไขจะสร้างแท็กเวอร์ชันใหม่ — แท็กเก่าไม่ถูกทับ',
+        'Edits create a new tag version — old tags stay unchanged',
+      );
+  String get profileTagErrDisplayName =>
+      t('กรุณาระบุชื่อผู้พานัด', 'Enter presenter name');
+  String get profileTagSave => t('บันทึกแท็ก', 'Save tag');
+  String get profileTagPickerHint => t(
+        'เลือกแท็กเดิมหรือสร้างใหม่',
+        'Use an existing tag or create a new one',
+      );
+  String get profileTagUse => t('ใช้แท็กนี้', 'Use tag');
+  String get profileTagEditNewVersion => t('แก้ไข (แท็กใหม่)', 'Edit (new tag)');
+  String get profileTagCreateNew => t('สร้างแท็กใหม่', 'Create new tag');
+  String get profileTagPickerSeeker =>
+      t('โปรไฟล์นัดดูของคุณ', 'Your viewing profile');
+  String get profileTagPickerPresenter =>
+      t('โปรไฟล์ผู้พานัด', 'Presenter profile');
+  String get profileTagPickerClient => t('โปรไฟล์ลูกค้า', 'Client profile');
+  String get profileTagPresenterLine => t('ผู้พานัด', 'Presenter');
+  String get profileTagClientLine => t('แท็กลูกค้า', 'Client tag');
+  String get viewingRequestCodeLine => t('รหัสคำขอ', 'Request code');
+  String get viewingScheduleTitle =>
+      t('วันและเวลานัดดู', 'Viewing date & time');
+  String get viewingScheduleHint => t(
+        'โปรไฟล์บันทึกแล้ว — ระบุเฉพาะวันเวลา',
+        'Profile saved — enter date and time only',
+      );
+  String get viewingScheduleSubmit => t('ส่งคำขอนัดดู', 'Submit viewing request');
+  String get adminNavParticipant360 =>
+      t('ภาพรวมผู้ใช้', 'Participant 360°');
+  String get adminParticipantTitle =>
+      t('ภาพรวมผู้ใช้ (360°)', 'Participant 360°');
+  String get adminParticipantSearchHint =>
+      t('ค้นหา user / แท็ก / ข้อความ', 'Search user / tag / message');
+  String get adminParticipantHub => t('แชทกลาง', 'Hub chat');
+  String get adminParticipantThreads => t('แชทย่อย', 'Threads');
+  String get adminParticipantTags => t('แท็กโปรไฟล์', 'Profile tags');
+  String get adminParticipantViewings => t('คำขอนัดดู', 'Viewing requests');
+  String get adminParticipantModeration => t('ตั้งค่าบัญชี', 'Account settings');
+  String get adminParticipantMute => t('ปิดแจ้งเตือน', 'Mute notifications');
+  String get adminParticipantFlag => t('ป้ายก่อกวน', 'Flag disruptive');
+  String get adminParticipantSuspend => t('ระงับชั่วคราว', 'Suspend');
+  String get adminParticipantMessageHub =>
+      t('ทักแชทกลาง', 'Message hub');
+  String get adminParticipantNoUser =>
+      t('ค้นหาหรือเลือกผู้ใช้', 'Search or select a user');
+  String get adminParticipantPickThread =>
+      t('เลือกแชทกลางหรือแชทย่อยด้านซ้าย', 'Select hub or thread on the left');
+  String get adminParticipantNoViewings =>
+      t('ยังไม่มีคำขอนัดดู', 'No viewing requests yet');
+  String get adminParticipantDemoUser => t('ผู้ใช้ทดลอง', 'Demo user');
+
+  String get adminNavAccessRequests => t('คำขอสิทธิ์', 'Access requests');
+  String get adminNavOrg => t('องค์กร', 'Organization');
+  String get adminNavQueueTitle => t('รอรับงาน', 'Queue');
+  String get adminNavQueueHint => t(
+        'แชทที่ยังไม่มีแอดมินรับ — ต้องตอบก่อน',
+        'Chats waiting for an admin to claim',
+      );
+  String get adminVaultPlaceholder => t(
+        'คลังข้อมูลลับ — กำลังพัฒนาตาม Phase 23',
+        'Confidential vault — Phase 23 in progress',
+      );
+  String get adminVaultPlaceholderHint => t(
+        'เฉพาะ CEO / SUPER · ข้อมูลเบอร์ ลิงก์ต้นทาง ข้อความโพสต์เต็ม',
+        'CEO / SUPER only · phones, source links, full post text',
+      );
+  String get adminVaultStorageTitle => t('วิธีจัดเก็บข้อมูลลับ', 'How confidential data is stored');
+  String get adminVaultStorageBody => t(
+        'ข้อมูลลับถูกคัดลอกจากต้นทาง → ตาราง vault_assets (JSON) · แอดมินปกติอ่านตรงไม่ได้ · เปิดดูบันทึก audit',
+        'Secrets are copied from sources → vault_assets (JSON) · Standard admins cannot read directly · Views are audited',
+      );
+  String get adminVaultStorageTable => t('ข้อมูลลับรวมศูนย์ (PII, ลิงก์, ข้อความเต็ม)', 'Central confidential store');
+  String get adminVaultStorageImportSource => t('ซิงค์จาก listing_imports (raw_payload + parsed)', 'Synced from listing_imports');
+  String get adminVaultStorageProfileSource => t('เบอร์/Line จาก profiles + listings', 'Phone/Line from profiles + listings');
+  String get adminVaultStorageAudit => t('บันทึกทุกครั้งที่เปิดดู (vault.view)', 'Logged on every view (vault.view)');
+  String get adminVaultSync => t('ซิงค์เข้าคลัง', 'Sync to vault');
+  String get adminVaultSynced => t('ซิงค์เข้าคลังแล้ว', 'Vault synced');
+  String get adminVaultSyncHint => t(
+        'กดซิงค์เพื่อดึงข้อมูลจากนำเข้า/ประกาศ/บัญชีเข้า vault_assets (ต้อง deploy migration + vault-browse)',
+        'Tap sync to pull imports/listings/profiles into vault_assets (requires migration + vault-browse deploy)',
+      );
+  String get adminVaultEmpty => t('คลังว่าง — กดซิงค์เพื่อดึงข้อมูล', 'Vault empty — tap sync to import data');
+  String get adminVaultFilterAll => t('ทั้งหมด', 'All');
+  String get adminVaultFilterImport => t('นำเข้า', 'Imports');
+  String get adminVaultFilterListing => t('ประกาศ', 'Listings');
+  String get adminVaultFilterProfile => t('บัญชี', 'Profiles');
+  String get adminVaultHasPhone => t('มีเบอร์', 'Has phone');
+  String get adminVaultDetailTitle => t('รายละเอียดคลังลับ', 'Vault record');
+  String get adminVaultPhones => t('เบอร์โทร', 'Phone numbers');
+  String get adminVaultRawPayload => t('ข้อมูลดิบ (payload)', 'Raw payload');
+  String get adminVaultEntityId => t('รหัส entity', 'Entity ID');
+  String get adminVaultSyncedFrom => t('ซิงค์จาก', 'Synced from');
+  String get adminVaultDemoBanner => t(
+        'ข้อมูลจำลอง — หน้าตาเดียวกับ vault_assets จริง · deploy vault-browse แล้วกดซิงค์เพื่อข้อมูลจริง',
+        'Simulated data — same layout as real vault_assets · deploy vault-browse and sync for live data',
+      );
+  String get adminVaultDemoSynced => t(
+        'โหลดข้อมูลจำลอง 7 รายการแล้ว',
+        'Loaded 7 simulated vault records',
+      );
+  String adminNavTierLabel(String tier) {
+    switch (tier) {
+      case 'ceo':
+        return t('CEO', 'CEO');
+      case 'super':
+        return t('SUPER', 'SUPER');
+      case 'lead':
+        return t('LEAD', 'LEAD');
+      default:
+        return t('ADMIN', 'ADMIN');
+    }
+  }
   String get adminTrialBannerConfigured => t(
         'โหมดทดลอง — แชทและเคสตัวอย่าง · ปิดโหมดทดลองเมื่อเปิดใช้จริง',
         'Trial — sample chat/leads · set TRIAL_MODE=false for production',
+      );
+  String get adminUnifiedTrialBanner => t(
+        'โหมดทดลองแยก — ข้อมูลจำลองทั้งหมด ไม่ผสม DB · ตั้ง ADMIN_DEMO_CASES=false ก่อนเปิดใช้จริง',
+        'Isolated trial — simulated data only, no DB mixing · set ADMIN_DEMO_CASES=false for production',
+      );
+  String get adminResetTrialCases => t('เคลียร์เคสทดลอง', 'Reset trial cases');
+  String get adminResetTrialCasesConfirm => t(
+        'รีเซ็ตนัดชมและแชทจำลองทั้งหมดกลับค่าเริ่มต้น?\n'
+        'เอเจ้นที่มอบหมายและสถานะยืนยันจะถูกล้าง',
+        'Reset all demo appointments and chats to defaults?\n'
+        'Assigned guides and confirmed statuses will be cleared.',
+      );
+  String get adminResetTrialCasesDone => t(
+        'เคลียร์เคสทดลองแล้ว — ดูชิป「รอระบุคนพา」และนัดที่ขึ้น「ยังไม่ระบุ」',
+        'Trial cases cleared — check the unassigned chip and「Unassigned」guides',
       );
   String get adminNoOffers => t('ยังไม่มีข้อเสนอ', 'No offers yet');
   String get adminNoLeads => t('ยังไม่มีเคสลูกค้า', 'No leads yet');
@@ -2913,8 +5237,8 @@ class AppStrings {
   String adminLeadStatsLine(int leads, int accepted) =>
       t('เคส $leads · รับแล้ว $accepted', 'Leads: $leads · accepted: $accepted');
   String get adminCreateBoardIntro => t(
-        'บอร์ดประกาศจาก PROPPITER\n(ผู้ใช้จะไม่เห็นข้อเสนอของกัน)',
-        'PROPPITER board posts\n(Users cannot see each other\'s offers)',
+        'บอร์ดประกาศจาก RealXtate\n(ผู้ใช้จะไม่เห็นข้อเสนอของกัน)',
+        'RealXtate board posts\n(Users cannot see each other\'s offers)',
       );
   String get adminBoardLeadsTitle =>
       t('คำขอจากหน้าหลัก', 'Requests from home');
@@ -2970,7 +5294,7 @@ class AppStrings {
         'Leads $leads (accepted $accepted) · viewings $appts (confirmed $confirmed)',
       );
   String get adminReportsCenterTitle =>
-      t('ศูนย์รายงาน PROPPITER', 'PROPPITER Reports Center');
+      t('ศูนย์รายงาน RealXtate', 'RealXtate Reports Center');
   String get adminReportDays7 => t('7 วัน', '7 days');
   String get adminReportDays14 => t('14 วัน', '14 days');
   String get adminReportDays30 => t('30 วัน', '30 days');
@@ -2991,6 +5315,35 @@ class AppStrings {
   String get adminReportChartLeads => t('เคสรายวัน', 'Daily leads');
   String get adminReportChartAppts => t('นัดชมรายวัน', 'Daily viewings');
   String get adminOpenReportsCenter => t('เปิดศูนย์รายงาน →', 'Open reports center →');
+  String get adminOverviewSectionUrgent => t('เร่งด่วน', 'Urgent');
+  String get adminOverviewSectionPending =>
+      t('ค้างดำเนินการ', 'Pending');
+  String get adminOverviewSectionRisk =>
+      t('ตรวจสอบ / ความเสี่ยง', 'Review & risk');
+  String get adminOverviewSectionWait =>
+      t('ระยะรอตอบ', 'Response wait');
+  String get adminOverviewSectionUsage =>
+      t('การใช้งานแอป 7 วัน', 'App usage (7d)');
+  String get adminOverviewQueueUnclaimed =>
+      t('รอรับงาน', 'Unclaimed queue');
+  String get adminOverviewQueueMine => t('งานของฉัน', 'My queue');
+  String get adminOverviewLongestWaitLabel =>
+      t('รอนานสุด (รอรับงาน)', 'Longest wait (unclaimed)');
+  String get adminOverviewNoWait => t('—', '—');
+  String adminOverviewWaitMinutes(int m) =>
+      t('$m นาที', '$m min');
+  String adminOverviewWaitHours(int h, int m) =>
+      t('$h ชม. $m นาที', '${h}h ${m}m');
+  String adminOverviewWaitDays(int d, int h) =>
+      t('$d วัน $h ชม.', '${d}d ${h}h');
+  String adminOverviewWaitHint(int n) =>
+      t('มี $n แชทรอรับงาน — กดเพื่อเปิดคิว', '$n unclaimed — tap to open queue');
+  String adminOverviewAlertQueue(int queue, int attention) => t(
+        'รอรับงาน $queue · ต้องทำ $attention',
+        'Unclaimed $queue · $attention need action',
+      );
+  String get adminOverviewNewUsers7d =>
+      t('ลีดใหม่ 7 วัน', 'New leads (7d)');
   String get adminDashActionHint =>
       t('แตะเพื่อไปคิวแชทหรือแท็บที่เกี่ยวข้อง', 'Tap to open chat queue or related tab');
   String listingShares(int n) => t('แชร์ $n', '$n shares');
@@ -3081,6 +5434,13 @@ class AppStrings {
       );
   String get adminAnalyticsTabApp => t('แอป', 'App');
   String get adminAnalyticsTabErrors => t('ข้อผิดพลาด', 'Errors');
+  String get adminAnalyticsTabAudit => t('Audit log', 'Audit log');
+  String get adminAuditLogEmpty =>
+      t('ยังไม่มีบันทึก audit', 'No audit entries yet');
+  String adminAuditLogEntity(String type, String id) =>
+      t('entity: $type · $id', 'entity: $type · $id');
+  String adminAuditLogActor(String name) =>
+      t('โดย $name', 'by $name');
   String get adminAnalyticsAppInstalls => t('ติดตั้ง/ดาวน์โหลด', 'Installs');
   String get adminAnalyticsAppOpens => t('เปิดแอป', 'App opens');
   String get adminAnalyticsAppUninstalls => t('ถอนแอป (ประมาณ)', 'Uninstalls (est.)');
@@ -3190,7 +5550,7 @@ class AppStrings {
 
   String get chatStaffTitle => t('เจ้าหน้าที่', 'Staff');
   String get chatDiscoveryTitle => t('ค้นหาทรัพย์', 'Find properties');
-  String get chatPropertyTitle => t('PROPPITER', 'PROPPITER');
+  String get chatPropertyTitle => t('RealXtate', 'RealXtate');
   String get chatAiTitle => chatPropertyTitle;
 
   String get adminInboxDiscovery => t('ค้นหาทรัพย์', 'Discovery');
@@ -3201,7 +5561,11 @@ class AppStrings {
   String get chatHintThai => t('พิมพ์คำถาม...', 'Type your question...');
   String get chatHintEnglish => t('Type in English...', 'Type in English...');
   String get chatViewingSubmitted => t('ส่งคำขอนัดดูแล้ว', 'Viewing request sent');
-  String get chatTeamLivingBkk => t('ทีมงาน PROPPITER', 'PROPPITER team');
+  String get chatTeamLivingBkk => t('ทีมงาน RealXtate', 'RealXtate team');
+  String get chatMessageCopied =>
+      t('คัดลอกข้อความแล้ว', 'Message copied');
+  String get chatMessageCopyHint =>
+      t('ลากคลุมข้อความเพื่อคัดลอก', 'Drag to select and copy');
   String get chatSelectListingFirst => t(
         'เลือกทรัพย์จากหน้าค้นหาก่อน แล้วกดสอบถาม / แชท AI',
         'Pick a listing from search first, then tap inquire / AI chat',
@@ -3270,10 +5634,12 @@ class AppStrings {
     if (f.listingType == 'sale_installment') parts.add(listingTypeSaleInstallment);
     if (f.propertyType != null) parts.add(f.propertyType!);
     if (f.maxPrice != null) parts.add('≤${f.maxPrice!.toInt()}');
-    if (f.geoZoneSlugs != null && f.geoZoneSlugs!.isNotEmpty) {
-      parts.add(f.geoZoneSlugs!.join(', '));
+    if (f.hasZoneFilters) {
+      parts.add(t('${f.zoneFilterCount} ทำเล', '${f.zoneFilterCount} areas'));
     }
     if (f.coAgentEligibleOnly == true) parts.add(filterLabelCoAgent);
+    if (f.investorCategory == 'with_tenant') parts.add(filterSaleWithTenant);
+    if (f.investorCategory == 'bmv') parts.add(filterBmv);
     return parts.isEmpty ? allCategories : parts.join(' · ');
   }
 
@@ -3286,17 +5652,17 @@ class AppStrings {
       );
 
   String get chatDiscoveryRoomTitle =>
-      t('PROPPITER — ค้นหาทรัพย์', 'PROPPITER — Property search');
+      t('RealXtate — ค้นหาทรัพย์', 'RealXtate — Property search');
 
   String get chatStaffRoomTitle =>
-      t('เจ้าหน้าที่ PROPPITER', 'PROPPITER staff');
+      t('เจ้าหน้าที่ RealXtate', 'RealXtate staff');
 
   String get chatDemandOfferRoomTitle => t('เสนอทรัพย์', 'Submit listing');
   String get chatDemandOfferWelcome => t(
         'แชทหมวด「เสนอทรัพย์」 — ส่งข้อเสนอตรงความต้องการบนบอร์ดได้ที่นี่\n'
-        'ทีม PROPPITER จะตรวจสอบและติดต่อกลับในแชทนี้',
+        'ทีม RealXtate จะตรวจสอบและติดต่อกลับในแชทนี้',
         'Submit listing chat — send offers matching board requests here.\n'
-        'PROPPITER team will review and follow up in this chat.',
+        'RealXtate team will review and follow up in this chat.',
       );
   String chatDemandOfferUserSent(String postCode) =>
       t('ส่งข้อเสนอทรัพย์ ($postCode)', 'Submitted listing offer ($postCode)');
@@ -3308,9 +5674,9 @@ class AppStrings {
   String get chatRequirementRoomTitle =>
       t('ความต้องการหาทรัพย์', 'Property search request');
   String get chatRequirementWelcome => t(
-        'แชทส่งความต้องการหาทรัพย์ — ทีม PROPPITER จะช่วยหาทรัพย์ที่ตรงเงื่อนไข\n'
+        'แชทส่งความต้องการหาทรัพย์ — ทีม RealXtate จะช่วยหาทรัพย์ที่ตรงเงื่อนไข\n'
         'และติดต่อกลับในแชทนี้',
-        'Property need chat — PROPPITER team will find matches\n'
+        'Property need chat — RealXtate team will find matches\n'
         'and follow up in this chat.',
       );
   String chatRequirementUserSent(String title) =>
@@ -3327,40 +5693,40 @@ class AppStrings {
       );
 
   String chatDiscoveryWelcome() => t(
-        'สวัสดีครับ ผมผู้ช่วย PROPPITER\n'
+        'สวัสดีครับ ผมผู้ช่วย RealXtate\n'
         '$chatAiDisclaimer\n\n'
         'บอกทำเล · โครงการ · งบประมาณ — ผมช่วยคัดทรัพย์ในระบบให้\n'
         'ตัวอย่าง: 「หาคอนโดเช่า ทองหล่อ งบ 18,000」',
-        'Hello, I\'m the PROPPITER assistant.\n'
+        'Hello, I\'m the RealXtate assistant.\n'
         '$chatAiDisclaimer\n\n'
         'Tell me area, project & budget — I\'ll match listings for you.\n'
         'e.g. "Condo rent Thonglor budget 18,000"',
       );
 
   String chatStaffWelcome() => t(
-        'สวัสดีครับ ทีม PROPPITER พร้อมช่วยเหลือ\n'
+        'สวัสดีครับ ทีม RealXtate พร้อมช่วยเหลือ\n'
         'พิมพ์คำถามได้เลย เราจะตอบกลับในแชทนี้โดยเร็วที่สุด',
-        'Hello, the PROPPITER team is here to help.\n'
+        'Hello, the RealXtate team is here to help.\n'
         'Type your question — we\'ll reply in this chat ASAP.',
       );
 
   String chatPropertyWelcome(String listingTitle, {required bool allowViewing}) =>
       allowViewing
           ? t(
-              'สวัสดีครับ ผมผู้ช่วย PROPPITER สำหรับ $listingTitle\n'
+              'สวัสดีครับ ผมผู้ช่วย RealXtate สำหรับ $listingTitle\n'
               '$chatAiDisclaimer\n\n'
               'ถามรายละเอียดทรัพย์นี้ได้เลย — ถามหาทรัพย์อื่น/ทำเล/งบก็ได้ในแชทนี้\n'
               'หากต้องการนัดดูห้อง กด「ขอนัดดูห้อง」ด้านล่างเมื่อพร้อมครับ',
-              'Hello, PROPPITER assistant for $listingTitle.\n'
+              'Hello, RealXtate assistant for $listingTitle.\n'
               '$chatAiDisclaimer\n\n'
               'Ask about this listing — or other areas/budgets in this chat.\n'
               'Tap「Request viewing」below when ready to book a visit.',
             )
           : t(
-              'สวัสดีครับ ผมผู้ช่วย PROPPITER สำหรับ $listingTitle\n'
+              'สวัสดีครับ ผมผู้ช่วย RealXtate สำหรับ $listingTitle\n'
               '$chatAiDisclaimer\n\n'
               'ถามเรื่องทำเล ราคา เงื่อนไข หรือให้แนะนำทรัพย์อื่นในระบบได้เลยครับ',
-              'Hello, PROPPITER assistant for $listingTitle.\n'
+              'Hello, RealXtate assistant for $listingTitle.\n'
               '$chatAiDisclaimer\n\n'
               'Ask about location, price, terms, or other listings in our system.',
             );

@@ -42,12 +42,14 @@ class AppBottomNav extends StatelessWidget {
     required this.index,
     required this.onChanged,
     this.contactBadgeCount = 0,
+    this.myListingsBadgeCount = 0,
     this.profileAvatarUrl,
   });
 
   final int index;
   final ValueChanged<int> onChanged;
   final int contactBadgeCount;
+  final int myListingsBadgeCount;
   final String? profileAvatarUrl;
 
   @override
@@ -59,7 +61,7 @@ class AppBottomNav extends StatelessWidget {
 
     final items = [
       _NavItem(s.navHome, Icons.search_outlined, Icons.search, 0),
-      _NavItem(s.navSaved, Icons.favorite_border, Icons.favorite, 1),
+      _NavItem(s.navMyListings, Icons.home_work_outlined, Icons.home_work, 1),
       _NavItem(s.navBoard, Icons.campaign_outlined, Icons.campaign, 2),
       _NavItem(s.navMessages, Icons.chat_bubble_outline, Icons.chat_bubble, 3),
       _NavItem(s.navProfile, Icons.person_outline, Icons.person, 4),
@@ -87,23 +89,29 @@ class AppBottomNav extends StatelessWidget {
         children: [
           SizedBox(
             height: AppBottomNavMetrics.tabBarHeight,
-            child: Transform.translate(
-              offset: const Offset(0, -AppBottomNavMetrics.iconLift),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Row(
-                  children: [
-                    for (final item in items)
-                      _item(
-                        context: context,
-                        palette: p,
-                        isLight: isLight,
-                        item: item,
-                        badgeCount: item.index == 3 ? contactBadgeCount : 0,
-                        profileAvatarUrl:
-                            item.index == 4 ? profileAvatarUrl : null,
-                      ),
-                  ],
+            child: ClipRect(
+              child: Transform.translate(
+                offset: const Offset(0, -AppBottomNavMetrics.iconLift),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Row(
+                    children: [
+                      for (final item in items)
+                        _item(
+                          context: context,
+                          palette: p,
+                          isLight: isLight,
+                          item: item,
+                          badgeCount: item.index == 3
+                              ? contactBadgeCount
+                              : item.index == 1
+                                  ? myListingsBadgeCount
+                                  : 0,
+                          profileAvatarUrl:
+                              item.index == 4 ? profileAvatarUrl : null,
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -135,14 +143,18 @@ class AppBottomNav extends StatelessWidget {
         isProfileTab && profileAvatarUrl != null && profileAvatarUrl.isNotEmpty;
 
     return Expanded(
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => onChanged(item.index),
-          borderRadius: BorderRadius.circular(12),
-          splashColor: selectedColor.withOpacity(0.1),
-          highlightColor: selectedColor.withOpacity(0.05),
-          child: Column(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Material(
+          color: Colors.transparent,
+          clipBehavior: Clip.hardEdge,
+          child: InkWell(
+            onTap: () => onChanged(item.index),
+            splashColor: selectedColor.withOpacity(0.1),
+            highlightColor: selectedColor.withOpacity(0.05),
+            child: SizedBox(
+              height: double.infinity,
+              child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.max,
             children: [
@@ -183,6 +195,8 @@ class AppBottomNav extends StatelessWidget {
                 ),
               ),
             ],
+              ),
+            ),
           ),
         ),
       ),

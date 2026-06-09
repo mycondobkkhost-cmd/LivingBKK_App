@@ -19,8 +19,8 @@ class LegalConfig {
   LegalConfig._();
 
   static const version = '2026-06-04-v1';
-  static const operatorName = 'PROPPITER';
-  static const contactEmail = 'privacy@proppiter.app';
+  static const operatorName = 'RealXtate';
+  static const contactEmail = 'privacy@realxtateth.com';
   static const effectiveDate = '4 มิถุนายน 2569';
   static const effectiveDateEn = '4 June 2026';
 }

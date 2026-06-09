@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../widgets/proppiter_brand_hero.dart';
@@ -122,8 +123,8 @@ class AuthHeroPanel extends StatelessWidget {
         height: height,
         width: double.infinity,
         child: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LivingBkkBrand.homeHeaderBlockGradient,
+          decoration: BoxDecoration(
+            gradient: LivingBkkBrand.homeHeaderBlockGradientOf(context),
           ),
           child: Stack(
             fit: StackFit.expand,
@@ -243,7 +244,7 @@ class AuthScreenShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppMobileScaffold(
-      backgroundColor: LivingBkkBrand.pageBackground,
+      backgroundColor: LivingBkkBrand.pageBackgroundOf(context),
       body: Column(
         children: [
           AuthHeroPanel(
@@ -275,15 +276,16 @@ class AuthCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: p.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppTheme.border.withOpacity(0.5)),
+        border: Border.all(color: p.border.withOpacity(0.5)),
         boxShadow: [
           BoxShadow(
-            color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.12),
+            color: p.primary.withOpacity(0.12),
             blurRadius: 24,
             offset: const Offset(0, 8),
           ),
@@ -340,6 +342,70 @@ class AuthSocialButton extends StatelessWidget {
   }
 }
 
+/// Apple logo สำหรับปุ่ม Sign in with Apple
+class AppleLogoIcon extends StatelessWidget {
+  const AppleLogoIcon({super.key, this.size = 22, this.color = Colors.white});
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _AppleLogoPainter(color: color),
+      ),
+    );
+  }
+}
+
+class _AppleLogoPainter extends CustomPainter {
+  _AppleLogoPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final w = size.width;
+    final h = size.height;
+    final path = Path()
+      ..moveTo(w * 0.54, h * 0.08)
+      ..cubicTo(w * 0.50, h * 0.02, w * 0.42, 0, w * 0.34, 0)
+      ..cubicTo(w * 0.22, 0, w * 0.12, h * 0.08, w * 0.12, h * 0.22)
+      ..cubicTo(w * 0.12, h * 0.36, w * 0.22, h * 0.44, w * 0.34, h * 0.44)
+      ..cubicTo(w * 0.40, h * 0.44, w * 0.46, h * 0.42, w * 0.50, h * 0.38)
+      ..cubicTo(w * 0.54, h * 0.42, w * 0.60, h * 0.44, w * 0.66, h * 0.44)
+      ..cubicTo(w * 0.78, h * 0.44, w * 0.88, h * 0.36, w * 0.88, h * 0.22)
+      ..cubicTo(w * 0.88, h * 0.10, w * 0.80, h * 0.02, w * 0.70, 0)
+      ..cubicTo(w * 0.64, 0, w * 0.58, h * 0.02, w * 0.54, h * 0.08)
+      ..close();
+    canvas.drawPath(path, paint);
+
+    final body = Path()
+      ..moveTo(w * 0.50, h * 0.40)
+      ..cubicTo(w * 0.34, h * 0.40, w * 0.18, h * 0.52, w * 0.18, h * 0.72)
+      ..cubicTo(w * 0.18, h * 0.92, w * 0.34, h, w * 0.50, h)
+      ..cubicTo(w * 0.66, h, w * 0.82, h * 0.92, w * 0.82, h * 0.72)
+      ..cubicTo(w * 0.82, h * 0.52, w * 0.66, h * 0.40, w * 0.50, h * 0.40)
+      ..close();
+    canvas.drawPath(body, paint);
+
+    final leaf = Path()
+      ..moveTo(w * 0.58, h * 0.06)
+      ..cubicTo(w * 0.66, h * 0.02, w * 0.74, h * 0.04, w * 0.78, h * 0.12)
+      ..cubicTo(w * 0.70, h * 0.14, w * 0.64, h * 0.12, w * 0.58, h * 0.06)
+      ..close();
+    canvas.drawPath(leaf, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _AppleLogoPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 /// Google "G" มาตรฐาน (4 สี)
 class GoogleLogoIcon extends StatelessWidget {
   const GoogleLogoIcon({super.key, this.size = 22});
@@ -390,11 +456,12 @@ class _GoogleLogoPainter extends CustomPainter {
 }
 
 /// ปุ่มหลัก auth — โทนม่วง header หน้าแรก
-ButtonStyle authPrimaryButtonStyle() {
+ButtonStyle authPrimaryButtonStyle(BuildContext context) {
+  final p = context.palette;
   return FilledButton.styleFrom(
-    backgroundColor: LivingBkkBrand.homeHeaderBlockColor,
-    foregroundColor: Colors.white,
-    disabledBackgroundColor: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.45),
+    backgroundColor: p.primary,
+    foregroundColor: p.onPrimary,
+    disabledBackgroundColor: p.primary.withOpacity(0.45),
     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusPill)),
     elevation: 0,
     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),

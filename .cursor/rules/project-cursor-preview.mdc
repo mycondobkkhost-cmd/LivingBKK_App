@@ -1,0 +1,32 @@
+---
+description: RealXtate — รีสตาร์ท dev + ลิงก์ทดสอบหลังแก้โค้ด mobile
+alwaysApply: true
+---
+
+# RealXtate — ลิงก์ทดสอบหลังแก้โค้ด
+
+เมื่อแก้ไฟล์ใน `mobile/` และจบงาน:
+
+1. **รัน `./scripts/restart-cursor-dev.sh` ทุกครั้ง** — hot reload / รีเฟรชในแท็บเดิมไม่พอ
+2. **ส่งลิงก์ทดสอบ** Simple Browser ให้ผู้ใช้ทุกครั้ง
+3. แจ้งวิธีเปิดเท่านี้เท่านั้น:
+   - **ปิดแท็บ Simple Browser เก่า**
+   - **Cmd+Shift+P → Simple Browser: Show** → วางลิงก์ใหม่
+4. **ห้ามแนะนำ** Cmd+Shift+R, กด R ในเทอร์มินัล, hot restart, หรือรีเฟรชในแท็บเดิม — ผู้ใช้ต้องการปิดแท็บแล้วเปิดลิงก์ใหม่ทุกครั้ง
+
+## ลิงก์ทดสอบ
+
+| หน้า | URL |
+|------|-----|
+| แอปลูกค้า | http://127.0.0.1:7357/ |
+| Admin | http://127.0.0.1:7357/admin |
+| ปฏิทินนัดดู | http://127.0.0.1:7357/admin?nav=viewingCalendar |
+| แชทคอนโซล | http://127.0.0.1:7357/admin/console |
+
+## คำสั่งรีสตาร์ท (บังคับหลังแก้โค้ด)
+
+```bash
+./scripts/restart-cursor-dev.sh
+```
+
+พอร์ตค่าเริ่มต้น **7357** · `flutter run -d web-server`

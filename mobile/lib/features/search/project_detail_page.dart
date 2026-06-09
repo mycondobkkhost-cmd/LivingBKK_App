@@ -9,13 +9,15 @@ import '../../l10n/app_strings.dart';
 import '../../models/listing_public.dart';
 import '../../models/listing_transaction_types.dart';
 import '../../services/listing_repository.dart';
+import '../../services/project_catalog.dart';
+import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/li_layout.dart';
 import '../../utils/localized_content.dart';
 import '../../utils/listing_browse_sorter.dart';
 import '../../utils/listing_navigation.dart';
-import '../../widgets/listing_card.dart';
-import '../../widgets/listings_map.dart';
+import '../../utils/nearby_projects.dart';
+import '../../widgets/listing_grid.dart';
 import '../../utils/page_safe_insets.dart';
 import '../../widgets/consumer/consumer_page_shell.dart';
 
@@ -44,7 +46,9 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   @override
   void initState() {
     super.initState();
-    _project = BangkokProjects.bySlug(widget.projectSlug) ??
+    ProjectCatalog.instance.load();
+    _project = ProjectCatalog.instance.bySlug(widget.projectSlug) ??
+        BangkokProjects.bySlug(widget.projectSlug) ??
         BangkokProjectMeta.findProject(widget.projectSlug);
     _load();
   }
@@ -112,6 +116,12 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     final title = p?.displayBilingual ?? widget.projectSlug;
     final visible = _visible;
 
+    final currency = NumberFormat.currency(
+      locale: en ? 'en_US' : 'th_TH',
+      symbol: '฿',
+      decimalDigits: 0,
+    );
+
     return ConsumerPageShell(
       title: title,
       onBack: () => context.pop(),
@@ -123,26 +133,22 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                 padding: PageSafeInsets.padLTRB(
                   context,
                   left: LiLayout.pagePadding,
-                  top: LiLayout.pagePadding,
+                  top: 0,
                   right: LiLayout.pagePadding,
                   bottom: LiLayout.pagePadding,
                   addHomeIndicator: false,
                 ),
                 children: [
                   if (p != null) ...[
-                    if (p.bts != null)
-                      Text(
-                        p.bts!,
-                        style: TextStyle(
-                          color: AppTheme.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 14,
-                        ),
-                      ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${p.district} · ${meta.yearBuilt + (en ? 0 : 543)}',
-                      style: TextStyle(color: AppTheme.textSecondary),
+                    _ProjectHeroHeader(
+                      project: p,
+                      meta: meta,
+                      title: title,
+                      unitCount: _units.length,
+                      units: _units,
+                      isEnglish: en,
+                      currency: currency,
+                      strings: s,
                     ),
                     const SizedBox(height: 12),
                     Wrap(
@@ -167,16 +173,6 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                           },
                         ),
                       ],
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      height: 160,
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(12),
-                        child: visible.isNotEmpty
-                            ? ListingsMap(listings: visible.take(20).toList())
-                            : Container(color: AppTheme.primaryLight),
-                      ),
                     ),
                     const SizedBox(height: 16),
                   ],
@@ -240,16 +236,37 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 8),
-                      ...visible.take(4).map(_unitCard),
+                      ListingGrid(
+                        items: visible.take(4).toList(),
+                        showCoAgentStrip: widget.isAgent,
+                        onTapListing: _openUnit,
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         s.browseRecentlyUpdated,
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 8),
-                      ...visible.skip(4).map(_unitCard),
+                      ListingGrid(
+                        items: visible.skip(4).toList(),
+                        showCoAgentStrip: widget.isAgent,
+                        onTapListing: _openUnit,
+                      ),
                     ] else
-                      ...visible.map(_unitCard),
+                      ListingGrid(
+                        items: visible,
+                        showCoAgentStrip: widget.isAgent,
+                        onTapListing: _openUnit,
+                      ),
+                  ],
+                  if (p != null) ...[
+                    const SizedBox(height: 24),
+                    _NearbyProjectsSection(
+                      origin: p,
+                      isAgent: widget.isAgent,
+                      isEnglish: en,
+                      strings: s,
+                    ),
                   ],
                 ],
               ),
@@ -268,23 +285,291 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
     }
   }
 
-  Widget _unitCard(ListingPublic item) {
-    final s = AppStrings.of(context);
-    final currency = NumberFormat.currency(
-      locale: s.isEnglish ? 'en_US' : 'th_TH',
-      symbol: '฿',
-      decimalDigits: 0,
+  void _openUnit(ListingPublic item) {
+    ListingNavigation.openListing(
+      context,
+      listing: item,
+      isAgent: widget.isAgent,
     );
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: ListingCard(
-        listing: item,
-        style: ListingCardStyle.feed,
-        showCoAgentStrip: widget.isAgent,
-        onTap: () => ListingNavigation.openListing(
-          context,
-          listing: item,
-          isAgent: widget.isAgent,
+  }
+}
+
+class _ProjectHeroHeader extends StatelessWidget {
+  const _ProjectHeroHeader({
+    required this.project,
+    required this.meta,
+    required this.title,
+    required this.unitCount,
+    required this.units,
+    required this.isEnglish,
+    required this.currency,
+    required this.strings,
+  });
+
+  final BangkokProject project;
+  final ProjectMeta meta;
+  final String title;
+  final int unitCount;
+  final List<ListingPublic> units;
+  final bool isEnglish;
+  final NumberFormat currency;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    final rentPrices = units
+        .where((u) => u.listingType == 'rent')
+        .map((u) => u.priceNet)
+        .toList();
+    final salePrices = units
+        .where(
+          (u) =>
+              ListingTransactionTypes.matchesBrowseFilter('sale', u.listingType),
+        )
+        .map((u) => u.priceNet)
+        .toList();
+    final minRent =
+        rentPrices.isEmpty ? null : rentPrices.reduce((a, b) => a < b ? a : b);
+    final minSale =
+        salePrices.isEmpty ? null : salePrices.reduce((a, b) => a < b ? a : b);
+    final year = meta.yearBuilt + (isEnglish ? 0 : 543);
+    final imageUrl = 'https://picsum.photos/seed/${project.slug}/800/400';
+
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+      child: SizedBox(
+        height: 220,
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(
+              imageUrl,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => Container(color: AppTheme.primary),
+            ),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withOpacity(0.15),
+                    Colors.black.withOpacity(0.72),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (project.bts != null)
+                    Text(
+                      project.bts!,
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 13,
+                      ),
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 22,
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 4,
+                    children: [
+                      Text(
+                        strings.projectUnitsAvailable(unitCount),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (minRent != null)
+                        Text(
+                          strings.projectStatRentFrom(currency.format(minRent)),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      if (minSale != null)
+                        Text(
+                          strings.projectStatSaleFrom(currency.format(minSale)),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      Text(
+                        '${project.district} · $year',
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NearbyProjectsSection extends StatelessWidget {
+  const _NearbyProjectsSection({
+    required this.origin,
+    required this.isAgent,
+    required this.isEnglish,
+    required this.strings,
+  });
+
+  final BangkokProject origin;
+  final bool isAgent;
+  final bool isEnglish;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    final hits = nearbyProjects(origin: origin);
+    if (hits.isEmpty) return const SizedBox.shrink();
+
+    final p = context.palette;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          strings.projectNearbyTitle,
+          style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+        ),
+        const SizedBox(height: 8),
+        Material(
+          elevation: 1,
+          borderRadius: BorderRadius.circular(12),
+          color: p.surface,
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (var i = 0; i < hits.length; i++) ...[
+                if (i > 0) Divider(height: 1, color: AppTheme.border),
+                _NearbyProjectRow(
+                  hit: hits[i],
+                  isEnglish: isEnglish,
+                  distanceLabel: strings.projectNearbyDistanceKm(hits[i].distanceKm),
+                  onTap: () => ListingNavigation.openProject(
+                    context,
+                    projectName: hits[i].project.nameTh,
+                    projectSlug: hits[i].project.slug,
+                    isAgent: isAgent,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NearbyProjectRow extends StatelessWidget {
+  const _NearbyProjectRow({
+    required this.hit,
+    required this.isEnglish,
+    required this.distanceLabel,
+    required this.onTap,
+  });
+
+  final NearbyProjectHit hit;
+  final bool isEnglish;
+  final String distanceLabel;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final project = hit.project;
+    final title = isEnglish ? project.nameEn : project.nameTh;
+    final subtitle = project.bts ?? project.district;
+    final imageUrl = 'https://picsum.photos/seed/${project.slug}/120/120';
+
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                imageUrl,
+                width: 48,
+                height: 48,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 48,
+                  height: 48,
+                  color: AppTheme.primaryLight,
+                  child: Icon(Icons.apartment, color: AppTheme.primary, size: 28),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                  ),
+                  if (subtitle.isNotEmpty)
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.palette.textSecondary,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              distanceLabel,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: context.palette.textSecondary,
+              ),
+            ),
+            Icon(Icons.chevron_right, color: context.palette.textSecondary, size: 20),
+          ],
         ),
       ),
     );

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../config/env.dart';
 import '../config/post_listing_menu_config.dart';
-import '../l10n/app_strings.dart';
 import '../services/auth_service.dart';
+import '../shell/main_shell_scope.dart';
+import '../widgets/auth/auth_gate.dart';
 
 /// นำทางเมนูลงประกาศ — ใช้แทน `context.push('/listing/create')` ตรงๆ
 abstract final class PostListingNavigation {
@@ -16,18 +16,22 @@ abstract final class PostListingNavigation {
     context.push(PostListingMenuConfig.myListingsRoute);
   }
 
-  /// เปิดฟอร์มลงประกาศ — ยังไม่เข้าสู่ระบบ (รวมเข้าทดลอง) จะพาไป login ก่อน
-  static void openCreateWithAuthGate(BuildContext context) {
-    final s = AppStrings.of(context);
-    if (!AuthService.instance.isSignedIn) {
-      if (Env.isConfigured) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(s.configuredNotLoggedIn)),
-        );
-      }
-      context.push('/login');
+  /// เปิดแท็บ「จัดการประกาศของคุณ」— ใช้จากหน้าแรกแทนเปิดฟอร์มตรงๆ
+  static void openManageHub(BuildContext context) {
+    final scope = MainShellScope.maybeOf(context);
+    if (scope != null) {
+      scope.selectTab(PostListingMenuConfig.manageListingsShellTabIndex);
       return;
     }
-    openCreate(context);
+    openMyListings(context);
+  }
+
+  /// เปิดฟอร์มลงประกาศ — ต้องล็อกอิน/สมัครจริง (โหมดทดลองไม่ได้)
+  static Future<void> openCreateWithAuthGate(BuildContext context) async {
+    await AuthGate.runIfAllowed(
+      context,
+      () => openCreate(context),
+      redirectRoute: PostListingMenuConfig.createRoute,
+    );
   }
 }

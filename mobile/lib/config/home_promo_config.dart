@@ -66,9 +66,9 @@ abstract final class HomePromoConfig {
     subtitleTh: 'ขั้นต่ำ 60 วัน · ล้างแอร์ฟรี 1 ครั้ง',
     subtitleEn: 'Min. 60 days · Free AC cleaning once',
     detailTh:
-        'ฝากปล่อยเช่ากับ PROPPITER แบบ Exclusive — ทีมงานดูแลครบตั้งแต่หาผู้เช่าจนถึงส่งมอบห้อง',
+        'ฝากปล่อยเช่ากับ RealXtate แบบ Exclusive — ทีมงานดูแลครบตั้งแต่หาผู้เช่าจนถึงส่งมอบห้อง',
     detailEn:
-        'List your rental exclusively with PROPPITER — full-service from tenant matching to handover.',
+        'List your rental exclusively with RealXtate — full-service from tenant matching to handover.',
     bulletTh: [
       'สัญญาขั้นต่ำเพียง 60 วัน',
       'รับโปรโมชั่นล้างแอร์ฟรี 1 ครั้ง ระหว่างที่มีผู้เช่า',
@@ -97,9 +97,9 @@ abstract final class HomePromoConfig {
     subtitleTh: 'ทั้งขายและเช่า · มีงานรองรับตลอด',
     subtitleEn: 'Sales & rent · Steady deal flow',
     detailTh:
-        'เข้าร่วมเครือข่ายนายหน้า PROPPITER — รับงานขายและเช่าจากแพลตฟอร์ม พร้อมทีมแอดมินช่วยประสาน',
+        'เข้าร่วมเครือข่ายนายหน้า RealXtate — รับงานขายและเช่าจากแพลตฟอร์ม พร้อมทีมแอดมินช่วยประสาน',
     detailEn:
-        'Join PROPPITER agent partners — sales and rental leads from the platform with admin support.',
+        'Join RealXtate agent partners — sales and rental leads from the platform with admin support.',
     bulletTh: [
       'รับงานทั้งขายและเช่าในพื้นที่ กทม.และปริมณฑล',
       'มีลีดและนัดชมจากระบบแมตช์',
@@ -128,7 +128,7 @@ abstract final class HomePromoConfig {
     subtitleTh: 'เริ่มต้นที่ 1,500 บาท · แม่บ้าน · ซ่อม · รีโนเวท',
     subtitleEn: 'From ฿1,500 · cleaning · repairs · renovation',
     detailTh:
-        'บริการตรวจรับห้องคืน เริ่มต้นที่ 1,500 บาท — จ้างแม่บ้าน ซ่อมแซมและรีโนเวทในราคาพิเศษเมื่อจองผ่านทีมงาน PROPPITER',
+        'บริการตรวจรับห้องคืน เริ่มต้นที่ 1,500 บาท — จ้างแม่บ้าน ซ่อมแซมและรีโนเวทในราคาพิเศษเมื่อจองผ่านทีมงาน RealXtate',
     detailEn:
         'Move-out room inspection from ฿1,500 — housekeeping, repairs and renovation at special rates via our team.',
     bulletTh: [

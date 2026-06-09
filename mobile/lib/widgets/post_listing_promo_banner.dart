@@ -23,10 +23,10 @@ class PostListingPromoBanner extends StatelessWidget {
 
     final s = AppStrings.of(context);
     final p = context.palette;
-    final isLight = Theme.of(context).brightness == Brightness.light;
+    final isLight = LivingBkkBrand.isLight(context);
     final titleColor = isLight ? p.textPrimary : Colors.white;
     final bodyColor = isLight ? p.textSecondary : Colors.white.withOpacity(0.88);
-    final iconColor = isLight ? p.primary : LivingBkkBrand.pink;
+    final iconColor = isLight ? p.primary : p.accent;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -39,14 +39,12 @@ class PostListingPromoBanner extends StatelessWidget {
         borderRadius: BorderRadius.circular(AppTheme.radiusLg),
         elevation: 0,
         child: InkWell(
-          onTap: () => PostListingNavigation.openCreateWithAuthGate(context),
+          onTap: () => PostListingNavigation.openManageHub(context),
           borderRadius: BorderRadius.circular(AppTheme.radiusLg),
           child: Ink(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              gradient: isLight
-                  ? LivingBkkBrand.promoGradientLight
-                  : LivingBkkBrand.promoGradient,
+              gradient: LivingBkkBrand.promoGradientOf(context),
               border: Border.all(
                 color: isLight
                     ? p.primary.withOpacity(0.22)
@@ -83,8 +81,7 @@ class PostListingPromoBanner extends StatelessWidget {
                     ),
                   ),
                   FilledButton(
-                    onPressed: () =>
-                        PostListingNavigation.openCreateWithAuthGate(context),
+                    onPressed: () => PostListingNavigation.openManageHub(context),
                     style: (isLight ? AppTheme.pillPrimaryFor(p) : AppTheme.pillFilledFor(p))
                         .copyWith(
                       visualDensity: VisualDensity.compact,

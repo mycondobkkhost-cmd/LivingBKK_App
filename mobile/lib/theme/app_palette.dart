@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Semantic color tokens — Light (Canva-style) & Dark (PROPPITER)
+/// Semantic color tokens — Light (Canva-style) & Dark (RealXtate)
 @immutable
 class AppPalette {
   const AppPalette({
@@ -73,7 +73,7 @@ class AppPalette {
     textSecondary: Color(0xFFB8B2D4),
     primary: Color(0xFF7B5CE8),
     primaryLight: Color(0xFF352A6B),
-    accent: Color(0xFFFF6B9D),
+    accent: Color(0xFFFF8A00),
     border: Color(0xFF2E2948),
     divider: Color(0x14FFFFFF),
     inputFill: Color(0xFF221E3C),
@@ -104,7 +104,7 @@ class AppPalette {
 
 extension AppPaletteX on BuildContext {
   AppPalette get palette =>
-      Theme.of(this).extension<AppPaletteTheme>()?.palette ?? AppPalette.dark;
+      Theme.of(this).extension<AppPaletteTheme>()?.palette ?? AppPalette.light;
 }
 
 /// ThemeExtension wrapper for [AppPalette]

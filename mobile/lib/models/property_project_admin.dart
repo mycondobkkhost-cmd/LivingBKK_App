@@ -12,6 +12,9 @@ class PropertyProjectRow {
     required this.isActive,
     this.btsStation,
     this.nearbyTransit = const [],
+    this.searchTagSlugs = const [],
+    this.tagEnrichStatus = 'pending',
+    this.tagEnrichMeta = const {},
     this.aliases = const [],
     this.yearBuilt,
     this.facilities = const [],
@@ -31,6 +34,9 @@ class PropertyProjectRow {
   final String district;
   final String? btsStation;
   final List<String> nearbyTransit;
+  final List<String> searchTagSlugs;
+  final String tagEnrichStatus;
+  final Map<String, dynamic> tagEnrichMeta;
   final String propertyType;
   final double lat;
   final double lng;
@@ -62,6 +68,14 @@ class PropertyProjectRow {
       nearbyTransit: nearbyTransitRaw is List
           ? nearbyTransitRaw.map((e) => e.toString()).toList()
           : const [],
+      searchTagSlugs: (json['search_tag_slugs'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      tagEnrichStatus: json['tag_enrich_status'] as String? ?? 'pending',
+      tagEnrichMeta: json['tag_enrich_meta'] is Map
+          ? Map<String, dynamic>.from(json['tag_enrich_meta'] as Map)
+          : const {},
       propertyType: json['property_type'] as String? ?? 'condo',
       lat: (json['lat'] as num?)?.toDouble() ?? 13.7563,
       lng: (json['lng'] as num?)?.toDouble() ?? 100.5018,
@@ -90,6 +104,9 @@ class PropertyProjectRow {
         'district': district,
         if (btsStation != null && btsStation!.isNotEmpty) 'bts_station': btsStation,
         if (nearbyTransit.isNotEmpty) 'nearby_transit': nearbyTransit,
+        if (searchTagSlugs.isNotEmpty) 'search_tag_slugs': searchTagSlugs,
+        'tag_enrich_status': tagEnrichStatus,
+        if (tagEnrichMeta.isNotEmpty) 'tag_enrich_meta': tagEnrichMeta,
         'property_type': propertyType,
         'lat': lat,
         'lng': lng,

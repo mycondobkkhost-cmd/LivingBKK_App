@@ -10,17 +10,30 @@ import '../../services/demand_board_favorites_service.dart';
 import '../../services/demand_mystock_match_service.dart';
 import '../../services/demand_repository.dart';
 import '../../services/my_stock_listing_pool.dart';
+import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/demand_board_filter_apply.dart';
 import '../../utils/demand_search_match.dart';
 import '../../widgets/demand/demand_board_filter_sheet.dart';
+import '../../widgets/demand/demand_create_post_cta.dart';
 import '../../widgets/demand_inquiry_card.dart';
+import '../../widgets/proppiter_search_capsule_field.dart';
 import '../../theme/li_layout.dart';
 import '../../utils/page_safe_insets.dart';
+import '../../shell/main_shell_scope.dart';
 import '../../widgets/consumer/consumer_page_shell.dart';
 
 class DemandBoardPage extends StatefulWidget {
-  const DemandBoardPage({super.key});
+  const DemandBoardPage({
+    super.key,
+    this.isShellTab = false,
+    this.fromHomeEntry = false,
+  });
+
+  /// แท็บล่าง「บอร์ด」— ปุ่มย้อนกลับกลับหน้าแรก
+  final bool isShellTab;
+  /// กดเข้ามาจากหน้าแรก (เมนูบริการ) — ใช้หัวข้อยาว
+  final bool fromHomeEntry;
 
   @override
   State<DemandBoardPage> createState() => _DemandBoardPageState();
@@ -29,6 +42,7 @@ class DemandBoardPage extends StatefulWidget {
 class _DemandBoardPageState extends State<DemandBoardPage> {
   final _repo = DemandRepository();
   final _locationController = TextEditingController();
+  final _locationFocus = FocusNode();
   List<DemandPost> _posts = [];
   bool _loading = true;
   bool _openOnly = true;
@@ -51,6 +65,7 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
     _locationController.removeListener(_onLocationQueryChanged);
     DemandBoardFavoritesService.instance.removeListener(_onFavoritesChanged);
     _locationController.dispose();
+    _locationFocus.dispose();
     super.dispose();
   }
 
@@ -171,8 +186,20 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
         filterActive || _favoritesOnly || hasLocationQuery;
 
     return ConsumerPageShell(
-      title: s.demandBoardTitle,
+      title: widget.fromHomeEntry
+          ? s.demandBoardCollectionTitle
+          : s.demandBoardTitle,
+      titleFontSize: widget.fromHomeEntry ? 15 : null,
+      onBack: widget.isShellTab
+          ? () => MainShellScope.maybeOf(context)?.selectTab(0)
+          : () => Navigator.of(context).maybePop(),
       safeBottomBody: false,
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 4, right: 2),
+        child: DemandCreatePostCta(
+          onTap: () => DemandBoardNavigation.openCreateRequirement(context),
+        ),
+      ),
       actions: [
         ConsumerHeaderIconButton(
           icon: Icons.tune_rounded,
@@ -192,78 +219,46 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
             onTap: _clearFilters,
           ),
       ],
+      headerBottom: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          LiLayout.pagePadding,
+          0,
+          LiLayout.pagePadding,
+          4,
+        ),
+        child: ProppiterSearchCapsuleField(
+          controller: _locationController,
+          focusNode: _locationFocus,
+          typewriterHint: s.demandSearchLocationHint,
+          cacheKey: 'demand_board_search',
+        ),
+      ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 0),
-            child: TextField(
-              controller: _locationController,
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: s.demandSearchLocationHint,
-                prefixIcon: const Icon(Icons.search, size: 22),
-                suffixIcon: hasLocationQuery
-                    ? IconButton(
-                        icon: const Icon(Icons.close, size: 20),
-                        onPressed: () => _locationController.clear(),
-                      )
-                    : null,
-                filled: true,
-                fillColor: AppTheme.cardTint,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  borderSide: BorderSide(color: AppTheme.border),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-                  borderSide: BorderSide(color: AppTheme.border),
-                ),
-                contentPadding: const EdgeInsets.symmetric(vertical: 10),
-                isDense: true,
+          if (_filters.matchMyStock && _myStockScores.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                LiLayout.pagePadding,
+                8,
+                LiLayout.pagePadding,
+                0,
+              ),
+              child: _FilterChip(
+                label: s.demandMyStockMatchBadge,
+                active: true,
+                onTap: _openFilterSheet,
+                showDropdownIcon: false,
+                leadingIcon: Icons.home_work_outlined,
               ),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _FilterChip(
-                    label: filterActive
-                        ? s.demandFilterActive(_filters.activeCount)
-                        : s.demandFilterButton,
-                    active: filterActive,
-                    onTap: _openFilterSheet,
-                    showDropdownIcon: false,
-                    leadingIcon: Icons.tune_rounded,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                _FilterChip(
-                  label: _favoritesOnly && favCount > 0
-                      ? s.demandSavedBoardCount(favCount)
-                      : s.demandFilterFavoritesOnly,
-                  active: _favoritesOnly,
-                  onTap: () => setState(() => _favoritesOnly = !_favoritesOnly),
-                  showDropdownIcon: false,
-                  leadingIcon: Icons.favorite_border,
-                ),
-                if (_filters.matchMyStock && _myStockScores.isNotEmpty) ...[
-                  const SizedBox(width: 8),
-                  _FilterChip(
-                    label: s.demandMyStockMatchBadge,
-                    active: true,
-                    onTap: _openFilterSheet,
-                    showDropdownIcon: false,
-                    leadingIcon: Icons.home_work_outlined,
-                  ),
-                ],
-              ],
-            ),
-          ),
           Container(
-            margin: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 0),
+            margin: EdgeInsets.fromLTRB(
+              LiLayout.pagePadding,
+              _filters.matchMyStock && _myStockScores.isNotEmpty ? 8 : 10,
+              LiLayout.pagePadding,
+              0,
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -345,7 +340,7 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
                             left: 12,
                             top: 8,
                             right: 12,
-                            bottom: 16,
+                            bottom: 72,
                             addHomeIndicator: false,
                           ),
                           itemCount: visible.length,

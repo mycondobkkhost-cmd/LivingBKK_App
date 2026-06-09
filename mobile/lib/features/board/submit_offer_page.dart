@@ -23,6 +23,8 @@ import '../contact/property_chat_page.dart';
 import '../../utils/page_safe_insets.dart';
 import '../../theme/li_layout.dart';
 import '../../widgets/consumer/consumer_page_shell.dart';
+import '../../config/demand_board_menu_config.dart';
+import '../../widgets/auth/auth_gate.dart';
 
 class SubmitOfferPage extends StatefulWidget {
   const SubmitOfferPage({super.key, required this.post});
@@ -389,11 +391,12 @@ class _SubmitOfferPageState extends State<SubmitOfferPage> {
     if (Env.isConfigured &&
         !Env.trialMode &&
         !AuthService.instance.isRealSupabaseSession) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.configuredNotLoggedIn)),
-      );
-      context.push('/login');
-      return;
+      if (!await AuthGate.requireRealAccount(
+        context,
+        redirectRoute: DemandBoardMenuConfig.boardOfferRoute(widget.post.id),
+      )) {
+        return;
+      }
     }
 
     final summary = _buildSummary(s);

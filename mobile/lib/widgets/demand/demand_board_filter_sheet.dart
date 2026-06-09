@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../data/property_catalog.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/demand_board_filter_state.dart';
 import '../../theme/app_theme.dart';
@@ -402,20 +403,7 @@ class _DemandBoardFilterSheetState extends State<DemandBoardFilterSheet> {
 /// ป้ายหมวดจาก PropertyCatalog
 abstract final class PropertyCatalogLabel {
   static String slug(String slug, AppStrings s) {
-    switch (slug) {
-      case 'office':
-        return s.t('ออฟฟิศ', 'Office');
-      case 'commercial':
-        return s.t('อาคารพาณิชย์', 'Commercial');
-      case 'home_office':
-        return s.t('โฮมออฟฟิศ', 'Home office');
-      case 'warehouse':
-        return s.t('โกดัง', 'Warehouse');
-      case 'factory':
-        return s.t('โรงงาน', 'Factory');
-      default:
-        return slug;
-    }
+    return PropertyCatalog.bySlug(slug)?.label(s.isEnglish) ?? slug;
   }
 }
 

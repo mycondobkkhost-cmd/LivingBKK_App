@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -11,11 +14,19 @@ import '../../services/admin_repository.dart';
 import '../../services/appointment_repository.dart';
 import '../../services/chat_repository.dart';
 import '../../services/chat_service.dart';
+import '../../services/viewing_ops_repository.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/admin_listing_nav.dart';
+import '../../utils/admin_reference_nav.dart';
 import '../../utils/reference_codes.dart';
+import '../../widgets/chat_copyable_text.dart';
+import '../../widgets/viewing_guide_notice_message_body.dart';
 import '../../widgets/reference_code_chip.dart';
+import '../contact/chat_link_detail_sheets.dart';
+import '../../services/admin_chat_label_service.dart';
+import 'admin_chat_rename_sheet.dart';
+import 'admin_inbox_preview.dart';
 import 'admin_listing_link_picker.dart';
 import 'admin_viewing_schedule_sheet.dart';
 
@@ -25,14 +36,20 @@ class AdminChatPanel extends StatefulWidget {
     super.key,
     required this.roomId,
     this.embedded = false,
+    this.highlightMessageId,
     this.onResolved,
     this.onBack,
+    this.backTooltip,
+    this.onHighlightConsumed,
   });
 
   final String roomId;
   final bool embedded;
+  final String? highlightMessageId;
   final VoidCallback? onResolved;
   final VoidCallback? onBack;
+  final String? backTooltip;
+  final VoidCallback? onHighlightConsumed;
 
   @override
   State<AdminChatPanel> createState() => _AdminChatPanelState();
@@ -67,21 +84,86 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
   }
 
   Future<void> _load() async {
-    await _chat.loadThreadIfMissing(widget.roomId);
-    final lead = await _admin.fetchLeadByThreadId(widget.roomId);
-    if (lead != null) {
-      final qual = lead['qualification_json'] as Map<String, dynamic>?;
-      _linkedLeadHasViewing = qual?['viewing_schedule'] != null;
+    try {
+      await Future<void>.delayed(Duration.zero);
+      if (!mounted) return;
+
+      final demoThread = widget.roomId.startsWith('demo-') ||
+          widget.roomId.startsWith('cast-chat-');
+      if (demoThread) {
+        _chat.reloadCastSimulation();
+        if (widget.roomId.startsWith('demo-lead-chat-')) {
+          _chat.ensureViewingLeadChat(widget.roomId);
+          await ViewingOpsRepository()
+              .refreshGuideNoticeInRoom(roomId: widget.roomId, s: context.s);
+        }
+      } else {
+        await _chat.loadThreadIfMissing(widget.roomId);
+      }
+      _chat.markAdminThreadRead(widget.roomId);
+
+      Map<String, dynamic>? lead;
+      if (widget.roomId.startsWith('demo-lead-chat-demo-lead-')) {
+        final leadId = widget.roomId.replaceFirst('demo-lead-chat-', '');
+        lead = await _admin.fetchLead(leadId);
+      } else {
+        lead = await _admin.fetchLeadByThreadId(widget.roomId);
+      }
+      if (lead != null) {
+        final qual = lead['qualification_json'] as Map<String, dynamic>?;
+        _linkedLeadHasViewing = qual?['viewing_schedule'] != null;
+      }
+
+      final room = _room;
+      if (room != null && room.isPersisted) {
+        _realtimeChannel = _chat.subscribeToThread(room, () {
+          if (mounted) setState(() {});
+          _scrollToBottom();
+        });
+      }
+    } catch (e, st) {
+      debugPrint('AdminChatPanel._load: $e\n$st');
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+
+    if (widget.highlightMessageId != null) {
+      _scrollToMessage(widget.highlightMessageId!);
+      widget.onHighlightConsumed?.call();
+    } else {
+      _scrollToBottom();
+    }
+  }
+
+  void _scrollToMessage(String messageId) {
     final room = _room;
-    if (room != null && room.isPersisted) {
-      _realtimeChannel = _chat.subscribeToThread(room, () {
-        if (mounted) setState(() {});
-        _scrollToBottom();
-      });
+    if (room == null) return;
+    final idx = room.messages.indexWhere((m) => m.id == messageId);
+    if (idx < 0) {
+      _scrollToBottom();
+      return;
     }
-    if (mounted) setState(() => _loading = false);
-    _scrollToBottom();
+    Future<void>.delayed(const Duration(milliseconds: 220), () {
+      if (!_scroll.hasClients) return;
+      const itemH = 76.0;
+      final target = (idx * itemH).clamp(0.0, _scroll.position.maxScrollExtent);
+      _scroll.animateTo(
+        target,
+        duration: const Duration(milliseconds: 280),
+        curve: Curves.easeOut,
+      );
+    });
+  }
+
+  Future<void> _renameChat(ChatRoom room) async {
+    final s = context.s;
+    final suggested = AdminInboxPreview.fromRoom(room, s).displayName;
+    await showAdminChatRenameSheet(
+      context,
+      room: room,
+      suggestedName: suggested,
+    );
+    if (mounted) setState(() {});
   }
 
   void _detachRealtime() {
@@ -298,6 +380,39 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
     }
   }
 
+  Future<bool> _confirmReturningCustomerClaim(
+    CustomerAdminContinuityHint hint,
+  ) async {
+    final s = context.s;
+    final self = hint.adminId == _chat.currentAdminId;
+
+    final body = self
+        ? s.adminReturningCustomerClaimPromptSelf(hint.otherRoomTitle)
+        : s.adminReturningCustomerClaimPrompt(
+            hint.adminName,
+            hint.otherRoomTitle,
+          );
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.adminReturningCustomerTitle),
+        content: Text(body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(s.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(s.adminClaimWork),
+          ),
+        ],
+      ),
+    );
+    return ok == true;
+  }
+
   Future<void> _claim() async {
     final room = _room;
     if (room == null) return;
@@ -310,6 +425,13 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
       }
       return;
     }
+
+    final continuity = _chat.continuityHintForRoom(room);
+    if (continuity != null) {
+      final proceed = await _confirmReturningCustomerClaim(continuity);
+      if (!proceed || !mounted) return;
+    }
+
     try {
       await _chat.claimThread(room);
       if (!mounted) return;
@@ -406,40 +528,78 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
     }
 
     return ListenableBuilder(
-      listenable: _chat,
+      listenable: Listenable.merge([_chat, AdminChatLabelService.instance]),
       builder: (context, _) {
         final live = _chat.roomById(widget.roomId)!;
-        final pending = _chat.needsAdminReply(live);
+        final isOpen = !_chat.isAdminResolved(live);
+        final needsAttention = _chat.needsAdminReply(live);
         final canReply = _chat.canReplyAsAdmin(live);
         final claimedOther = _chat.isClaimedByOtherAdmin(live);
+        final continuity = live.isUnclaimed
+            ? _chat.continuityHintForRoom(live)
+            : null;
 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _PanelHeader(
               room: live,
+              preview: AdminInboxPreview.fromRoom(live, s),
               embedded: widget.embedded,
-              pending: pending,
+              isOpen: isOpen,
+              needsAttention: needsAttention,
               canReply: canReply,
               onBack: widget.onBack,
+              backTooltip: widget.backTooltip,
               onClaim: _claim,
               onAssign: _assign,
               onResolve: _markResolved,
+              onRename: () => _renameChat(live),
             ),
-            _MetaBar(room: live, pending: pending, canReply: canReply),
-            if (live.isUnclaimed && pending) _ClaimBanner(onClaim: _claim),
-            if (claimedOther && pending)
+            _MetaBar(
+              room: live,
+              isOpen: isOpen,
+              needsAttention: needsAttention,
+              canReply: canReply,
+            ),
+            if (continuity != null)
+              _ReturningCustomerBanner(
+                hint: continuity,
+                isSelf: continuity.adminId == _chat.currentAdminId,
+                onOpenOther: () => context.go('/admin/console?room=${continuity.otherRoomId}'),
+              ),
+            if (live.isUnclaimed && needsAttention) _ClaimBanner(onClaim: _claim),
+            if (claimedOther && needsAttention)
               _BlockedBanner(text: s.adminClaimedByOther),
             Expanded(
               child: ListView.builder(
                 controller: _scroll,
                 padding: const EdgeInsets.all(16),
                 itemCount: live.messages.length,
-                itemBuilder: (context, i) => _AdminBubble(message: live.messages[i]),
+                itemBuilder: (context, i) => _AdminBubble(
+                  message: live.messages[i],
+                  highlighted: live.messages[i].id == widget.highlightMessageId,
+                  onLinkTap: (link) => openChatMessageLink(
+                    context,
+                    link,
+                    adminView: true,
+                    onFormLink: (l) async {
+                      if (l.kind == ChatMessageLinkKind.viewingForm) {
+                        await _sendViewingFormLink();
+                      } else {
+                        await _sendRequirementFormLink();
+                      }
+                    },
+                    onListingLink: (l) => openAdminListing(
+                      context,
+                      listingId: l.listingId.isNotEmpty ? l.listingId : null,
+                    ),
+                  ),
+                ),
               ),
             ),
             _QuickReplyRow(replies: s.adminQuickReplies, onPick: _useQuickReply),
-            if (!canReply && pending)
+            if (!canReply && isOpen && needsAttention)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Text(
@@ -453,6 +613,7 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
               ),
             SafeArea(
               top: false,
+              bottom: !widget.embedded,
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
                 child: Row(
@@ -463,7 +624,7 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
                         controller: _input,
                         minLines: 1,
                         maxLines: widget.embedded ? 6 : 4,
-                        enabled: canReply || !pending,
+                        enabled: canReply,
                         decoration: InputDecoration(
                           hintText:
                               canReply ? s.adminReplyHint : s.adminMustClaimFirst,
@@ -525,23 +686,31 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
 class _PanelHeader extends StatelessWidget {
   const _PanelHeader({
     required this.room,
+    required this.preview,
     required this.embedded,
-    required this.pending,
+    required this.isOpen,
+    required this.needsAttention,
     required this.canReply,
     this.onBack,
+    this.backTooltip,
     required this.onClaim,
     required this.onAssign,
     required this.onResolve,
+    required this.onRename,
   });
 
   final ChatRoom room;
+  final AdminInboxPreview preview;
   final bool embedded;
-  final bool pending;
+  final bool isOpen;
+  final bool needsAttention;
   final bool canReply;
   final VoidCallback? onBack;
+  final String? backTooltip;
   final VoidCallback onClaim;
   final VoidCallback onAssign;
   final VoidCallback onResolve;
+  final VoidCallback onRename;
 
   @override
   Widget build(BuildContext context) {
@@ -553,20 +722,46 @@ class _PanelHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(4, 8, 8, 8),
         child: Row(
           children: [
-            if (embedded && onBack != null)
+            if (onBack != null)
               IconButton(
                 icon: const Icon(Icons.arrow_back),
                 onPressed: onBack,
-                tooltip: s.back,
+                tooltip: backTooltip ?? s.back,
               ),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    s.adminReplyCustomer,
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          preview.displayName,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.drive_file_rename_outline, size: 20),
+                        tooltip: s.adminChatRenameTitle,
+                        onPressed: onRename,
+                        visualDensity: VisualDensity.compact,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                      ),
+                    ],
                   ),
+                  if (preview.isCoAgencyCustomer) ...[
+                    const SizedBox(height: 4),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: AdminInboxPreview.coAgencyCustomerChip(context),
+                    ),
+                  ],
                   Text(
                     room.displayTitle,
                     style: TextStyle(fontSize: 12, color: AppTheme.textSecondary),
@@ -576,10 +771,11 @@ class _PanelHeader extends StatelessWidget {
                 ],
               ),
             ),
-            if (room.isUnclaimed && pending)
+            if (room.isUnclaimed && needsAttention)
               TextButton(onPressed: onClaim, child: Text(s.adminClaimWork)),
-            if (pending) TextButton(onPressed: onAssign, child: Text(s.adminAssignWork)),
-            if (pending && canReply)
+            if (isOpen && needsAttention)
+              TextButton(onPressed: onAssign, child: Text(s.adminAssignWork)),
+            if (isOpen && canReply)
               FilledButton(onPressed: onResolve, child: Text(s.adminCloseCase)),
           ],
         ),
@@ -591,20 +787,26 @@ class _PanelHeader extends StatelessWidget {
 class _MetaBar extends StatelessWidget {
   const _MetaBar({
     required this.room,
-    required this.pending,
+    required this.isOpen,
+    required this.needsAttention,
     required this.canReply,
   });
 
   final ChatRoom room;
-  final bool pending;
+  final bool isOpen;
+  final bool needsAttention;
   final bool canReply;
 
   @override
   Widget build(BuildContext context) {
     final s = context.s;
+    final active = isOpen && needsAttention;
+    final inProgress = isOpen && !needsAttention;
     return Container(
       width: double.infinity,
-      color: pending ? const Color(0xFFFFF7ED) : AdminTheme.surfaceMuted,
+      color: active
+          ? const Color(0xFFFFF7ED)
+          : (inProgress ? const Color(0xFFF0F4FF) : AdminTheme.surfaceMuted),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Wrap(
         spacing: 8,
@@ -612,24 +814,28 @@ class _MetaBar extends StatelessWidget {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           Icon(
-            pending
+            active
                 ? (canReply ? Icons.mark_chat_unread : Icons.lock_outline)
-                : Icons.check_circle_outline,
+                : (inProgress ? Icons.support_agent_outlined : Icons.check_circle_outline),
             size: 16,
-            color: pending ? AppTheme.accentMid : AppTheme.primary,
+            color: active
+                ? AppTheme.accentMid
+                : (inProgress ? AppTheme.primary : AppTheme.primary),
           ),
           Text(
-            pending
-                ? (canReply
-                    ? s.adminPendingMeta
-                    : (room.isUnclaimed
-                        ? s.adminMustClaimFirst
-                        : s.adminClaimedByOther))
-                : s.adminResolvedMeta,
+            !isOpen
+                ? s.adminResolvedMeta
+                : (active
+                    ? (canReply
+                        ? s.adminPendingMeta
+                        : (room.isUnclaimed
+                            ? s.adminMustClaimFirst
+                            : s.adminClaimedByOther))
+                    : s.adminActiveMeta),
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: pending ? AppTheme.accentMid : AppTheme.primary,
+              color: active ? AppTheme.accentMid : AppTheme.primary,
             ),
           ),
           if (room.assignedAdminName != null && room.assignedAdminName!.isNotEmpty)
@@ -651,6 +857,13 @@ class _MetaBar extends StatelessWidget {
             code: room.effectiveTransactionRef,
             label: s.transactionRefLabel,
             compact: true,
+            onNavigate: adminReferenceNavigateHandler(
+              context,
+              code: room.effectiveTransactionRef,
+              threadId: room.id,
+              listingId: room.listingId.isNotEmpty ? room.listingId : null,
+              listingCode: room.listingCode,
+            ),
           ),
           if (room.isPropertyListing &&
               !ReferenceCodes.isSpecialListingCode(room.listingCode))
@@ -658,13 +871,80 @@ class _MetaBar extends StatelessWidget {
               code: room.listingCode,
               label: s.propertyCodeLabel,
               compact: true,
-              onNavigate: () => openAdminListing(
+              onNavigate: adminReferenceNavigateHandler(
                 context,
+                code: room.listingCode,
+                threadId: room.id,
                 listingId: room.listingId.isNotEmpty ? room.listingId : null,
                 listingCode: room.listingCode,
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _ReturningCustomerBanner extends StatelessWidget {
+  const _ReturningCustomerBanner({
+    required this.hint,
+    required this.isSelf,
+    required this.onOpenOther,
+  });
+
+  final CustomerAdminContinuityHint hint;
+  final bool isSelf;
+  final VoidCallback onOpenOther;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final text = isSelf
+        ? s.adminReturningCustomerBannerSelf(hint.otherRoomTitle)
+        : s.adminReturningCustomerBanner(hint.adminName, hint.otherRoomTitle);
+
+    return Material(
+      color: const Color(0xFFFFF7ED),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.history, size: 18, color: AppTheme.accentMid),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        s.adminReturningCustomerTitle,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: AppTheme.accentMid,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(text, style: const TextStyle(fontSize: 13, height: 1.35)),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: onOpenOther,
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: Text(s.adminReturningCustomerOpenOther),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -775,9 +1055,15 @@ class _QuickReplyRow extends StatelessWidget {
 }
 
 class _AdminBubble extends StatelessWidget {
-  const _AdminBubble({required this.message});
+  const _AdminBubble({
+    required this.message,
+    this.onLinkTap,
+    this.highlighted = false,
+  });
 
   final ChatMessage message;
+  final ValueChanged<ChatMessageLink>? onLinkTap;
+  final bool highlighted;
 
   String _roleLabel(AppStrings s) {
     switch (message.role) {
@@ -858,39 +1144,39 @@ class _AdminBubble extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(message.text, style: TextStyle(color: fg, height: 1.4)),
-                if (message.links.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  ...message.links.map(
-                    (link) => Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            link.kind == ChatMessageLinkKind.requirementForm
-                                ? Icons.edit_note_outlined
-                                : link.kind == ChatMessageLinkKind.viewingForm
-                                    ? Icons.event_available_outlined
-                                    : Icons.link,
-                            size: 14,
-                            color: isUser ? Colors.white70 : AppTheme.primary,
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              link.label,
-                              style: TextStyle(
-                                fontSize: 12,
-                                color:
-                                    isUser ? Colors.white70 : AppTheme.primary,
-                              ),
-                            ),
-                          ),
-                        ],
+                if (isViewingGuideNoticeDisplayText(message.displayText))
+                  ViewingGuideNoticeMessageBody(
+                    text: message.displayText,
+                    links: message.links,
+                    style: TextStyle(color: fg, height: 1.4),
+                    linkBuilder: (link) => _AdminLinkChip(
+                      link: link,
+                      isUser: isUser,
+                      onTap: onLinkTap == null || link.isFormAction
+                          ? null
+                          : () => onLinkTap!(link),
+                    ),
+                  )
+                else ...[
+                  ChatCopyableText(
+                    text: message.displayText,
+                    style: TextStyle(color: fg, height: 1.4),
+                  ),
+                  if (message.links.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    ...message.links.map(
+                      (link) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: _AdminLinkChip(
+                          link: link,
+                          isUser: isUser,
+                          onTap: onLinkTap == null || link.isFormAction
+                              ? null
+                              : () => onLinkTap!(link),
+                        ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ],
             ),
@@ -899,22 +1185,99 @@ class _AdminBubble extends StatelessWidget {
       ),
     );
 
+    Widget row;
     if (isSystem) {
-      return Padding(
+      row = Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Center(child: bubble),
       );
+    } else {
+      row = Padding(
+        padding: const EdgeInsets.only(bottom: 12),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!isUser) const Spacer(),
+            bubble,
+            if (isUser) const Spacer(),
+          ],
+        ),
+      );
     }
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isUser) const Spacer(),
-          bubble,
-          if (isUser) const Spacer(),
+    if (!highlighted) return row;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7C2).withOpacity(0.55),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFF59E0B), width: 1.5),
+      ),
+      child: row,
+    );
+  }
+}
+
+class _AdminLinkChip extends StatelessWidget {
+  const _AdminLinkChip({
+    required this.link,
+    required this.isUser,
+    this.onTap,
+  });
+
+  final ChatMessageLink link;
+  final bool isUser;
+  final VoidCallback? onTap;
+
+  IconData get _icon => switch (link.kind) {
+        ChatMessageLinkKind.requirementForm => Icons.edit_note_outlined,
+        ChatMessageLinkKind.viewingForm => Icons.event_available_outlined,
+        ChatMessageLinkKind.profileTag => Icons.sell_outlined,
+        ChatMessageLinkKind.viewingRequest => Icons.event_note_outlined,
+        ChatMessageLinkKind.viewingLocation => Icons.location_on_outlined,
+        ChatMessageLinkKind.viewingAppointment => Icons.event_available_outlined,
+        _ => Icons.link,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final color = isUser ? Colors.white : AppTheme.primary;
+    final muted = isUser ? Colors.white70 : AppTheme.primary;
+
+    final child = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(_icon, size: 14, color: muted),
+        const SizedBox(width: 4),
+        Flexible(
+          child: Text(
+            link.label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: onTap != null ? FontWeight.w600 : FontWeight.w500,
+              color: muted,
+              decoration: onTap != null ? TextDecoration.underline : null,
+            ),
+          ),
+        ),
+        if (onTap != null) ...[
+          const SizedBox(width: 4),
+          Icon(Icons.open_in_new, size: 12, color: muted),
         ],
+      ],
+    );
+
+    if (onTap == null) return child;
+
+    return Material(
+      color: color.withOpacity(isUser ? 0.12 : 0.06),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          child: child,
+        ),
       ),
     );
   }

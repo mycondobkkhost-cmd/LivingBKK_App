@@ -29,7 +29,7 @@ class HomeQuickMenu extends StatelessWidget {
   final VoidCallback? onMapSearch;
 
   static const _propertyIconSize = 44.0;
-  static const _propertySlugs = ['condo', 'house', 'townhome', 'home_office'];
+  static const _propertySlugs = PropertyCatalog.homePrimarySlugs;
 
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,7 @@ class HomeQuickMenu extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: EdgeInsets.zero,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -55,7 +55,7 @@ class HomeQuickMenu extends StatelessWidget {
               child: _PostListingCta(
                 title: s.homeQuickOwnerTitle,
                 subtitle: s.homeQuickOwnerBody,
-                onTap: () => PostListingNavigation.openCreateWithAuthGate(context),
+                onTap: () => PostListingNavigation.openManageHub(context),
               ),
             ),
             if (services.isNotEmpty) const SizedBox(height: 6),
@@ -103,36 +103,33 @@ class HomeQuickMenu extends StatelessWidget {
     AppStrings s,
     AppPalette p,
   ) {
-    final out = <_ServicePillData>[
-      _ServicePillData(
-        line1: s.homeQuickServiceMapLine1,
-        line2: s.homeQuickServiceMapLine2,
-        imageAsset: 'assets/home_services/home_service_map.png',
-        accentColor: LivingBkkBrand.purpleMid,
-        gradientColors: const [Color(0xFF6B4EAA), Color(0xFF8B6FD4)],
-        onTap: onMapSearch,
-      ),
-    ];
+    final out = <_ServicePillData>[];
+
+    if (DemandBoardMenuConfig.showHomeQuickBoard(roleController)) {
+      out.add(_ServicePillData(
+        lines: [
+          s.homeQuickServiceBoardLine1,
+          s.homeQuickServiceBoardLine2,
+          s.homeQuickServiceBoardLine3,
+        ],
+        imageAsset: 'assets/home_services/home_service_board.png',
+        accentColor: LivingBkkBrand.piterOrange,
+        gradientColors: const [Color(0xFFE85A00), Color(0xFFFF9A4D)],
+        onTap: () => DemandBoardNavigation.openBoardTab(context, fromHome: true),
+      ));
+    }
 
     if (DemandBoardMenuConfig.showHomeQuickRequirement(roleController)) {
       out.add(_ServicePillData(
-        line1: s.homeQuickServiceMatchLine1,
-        line2: s.homeQuickServiceMatchLine2,
+        lines: [
+          s.homeQuickServiceMatchLine1,
+          s.homeQuickServiceMatchLine2,
+          s.homeQuickServiceMatchLine3,
+        ],
         imageAsset: 'assets/home_services/home_service_match.png',
         accentColor: const Color(0xFF0D9488),
         gradientColors: const [Color(0xFF0F9B8E), Color(0xFF2DD4BF)],
         onTap: () => DemandBoardNavigation.openCreateRequirement(context),
-      ));
-    }
-
-    if (DemandBoardMenuConfig.showHomeQuickBoard(roleController)) {
-      out.add(_ServicePillData(
-        line1: s.homeQuickServiceBoardLine1,
-        line2: s.homeQuickServiceBoardLine2,
-        imageAsset: 'assets/home_services/home_service_board.png',
-        accentColor: LivingBkkBrand.piterOrange,
-        gradientColors: const [Color(0xFFE85A00), Color(0xFFFF9A4D)],
-        onTap: () => DemandBoardNavigation.openBoardTab(context),
       ));
     }
 
@@ -179,38 +176,36 @@ class HomeQuickMenu extends StatelessWidget {
   static IconData _propertyIcon(String slug) => switch (slug) {
         'condo' => Icons.apartment_rounded,
         'house' => Icons.home_rounded,
+        'land' => Icons.landscape_rounded,
         'townhome' => Icons.other_houses_rounded,
-        'home_office' => Icons.home_work_rounded,
         _ => Icons.category_rounded,
       };
 
   static Color _propertyTint(String slug, AppPalette p) => switch (slug) {
         'condo' => p.primary,
         'house' => const Color(0xFF4DA8FF),
+        'land' => const Color(0xFF10B981),
         'townhome' => const Color(0xFFF59E0B),
-        'home_office' => const Color(0xFF6366F1),
         _ => p.textSecondary,
       };
 }
 
 class _ServicePillData {
   const _ServicePillData({
-    required this.line1,
-    required this.line2,
+    required this.lines,
     required this.imageAsset,
     required this.accentColor,
     required this.gradientColors,
     this.onTap,
   });
 
-  final String line1;
-  final String line2;
+  final List<String> lines;
   final String imageAsset;
   final Color accentColor;
   final List<Color> gradientColors;
   final VoidCallback? onTap;
 
-  String get semanticsLabel => '$line1 $line2';
+  String get semanticsLabel => lines.join(' ');
 }
 
 class _QuickItem {
@@ -327,29 +322,62 @@ class _PostListingCta extends StatelessWidget {
   }
 }
 
-/// ปุ่มบริการ 3 อัน — รูปเต็มการ์ด + ข้อความขาวทับพื้นที่ว่างซ้าย (ไม่ทาสีทับรูป)
-class _ServicePillCta extends StatelessWidget {
+/// ปุ่มบริการ — ข้อความ 3 บรรทัดซ้าย (พื้นหลังม่วง) ไล่ลงทีละบรรทัด วน 4 วินาที
+class _ServicePillCta extends StatefulWidget {
   const _ServicePillCta({required this.data});
 
   final _ServicePillData data;
 
-  static const double _height = 60;
+  @override
+  State<_ServicePillCta> createState() => _ServicePillCtaState();
+}
+
+class _ServicePillCtaState extends State<_ServicePillCta>
+    with SingleTickerProviderStateMixin {
+  static const double _height = 64;
   static const double _radius = 14;
+  static const Duration _cycleDuration = Duration(seconds: 4);
+  static const double _textAreaWidthFraction = 0.52;
 
-  /// พื้นที่ว่างซ้ายของรูปสำหรับวางข้อความ (สัดส่วนตรงกับ asset)
-  static const double _textAreaWidthFraction = 0.58;
+  late final AnimationController _controller;
 
-  /// ขนาดตัวหนังสือเท่ากันทุกการ์ด — 2 บรรทัด อ่านง่าย
   static const TextStyle _labelStyle = TextStyle(
     color: Colors.white,
-    fontSize: 11.5,
-    fontWeight: FontWeight.w600,
-    height: 1.28,
+    fontSize: 10,
+    fontWeight: FontWeight.w700,
+    height: 1.1,
     letterSpacing: -0.1,
   );
 
   @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: _cycleDuration,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  double _lineProgress(int index, int lineCount, double t) {
+    final step = 0.75 / lineCount;
+    final start = index * step;
+    final end = start + step * 0.45;
+    if (t <= start) return 0;
+    if (t >= end) return 1;
+    return Curves.easeOut.transform((t - start) / (end - start));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final data = widget.data;
+    final lines = data.lines;
+
     return Material(
       color: Colors.transparent,
       elevation: 0,
@@ -391,46 +419,80 @@ class _ServicePillCta extends StatelessWidget {
                               colors: data.gradientColors,
                             ),
                           ),
-                          child: Center(
-                            child: Text(
-                              data.semanticsLabel,
-                              textAlign: TextAlign.center,
-                              style: _labelStyle,
-                            ),
-                          ),
                         ),
                       ),
                       Positioned(
-                        left: 9,
-                        top: 5,
-                        bottom: 5,
-                        width: textWidth - 9,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                data.line1,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: _labelStyle,
-                              ),
-                              Text(
-                                data.line2,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: _labelStyle,
-                              ),
-                            ],
-                          ),
+                        left: 7,
+                        top: 0,
+                        bottom: 0,
+                        width: textWidth,
+                        child: AnimatedBuilder(
+                          animation: _controller,
+                          builder: (context, _) {
+                            final t = _controller.value;
+                            return Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (var i = 0; i < lines.length; i++) ...[
+                                  if (i > 0) const SizedBox(height: 3),
+                                  _AnimatedLineChip(
+                                    text: lines[i],
+                                    progress: _lineProgress(i, lines.length, t),
+                                    style: _labelStyle,
+                                  ),
+                                ],
+                              ],
+                            );
+                          },
                         ),
                       ),
                     ],
                   );
                 },
               ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AnimatedLineChip extends StatelessWidget {
+  const _AnimatedLineChip({
+    required this.text,
+    required this.progress,
+    required this.style,
+  });
+
+  final String text;
+  final double progress;
+  final TextStyle style;
+
+  @override
+  Widget build(BuildContext context) {
+    final p = progress.clamp(0.0, 1.0);
+    return Opacity(
+      opacity: p,
+      child: Transform.translate(
+        offset: Offset(0, (1 - p) * -5),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: LivingBkkBrand.purpleMid.withOpacity(0.88),
+            borderRadius: BorderRadius.circular(2),
+            border: Border.all(
+              color: LivingBkkBrand.purpleLight.withOpacity(0.35),
+              width: 0.5,
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: style,
             ),
           ),
         ),
@@ -464,7 +526,7 @@ class _QuickIcon extends StatelessWidget {
               width: iconSize,
               height: iconSize,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: palette.surface,
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: data.tint.withOpacity(0.35),

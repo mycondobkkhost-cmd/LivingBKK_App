@@ -86,7 +86,7 @@ if _missing FIREBASE_PROJECT_ID; then
   echo "ℹ️  Firebase ว่าง — ใช้ Realtime ในแอป; ใส่ FIREBASE_* เพื่อ FCM push"
 fi
 if [[ -z "${WEB_BASE_URL:-}" ]]; then
-  echo "ℹ️  WEB_BASE_URL ว่าง — ลิงก์แชร์ใช้ URL ปัจจุบันบนเว็บ หรือ livingbkk.app"
+  echo "ℹ️  WEB_BASE_URL ว่าง — ลิงก์แชร์ใช้ URL ปัจจุบันบนเว็บ หรือ realxtateth.com"
 else
   echo "ℹ️  WEB_BASE_URL = ${WEB_BASE_URL}"
 fi

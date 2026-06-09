@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,7 +9,10 @@ import '../../services/appointment_repository.dart';
 import '../../services/viewing_ops_repository.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/admin_listing_nav.dart';
+import '../../utils/admin_routing.dart';
+import 'admin_nav_model.dart';
 import '../../widgets/appointments_map.dart';
+import 'admin_viewing_follow_up_actions.dart';
 
 class AdminAppointmentsTab extends StatefulWidget {
   const AdminAppointmentsTab({super.key});
@@ -107,7 +111,12 @@ class _AdminAppointmentsTabState extends State<AdminAppointmentsTab> {
       );
       return;
     }
-    context.push('/admin/chat/$threadId');
+    final fromQ = '${kAdminReturnNavKey}=${AdminNavId.appointments.name}';
+    if (kIsWeb) {
+      context.go('/admin/console?room=$threadId&$fromQ');
+      return;
+    }
+    context.push('/admin/chat/$threadId?$fromQ');
   }
 
   Future<void> _requestSeniorCall(Appointment a) async {
@@ -259,6 +268,16 @@ class _AdminAppointmentsTabState extends State<AdminAppointmentsTab> {
             icon: const Icon(Icons.send_outlined, size: 18),
             label: Text(s.adminSendOwnerProfileBtn),
           ),
+          if (appointmentEligibleForFollowUp(a))
+            FilledButton.tonalIcon(
+              onPressed: () => runAdminViewingFollowUp(
+                context,
+                appointment: a,
+                onRecorded: _load,
+              ),
+              icon: const Icon(Icons.fact_check_outlined, size: 18),
+              label: Text(s.adminViewingFollowUpBtn),
+            ),
         ],
       ),
     );

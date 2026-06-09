@@ -9,15 +9,23 @@ import '../models/chat_message.dart';
 import '../models/chat_room.dart';
 import '../models/customer_requirement.dart';
 import '../models/listing_public.dart';
+import '../models/profile_tag.dart';
+import 'admin_chat_label_service.dart';
+import '../models/viewing_request.dart';
 import '../state/locale_controller.dart';
 import 'in_app_notification_hub.dart';
 import '../utils/listing_ids.dart';
 import '../utils/localized_content.dart';
 import '../utils/reference_codes.dart';
+import '../data/demo_cast_simulation.dart';
+import '../data/demo_viewing_record_seed.dart';
 import 'auth_service.dart';
+import 'demo_cast_bootstrap.dart';
+import 'demo_cast_session.dart';
 import 'chat_repository.dart';
 import 'listing_repository.dart';
 import 'supabase_service.dart';
+import 'viewing_appointment_record_service.dart';
 
 class ChatService extends ChangeNotifier {
   static final ChatService instance = ChatService._();
@@ -40,15 +48,19 @@ class ChatService extends ChangeNotifier {
       !AuthService.instance.trialSimulatesBackend &&
       AuthService.instance.isRealSupabaseSession;
 
-  /// โหลด inbox แอดมินจาก Supabase — ไม่ผูก trialSimulatesBackend (KPI นับจาก DB อยู่แล้ว)
+  /// โหมดทดลองแยก — inbox จากจำลองเท่านั้น ไม่ดึง Supabase
   bool get _adminInboxBackendActive =>
+      !DemoCastBootstrap.isolatedAdminTrial &&
       _supabaseReady &&
       (AuthService.instance.isRealSupabaseSession ||
           AuthService.instance.isTrialAdmin);
 
   final Set<String> _myThreadIds = {};
   final Map<String, int> _unreadByThread = {};
+  /// เวลาที่แอดมินเปิดดูแชทล่าสุด (inbox preview อ่านแล้ว = เทา)
+  final Map<String, DateTime> _adminReadAtByThread = {};
   RealtimeChannel? _customerInboxChannel;
+  bool _castSimSeeded = false;
 
   int unreadForThread(String threadId) => _unreadByThread[threadId] ?? 0;
 
@@ -65,6 +77,95 @@ class ChatService extends ChangeNotifier {
     if (_unreadByThread.remove(threadId) != null) {
       notifyListeners();
     }
+  }
+
+  /// แอดมินเปิดดูแชท — ข้อความตัวอย่างใน inbox เปลี่ยนเป็นสีเทา
+  void markAdminThreadRead(String threadId) {
+    if (threadId.isEmpty) return;
+    _adminReadAtByThread[threadId] = DateTime.now();
+    notifyListeners();
+  }
+
+  void refreshRooms() => notifyListeners();
+
+  /// เก็บห้องแชทลูกค้าใน cache หลัง ops (นัดดู / ติดตาม)
+  void cacheAdminRoom(ChatRoom room) {
+    _registerRoom(room, aliasKey: room.listingCode);
+    if (room.listingId.isNotEmpty) {
+      _registerRoom(room, aliasKey: room.listingId);
+    }
+    notifyListeners();
+  }
+
+  /// โหลดแชท demo สำหรับ preview แอดมิน
+  void ensureDemoAdminChatsForPreview() {
+    if (_adminInboxBackendActive) return;
+    _memoryEnsureDemoAdminChats();
+  }
+
+  /// สร้าง/คืนแชทลูกค้า demo สำหรับ Lead (โหมดทดลอง)
+  ChatRoom memoryOpenCustomerRoomForLead({
+    required String roomId,
+    required String listingCode,
+    required String listingTitle,
+    String? seekerNickname,
+    String? seekerUserId,
+  }) {
+    final existing = _rooms[roomId];
+    if (existing != null) return existing;
+
+    final nick = seekerNickname?.trim().isNotEmpty == true
+        ? seekerNickname!.trim()
+        : 'ลูกค้าตัวอย่าง';
+    final room = ChatRoom(
+      id: roomId,
+      listingId: roomId,
+      listingCode: listingCode,
+      listingTitle: listingTitle,
+      transactionRef: ReferenceCodes.demoChatRef(roomId),
+      roomKind: 'property',
+      category: 'viewing_request',
+      allowViewingRequest: true,
+      participantUserId: seekerUserId ?? 'demo-seeker',
+      adminDisplayName: nick,
+      viewingSubmitted: true,
+      adminEscalated: true,
+      adminReplyDone: false,
+      status: 'waiting_admin',
+      priority: 'high',
+      messages: [
+        ChatMessage(
+          id: 'welcome-$roomId',
+          role: ChatMessageRole.ai,
+          text: _copy.chatPropertyWelcome(listingTitle, allowViewing: true),
+        ),
+        ChatMessage(
+          id: 'user-viewing-$roomId',
+          role: ChatMessageRole.user,
+          text: 'สนใจนัดดูทรัพย์นี้ค่ะ ($listingCode)',
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+        ChatMessage(
+          id: 'sys-viewing-$roomId',
+          role: ChatMessageRole.system,
+          text: 'สรุปโปรไฟล์ลูกค้า\n• ชื่อ: $nick\n• ทรัพย์: $listingCode',
+          createdAt: DateTime.now().subtract(const Duration(hours: 20)),
+        ),
+      ],
+    );
+    _registerRoom(room, aliasKey: listingCode);
+    _registerRoom(room, aliasKey: roomId);
+    notifyListeners();
+    return room;
+  }
+
+  /// แชทที่ยังต้องตอบและยังไม่เปิดดูหลังอัปเดตล่าสุด
+  bool isAdminThreadUnread(ChatRoom room) {
+    if (isAdminResolved(room)) return false;
+    if (!needsAdminReply(room)) return false;
+    final readAt = _adminReadAtByThread[room.id];
+    if (readAt == null) return true;
+    return room.updatedAt.isAfter(readAt);
   }
 
   List<ChatRoom> listRooms() => listMyRooms();
@@ -124,6 +225,15 @@ class ChatService extends ChangeNotifier {
   }
 
   ChatRoom? roomById(String id) => _rooms[id];
+
+  ChatRoom? roomByTransactionRef(String ref) {
+    final key = ref.trim();
+    if (key.isEmpty) return null;
+    for (final room in _rooms.values) {
+      if (room.effectiveTransactionRef == key) return room;
+    }
+    return null;
+  }
 
   /// โหลดประวัติแชทจาก Supabase (แท็บแชท)
   Future<void> refreshMyThreads() async {
@@ -255,20 +365,152 @@ class ChatService extends ChangeNotifier {
 
   /// โหลด inbox ทีมงานจาก Supabase
   Future<void> refreshAdminInbox() async {
-    if (!_adminInboxBackendActive) return;
-    try {
-      final pending = await _repo.fetchAdminInbox();
-      final resolved = await _repo.fetchAdminResolved();
-      for (final room in {...pending, ...resolved}) {
-        _rooms[room.id] = room;
+    if (_adminInboxBackendActive) {
+      try {
+        final pending = await _repo.fetchAdminInbox();
+        final openAssigned = await _repo.fetchAdminOpenAssigned();
+        final resolved = await _repo.fetchAdminResolved();
+        for (final room in {...pending, ...openAssigned, ...resolved}) {
+          AdminChatLabelService.instance.applyToRoom(room);
+          _rooms[room.id] = room;
+        }
+      } catch (e) {
+        debugPrint('refreshAdminInbox: $e');
       }
-      notifyListeners();
-    } catch (e) {
-      debugPrint('refreshAdminInbox: $e');
+    }
+    _ensureCastSimulation();
+    notifyListeners();
+  }
+
+  void resetCastSimulation() {
+    final remove = _rooms.keys
+        .where((k) => k.startsWith('cast-chat-') || k.startsWith('demo-'))
+        .toList();
+    for (final key in remove) {
+      _rooms.remove(key);
+    }
+    _castSimSeeded = false;
+    notifyListeners();
+  }
+
+  void _syncDemoLeadRoomMetadata(ChatRoom existing, ChatRoom seed) {
+    if (seed.adminDisplayName?.trim().isNotEmpty == true) {
+      existing.adminDisplayName = seed.adminDisplayName!.trim();
+    }
+    existing.viewingSubmitted = seed.viewingSubmitted;
+    existing.category = seed.category;
+    for (var i = 0; i < existing.messages.length; i++) {
+      final m = existing.messages[i];
+      if (m.role != ChatMessageRole.system ||
+          !m.text.contains('สรุปโปรไฟล์ลูกค้า')) {
+        continue;
+      }
+      final nick = existing.adminDisplayName ?? 'ลูกค้า';
+      existing.messages[i] = ChatMessage(
+        id: m.id,
+        role: m.role,
+        text: 'สรุปโปรไฟล์ลูกค้า\n• ชื่อ: $nick\n• ทรัพย์: ${existing.listingCode}',
+        createdAt: m.createdAt,
+        requiresAdmin: m.requiresAdmin,
+        links: m.links,
+      );
     }
   }
 
-  String? get _myAdminId => SupabaseService.client?.auth.currentUser?.id;
+  /// เติมห้องจำลองที่ยังไม่มี — ไม่ล้างข้อความที่ส่งไปแล้ว
+  void reloadCastSimulation() {
+    if (!DemoCastSimulation.enabled) return;
+    _ensureCastSimulation();
+  }
+
+  void _ensureCastSimulation() {
+    if (!DemoCastSimulation.enabled) return;
+    DemoViewingRecordSeed.ensure();
+    final seeds = DemoCastSession.hubEnabled
+        ? DemoCastSimulation.chatSeeds()
+        : DemoCastSimulation.viewingLeadChatSeeds();
+    var added = false;
+    for (final seed in seeds) {
+      final room = DemoCastSimulation.toRoom(seed);
+      final existing = _rooms[room.id];
+      if (existing != null) {
+        if (room.id.startsWith('demo-lead-chat-')) {
+          _syncDemoLeadRoomMetadata(existing, room);
+        }
+        continue;
+      }
+      _registerRoom(room, aliasKey: room.listingCode);
+      _registerRoom(room, aliasKey: room.id);
+      added = true;
+    }
+    if (added || !_castSimSeeded) {
+      _castSimSeeded = true;
+      notifyListeners();
+    }
+  }
+
+  /// เปิดแชทนัดดู demo — ไม่รอ Supabase
+  void ensureViewingLeadChat(String roomId) {
+    _ensureCastSimulation();
+    if (!roomId.startsWith('demo-lead-chat-')) return;
+    final leadId = roomId.replaceFirst('demo-lead-chat-', '');
+    for (final lead in DemoCastSimulation.leads()) {
+      if (lead['id'] != leadId) continue;
+      final code = lead['listing_code']?.toString() ?? 'DEMO';
+      final nick = lead['seeker_nickname']?.toString();
+      if (_rooms.containsKey(roomId)) {
+        final existing = _rooms[roomId]!;
+        if (nick != null && nick.isNotEmpty) {
+          existing.adminDisplayName = nick;
+          for (var i = 0; i < existing.messages.length; i++) {
+            final m = existing.messages[i];
+            if (m.role != ChatMessageRole.system ||
+                !m.text.contains('สรุปโปรไฟล์ลูกค้า')) {
+              continue;
+            }
+            existing.messages[i] = ChatMessage(
+              id: m.id,
+              role: m.role,
+              text:
+                  'สรุปโปรไฟล์ลูกค้า\n• ชื่อ: $nick\n• ทรัพย์: ${existing.listingCode}',
+              createdAt: m.createdAt,
+              requiresAdmin: m.requiresAdmin,
+              links: m.links,
+            );
+          }
+          notifyListeners();
+        }
+        return;
+      }
+      final room = memoryOpenCustomerRoomForLead(
+        roomId: roomId,
+        listingCode: code,
+        listingTitle: code,
+        seekerNickname: nick,
+        seekerUserId: leadId,
+      );
+      cacheAdminRoom(room);
+      return;
+    }
+    if (_rooms.containsKey(roomId)) return;
+    cacheAdminRoom(
+      memoryOpenCustomerRoomForLead(
+        roomId: roomId,
+        listingCode: 'DEMO',
+        listingTitle: 'Demo viewing',
+        seekerUserId: leadId,
+      ),
+    );
+  }
+
+  String? get _myAdminId {
+    if (DemoCastSession.instance.hasActiveCast) {
+      return DemoCastSession.instance.effectiveAdminId;
+    }
+    return SupabaseService.client?.auth.currentUser?.id;
+  }
+
+  String get currentAdminId => _myAdminId ?? 'demo-admin';
 
   /// ตรงกับ `_countChatWaiting` ใน AdminRepository
   bool _matchesAdminWaitingQueue(ChatRoom room) {
@@ -294,6 +536,7 @@ class ChatService extends ChangeNotifier {
     AdminInboxBucket bucket = AdminInboxBucket.unclaimed,
     bool includeResolved = false,
   }) {
+    _ensureCastSimulation();
     if (!_adminInboxBackendActive) {
       _memoryEnsureDemoAdminChats();
     }
@@ -307,7 +550,7 @@ class ChatService extends ChangeNotifier {
           return room.isUnclaimed &&
               (_matchesAdminWaitingQueue(room) || needsAdminReply(room));
         case AdminInboxBucket.mine:
-          return needsAdminReply(room) && room.isClaimedBy(uid);
+          return !isAdminResolved(room) && room.isClaimedBy(uid);
         case AdminInboxBucket.resolved:
           return isAdminResolved(room);
       }
@@ -326,18 +569,16 @@ class ChatService extends ChangeNotifier {
         ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
       return [...list, ...closed];
     }
+    for (final room in list) {
+      AdminChatLabelService.instance.applyToRoom(room);
+    }
     return list;
   }
 
-  bool isAdminResolved(ChatRoom room) {
-    if (room.status == 'resolved') return true;
-    if (room.adminReplyDone && !needsAdminReply(room)) return true;
-    return false;
-  }
+  bool isAdminResolved(ChatRoom room) => room.status == 'resolved';
 
   bool canReplyAsAdmin(ChatRoom room) {
     if (isAdminResolved(room)) return false;
-    if (!needsAdminReply(room)) return false;
     if (room.isUnclaimed) return false;
     return room.isClaimedBy(_myAdminId);
   }
@@ -346,6 +587,39 @@ class ChatService extends ChangeNotifier {
     final uid = _myAdminId;
     if (room.isUnclaimed) return false;
     return !room.isClaimedBy(uid);
+  }
+
+  /// ลูกค้าเดิมมีแอดมินดูแลอยู่ในแชทอื่นที่ยังไม่ปิดเคส
+  CustomerAdminContinuityHint? continuityHintForRoom(ChatRoom room) {
+    final pid = room.participantUserId?.trim();
+    if (pid == null || pid.isEmpty) return null;
+
+    ChatRoom? best;
+    for (final other in _dedupedRooms()) {
+      if (other.id == room.id) continue;
+      if (other.participantUserId != pid) continue;
+      if (other.isUnclaimed) continue;
+      if (isAdminResolved(other)) continue;
+      final adminId = other.assignedAdminId?.trim();
+      final adminName = other.assignedAdminName?.trim();
+      if (adminId == null ||
+          adminId.isEmpty ||
+          adminName == null ||
+          adminName.isEmpty) {
+        continue;
+      }
+      if (best == null || other.updatedAt.isAfter(best.updatedAt)) {
+        best = other;
+      }
+    }
+    if (best == null) return null;
+    return CustomerAdminContinuityHint(
+      participantUserId: pid,
+      adminId: best.assignedAdminId!,
+      adminName: best.assignedAdminName!,
+      otherRoomId: best.id,
+      otherRoomTitle: best.displayTitle,
+    );
   }
 
   int _adminInboxScore(ChatRoom room) {
@@ -484,7 +758,6 @@ class ChatService extends ChangeNotifier {
       text: trimmed,
       links: links,
     ));
-    room.adminReplyDone = true;
     room.updatedAt = DateTime.now();
     notifyListeners();
   }
@@ -497,6 +770,7 @@ class ChatService extends ChangeNotifier {
     }
     room.adminEscalated = false;
     room.adminReplyDone = true;
+    room.status = 'resolved';
     notifyListeners();
   }
 
@@ -539,6 +813,7 @@ class ChatService extends ChangeNotifier {
         createdAt: DateTime.now().subtract(const Duration(hours: 2, minutes: 1)),
       ),
     ]);
+    property.participantUserId = 'demo-user';
     property.adminEscalated = true;
     property.updatedAt = DateTime.now().subtract(const Duration(hours: 2));
 
@@ -644,6 +919,7 @@ class ChatService extends ChangeNotifier {
       listingTitle: listingTitle,
       projectName: projectName,
       allowViewingRequest: allowViewingRequest,
+      participantUserId: AuthService.instance.effectiveUserId,
     );
   }
 
@@ -732,6 +1008,204 @@ class ChatService extends ChangeNotifier {
       summary,
       duplicatePhoneSuffix: duplicatePhoneSuffix,
     );
+  }
+
+  /// ส่งคำขอนัดดูพร้อมแท็กโปรไฟล์ (Phase 24)
+  Future<void> submitViewingWithTags(
+    ChatRoom room, {
+    required ViewingRequest viewingRequest,
+    required ProfileTag clientTag,
+    ProfileTag? presenterTag,
+    required String scheduleLabel,
+    required Map<String, String> leadSummary,
+  }) async {
+    final active = await ensurePersistedRoom(room);
+    if (_backendActive && active.isPersisted) {
+      try {
+        await _repo.recordViewing(active, leadSummary);
+      } catch (e) {
+        debugPrint('submitViewingWithTags backend: $e');
+      }
+    }
+    _memorySubmitViewingWithTags(
+      active,
+      viewingRequest: viewingRequest,
+      clientTag: clientTag,
+      presenterTag: presenterTag,
+      scheduleLabel: scheduleLabel,
+      leadSummary: leadSummary,
+    );
+    await _postHubViewingRecap(
+      viewingRequest: viewingRequest,
+      clientTag: clientTag,
+      presenterTag: presenterTag,
+      scheduleLabel: scheduleLabel,
+      propertyLabel: '${active.listingCode} · ${active.listingTitle}',
+    );
+    await ViewingAppointmentRecordService.instance.registerFromViewingForm(
+      viewingRequest: viewingRequest,
+      clientTag: clientTag,
+      presenterTag: presenterTag,
+      scheduleLabel: scheduleLabel,
+      room: active,
+    );
+  }
+
+  /// แชทกลางผู้ใช้ — seeker หรือ agent hub
+  Future<ChatRoom> ensureParticipantHub() async {
+    final uid = AuthService.instance.effectiveUserId ?? 'demo-user';
+    final role = await AuthService.instance.fetchProfileRole();
+    return ensureHubForUser(uid, agent: role == 'agent');
+  }
+
+  ChatRoom ensureHubForUser(String userId, {bool agent = false}) {
+    return agent ? _memoryEnsureAgentHub(userId) : _memoryEnsureSeekerHub(userId);
+  }
+
+  ChatRoom? participantHubForUser(String userId, {bool agent = false}) {
+    final id = agent
+        ? ChatServiceIds.agentHub(userId)
+        : ChatServiceIds.seekerHub(userId);
+    return _rooms[id];
+  }
+
+  List<ChatRoom> threadsForUser(String userId, {bool agent = false}) {
+    final hubId = agent
+        ? ChatServiceIds.agentHub(userId)
+        : ChatServiceIds.seekerHub(userId);
+    return _dedupedRooms()
+        .where((r) => r.id != hubId && _myThreadIds.contains(r.id))
+        .toList();
+  }
+
+  /// สร้าง/อัปเดต thread ทรัพย์พร้อมทวนคำขอนัดดู (demo seed)
+  static bool _returningCustomerDemoSeeded = false;
+
+  /// ลูกค้าเดิมทักห้องใหม่ — มีเคสเก่าที่แอดมิน A รับอยู่ (demo)
+  void seedReturningCustomerDemo({
+    required String participantUserId,
+    required ListingPublic activeListing,
+    required ListingPublic newListing,
+    required String adminId,
+    required String adminName,
+  }) {
+    if (_returningCustomerDemoSeeded) return;
+    _returningCustomerDemoSeeded = true;
+
+    final active = _memoryOpenRoom(
+      listingId: activeListing.id,
+      listingCode: activeListing.listingCode,
+      listingTitle: activeListing.title,
+      projectName: activeListing.projectName,
+      allowViewingRequest: true,
+      participantUserId: participantUserId,
+    );
+    active.assignedAdminId = adminId;
+    active.assignedAdminName = adminName;
+    active.assignedAt = DateTime.now().subtract(const Duration(hours: 5));
+    active.adminEscalated = true;
+    active.status = 'waiting_admin';
+    if (!active.messages.any((m) => m.id == 'demo-returning-active')) {
+      active.messages.add(
+        ChatMessage(
+          id: 'demo-returning-active',
+          role: ChatMessageRole.user,
+          text: 'ขอรายละเอียดเพิ่มและนัดดูห้องนี้ครับ',
+          createdAt: DateTime.now().subtract(const Duration(hours: 4)),
+        ),
+      );
+    }
+
+    final fresh = _memoryOpenRoom(
+      listingId: newListing.id,
+      listingCode: newListing.listingCode,
+      listingTitle: newListing.title,
+      projectName: newListing.projectName,
+      allowViewingRequest: true,
+      participantUserId: participantUserId,
+    );
+    fresh.adminEscalated = true;
+    fresh.status = 'waiting_admin';
+    fresh.category = 'escalation';
+    fresh.updatedAt = DateTime.now().subtract(const Duration(minutes: 12));
+    if (!fresh.messages.any((m) => m.id == 'demo-returning-new')) {
+      fresh.messages.addAll([
+        ChatMessage(
+          id: 'demo-returning-new',
+          role: ChatMessageRole.user,
+          text: 'สวัสดีครับ สนใจห้องนี้ด้วยครับ ช่วยแนะนำได้ไหม',
+          createdAt: DateTime.now().subtract(const Duration(minutes: 12)),
+        ),
+        ChatMessage(
+          id: 'demo-returning-new-sys',
+          role: ChatMessageRole.system,
+          text: _copy.chatEscalateToStaff,
+          requiresAdmin: true,
+          createdAt: DateTime.now().subtract(const Duration(minutes: 11)),
+        ),
+      ]);
+    }
+    notifyListeners();
+  }
+
+  void seedPropertyViewingRecap({
+    required ViewingRequest req,
+    required String recapText,
+  }) {
+    final room = roomForListing(req.listingId) ??
+        _memoryOpenRoom(
+          listingId: req.listingId,
+          listingCode: req.listingCode,
+          listingTitle: req.listingTitle,
+          projectName: req.projectName,
+          allowViewingRequest: true,
+          participantUserId: req.createdByUserId,
+        );
+    if (room.messages.any((m) => m.id == 'demo-vr-${req.id}')) return;
+    room.messages.add(ChatMessage(
+      id: 'demo-vr-${req.id}',
+      role: ChatMessageRole.system,
+      text: recapText,
+      links: [
+        ChatMessageLink.profileTag(req.clientTagCode, req.clientTagCode),
+        ChatMessageLink.viewingRequest(req.code, req.code),
+      ],
+      createdAt: req.createdAt,
+    ));
+    room.viewingSubmitted = true;
+    room.category = 'viewing_request';
+    room.adminEscalated = true;
+    room.status = 'waiting_admin';
+    room.priority = 'high';
+    room.updatedAt = req.createdAt;
+    notifyListeners();
+  }
+
+  /// เพิ่มข้อความระบบใน Hub (ใช้ตอน seed demo)
+  void appendHubSystemMessage({
+    required String userId,
+    required bool agent,
+    required ChatMessage message,
+  }) {
+    final hub = ensureHubForUser(userId, agent: agent);
+    hub.messages.add(message);
+    if (message.createdAt.isAfter(hub.updatedAt)) {
+      hub.updatedAt = message.createdAt;
+    }
+    notifyListeners();
+  }
+
+  Future<void> postAdminMessageToHub(String userId, String text, {bool agent = false}) async {
+    final hub = agent
+        ? _memoryEnsureAgentHub(userId)
+        : _memoryEnsureSeekerHub(userId);
+    hub.messages.add(ChatMessage(
+      id: '${DateTime.now().microsecondsSinceEpoch}-admin',
+      role: ChatMessageRole.adminNotice,
+      text: text,
+    ));
+    hub.updatedAt = DateTime.now();
+    notifyListeners();
   }
 
   /// ลูกค้ากดสนใจจอง — แจ้งแอดมินด่วนสูงสุด
@@ -923,6 +1397,28 @@ class ChatService extends ChangeNotifier {
     if (thread['admin_escalated'] != null) {
       room.adminEscalated = thread['admin_escalated'] == true;
     }
+    if (thread['user_id'] != null) {
+      room.participantUserId = thread['user_id']?.toString();
+    }
+    if (thread.containsKey('admin_display_name')) {
+      final v = thread['admin_display_name']?.toString().trim();
+      room.adminDisplayName = v != null && v.isNotEmpty ? v : null;
+    }
+  }
+
+  Future<void> setAdminDisplayName(ChatRoom room, String? name) async {
+    final trimmed = name?.trim();
+    room.adminDisplayName =
+        trimmed != null && trimmed.isNotEmpty ? trimmed : null;
+    await AdminChatLabelService.instance.setLabel(room.id, room.adminDisplayName);
+    notifyListeners();
+  }
+
+  /// ห้องที่แอดมินมองเห็น — สำหรับค้นหาข้อความ
+  List<ChatRoom> allAdminSearchableRooms() {
+    return _dedupedRooms()
+        .where((r) => _matchesAdminWaitingQueue(r) || _isAdminRelevant(r))
+        .toList();
   }
 
   Future<void> _syncThreadMeta(ChatRoom room) async {
@@ -936,6 +1432,7 @@ class ChatService extends ChangeNotifier {
       room.status = fresh.status;
       room.adminEscalated = fresh.adminEscalated;
       room.category = fresh.category;
+      room.participantUserId = fresh.participantUserId;
     } catch (_) {}
   }
 
@@ -946,12 +1443,22 @@ class ChatService extends ChangeNotifier {
 
   Future<void> loadThreadIfMissing(String threadId) async {
     if (_rooms.containsKey(threadId)) return;
-    if (!_adminInboxBackendActive) return;
-    final room = await _repo.fetchThreadById(threadId);
-    if (room != null) {
-      _rooms[threadId] = room;
-      notifyListeners();
+    _ensureCastSimulation();
+    if (_rooms.containsKey(threadId)) return;
+    if (threadId.startsWith('demo-') || threadId.startsWith('cast-chat-')) {
+      return;
     }
+    if (!_adminInboxBackendActive) return;
+    try {
+      final room = await _repo
+          .fetchThreadById(threadId)
+          .timeout(const Duration(seconds: 4));
+      if (room != null) {
+        AdminChatLabelService.instance.applyToRoom(room);
+        _rooms[threadId] = room;
+        notifyListeners();
+      }
+    } catch (_) {}
   }
 
   // --- In-memory fallback (trial / demo) ---
@@ -1025,10 +1532,16 @@ class ChatService extends ChangeNotifier {
     required String listingTitle,
     String? projectName,
     bool allowViewingRequest = false,
+    String? participantUserId,
   }) {
     final existing = _rooms[listingId];
     if (existing != null) {
       if (allowViewingRequest) existing.allowViewingRequest = true;
+      if (participantUserId != null &&
+          (existing.participantUserId == null ||
+              existing.participantUserId!.isEmpty)) {
+        existing.participantUserId = participantUserId;
+      }
       return existing;
     }
 
@@ -1041,6 +1554,7 @@ class ChatService extends ChangeNotifier {
       transactionRef: ReferenceCodes.demoChatRef(listingId),
       roomKind: 'property',
       allowViewingRequest: allowViewingRequest,
+      participantUserId: participantUserId,
       messages: [
         ChatMessage(
           id: 'welcome',
@@ -1272,6 +1786,130 @@ class ChatService extends ChangeNotifier {
       pool = listings.where((l) => l.projectName == project).toList();
     }
     return _aiSupportReplyFromListings(text, pool);
+  }
+
+  ChatRoom _memoryEnsureSeekerHub(String userId) {
+    final id = ChatServiceIds.seekerHub(userId);
+    final cached = _rooms[id];
+    if (cached != null) return cached;
+    final room = ChatRoom(
+      id: id,
+      listingId: id,
+      listingCode: 'HUB-SEEKER',
+      listingTitle: _copy.hubSeekerTitle,
+      roomKind: 'seeker_hub',
+      category: 'participant_hub',
+    );
+    _registerRoom(room);
+    _myThreadIds.add(id);
+    notifyListeners();
+    return room;
+  }
+
+  ChatRoom _memoryEnsureAgentHub(String userId) {
+    final id = ChatServiceIds.agentHub(userId);
+    final cached = _rooms[id];
+    if (cached != null) return cached;
+    final room = ChatRoom(
+      id: id,
+      listingId: id,
+      listingCode: 'HUB-AGENT',
+      listingTitle: _copy.hubAgentTitle,
+      roomKind: 'agent_hub',
+      category: 'participant_hub',
+    );
+    _registerRoom(room);
+    _myThreadIds.add(id);
+    notifyListeners();
+    return room;
+  }
+
+  Future<void> _postHubViewingRecap({
+    required ViewingRequest viewingRequest,
+    required ProfileTag clientTag,
+    ProfileTag? presenterTag,
+    required String scheduleLabel,
+    required String propertyLabel,
+  }) async {
+    final hub = await ensureParticipantHub();
+    final links = <ChatMessageLink>[
+      ChatMessageLink.profileTag(clientTag.code, clientTag.displayLabel),
+      ChatMessageLink.viewingRequest(viewingRequest.code, viewingRequest.code),
+    ];
+    if (presenterTag != null) {
+      links.insert(
+        0,
+        ChatMessageLink.profileTag(presenterTag.code, presenterTag.displayLabel),
+      );
+    }
+    hub.messages.add(ChatMessage(
+      id: '${DateTime.now().microsecondsSinceEpoch}-hub-recap',
+      role: ChatMessageRole.system,
+      text: _copy.hubViewingRecap(
+        propertyLabel: propertyLabel,
+        schedule: scheduleLabel,
+        clientCode: clientTag.code,
+        viewingCode: viewingRequest.code,
+        presenterCode: presenterTag?.code,
+      ),
+      links: links,
+    ));
+    hub.updatedAt = DateTime.now();
+    notifyListeners();
+  }
+
+  void _memorySubmitViewingWithTags(
+    ChatRoom room, {
+    required ViewingRequest viewingRequest,
+    required ProfileTag clientTag,
+    ProfileTag? presenterTag,
+    required String scheduleLabel,
+    required Map<String, String> leadSummary,
+  }) {
+    final viewing = scheduleLabel;
+    final links = <ChatMessageLink>[
+      ChatMessageLink.profileTag(clientTag.code, clientTag.displayLabel),
+      ChatMessageLink.viewingRequest(viewingRequest.code, viewingRequest.code),
+    ];
+    if (presenterTag != null) {
+      links.add(ChatMessageLink.profileTag(presenterTag.code, presenterTag.displayLabel));
+    }
+
+    room.messages.add(ChatMessage(
+      id: '${DateTime.now().microsecondsSinceEpoch}-received',
+      role: ChatMessageRole.system,
+      text: '${_copy.chatViewingReceived}\n${_copy.viewingRefNote(room.effectiveTransactionRef, viewingRequest.code)}',
+    ));
+    room.messages.add(ChatMessage(
+      id: '${DateTime.now().microsecondsSinceEpoch}-tag-recap',
+      role: ChatMessageRole.system,
+      text: _copy.viewingTagRecap(
+        schedule: scheduleLabel,
+        clientCode: clientTag.code,
+        viewingCode: viewingRequest.code,
+        presenterCode: presenterTag?.code,
+      ),
+      links: links,
+    ));
+    final lines = leadSummary.entries.map((e) => '• ${e.key}: ${e.value}').join('\n');
+    room.messages.add(ChatMessage(
+      id: '${DateTime.now().microsecondsSinceEpoch}-summary',
+      role: ChatMessageRole.system,
+      text: '${_copy.chatCustomerSummaryHeader}\n$lines',
+    ));
+    room.messages.add(ChatMessage(
+      id: '${DateTime.now().microsecondsSinceEpoch}-viewing',
+      role: ChatMessageRole.adminNotice,
+      text: _copy.chatViewingDetailAck(viewing),
+    ));
+    room.viewingSubmitted = true;
+    room.adminEscalated = true;
+    room.adminReplyDone = false;
+    room.category = 'viewing_request';
+    room.status = 'waiting_admin';
+    room.priority = 'high';
+    room.updatedAt = DateTime.now();
+    notifyListeners();
   }
 
   void _memoryAppendViewingSummary(

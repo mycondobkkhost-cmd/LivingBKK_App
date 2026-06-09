@@ -4,13 +4,16 @@ import 'package:go_router/go_router.dart';
 import '../config/demand_board_menu_config.dart';
 import '../models/demand_post.dart';
 import '../shell/main_shell_scope.dart';
-
 /// นำทางเมนูบอร์ดหาทรัพย์ — ใช้แทน `context.push('/requirements/...')` ตรงๆ
 abstract final class DemandBoardNavigation {
-  static void openBoardTab(BuildContext context) {
-    MainShellScope.maybeOf(context)?.selectTab(DemandBoardMenuConfig.boardTabIndex);
+  static void openBoardTab(BuildContext context, {bool fromHome = false}) {
+    MainShellScope.maybeOf(context)?.selectTab(
+      DemandBoardMenuConfig.boardTabIndex,
+      boardFromHome: fromHome,
+    );
   }
 
+  /// เปิดฟอร์มความต้องการ — หน้าปลายทางจะแสดงป้อปอัพล็อกอินเอง
   static void openCreateRequirement(
     BuildContext context, {
     String? sourceThreadId,
@@ -55,6 +58,10 @@ abstract final class DemandBoardNavigation {
       return;
     }
     final route = entry.route;
+    if (route == DemandBoardMenuConfig.createRequirementRoute) {
+      openCreateRequirement(context);
+      return;
+    }
     if (route != null) context.push(route);
   }
 }

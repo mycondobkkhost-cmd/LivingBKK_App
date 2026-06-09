@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../models/search_filters.dart';
-import '../../shell/main_shell_scope.dart';
 import '../../state/locale_controller.dart';
 import '../../state/user_role_controller.dart';
+import '../../theme/app_palette.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../notification_bell_button.dart';
 import '../perspective_dropdown_chip.dart';
@@ -38,11 +39,12 @@ class HomeTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final p = context.palette;
     final hasActive = filters.hasActiveFilters;
 
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        gradient: LivingBkkBrand.homeHeaderGradient,
+      decoration: BoxDecoration(
+        gradient: LivingBkkBrand.homeHeaderGradientOf(context),
       ),
       child: SafeArea(
         bottom: false,
@@ -64,7 +66,7 @@ class HomeTopBar extends StatelessWidget {
                   const Spacer(),
                   _headerIcon(
                     icon: Icons.favorite_border_rounded,
-                    onTap: () => MainShellScope.maybeOf(context)?.selectTab(1),
+                    onTap: () => context.push('/saved-listings'),
                   ),
                   const SizedBox(width: 6),
                   NotificationBellButton(
@@ -76,7 +78,7 @@ class HomeTopBar extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               Material(
-                color: Colors.white,
+                color: p.surface,
                 elevation: 0,
                 shadowColor: Colors.black.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(28),

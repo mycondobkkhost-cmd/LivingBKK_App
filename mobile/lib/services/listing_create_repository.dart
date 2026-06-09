@@ -16,6 +16,7 @@ class ListingCreateInput {
     required this.listingType,
     required this.propertyType,
     required this.priceNet,
+    this.priceSaleNet,
     required this.district,
     required this.posterRole,
     this.description,
@@ -26,6 +27,7 @@ class ListingCreateInput {
     this.coAgentListingType,
     this.monthlyRentNet,
     this.promoPriceNet,
+    this.promoSalePriceNet,
     this.videoUrl,
     this.tiktokUrl,
     this.locationLink,
@@ -57,6 +59,8 @@ class ListingCreateInput {
     this.viewingAccess = const ListingViewingAccess(),
     this.brokerCommissionPercent,
     this.occupancy = const ListingOccupancyInput(),
+    this.rentCommissionScheme,
+    this.rentCommissionNote,
   });
 
   bool get petAllowed => petPolicy.allowed;
@@ -65,6 +69,7 @@ class ListingCreateInput {
   final String listingType;
   final String propertyType;
   final double priceNet;
+  final double? priceSaleNet;
   final String district;
   final ListingPosterRole posterRole;
   final String? description;
@@ -75,6 +80,7 @@ class ListingCreateInput {
   final String? coAgentListingType;
   final double? monthlyRentNet;
   final double? promoPriceNet;
+  final double? promoSalePriceNet;
   final String? videoUrl;
   final String? tiktokUrl;
   /// ลิงก์ Google Maps — บังคับเมื่อบ้านนอกโครงการ (เก็บใน source_url)
@@ -108,6 +114,8 @@ class ListingCreateInput {
   /// เมื่อเจ้าของเลือกรับสุทธิ — % ที่นายหน้าบวกเพิ่ม
   final double? brokerCommissionPercent;
   final ListingOccupancyInput occupancy;
+  final String? rentCommissionScheme;
+  final String? rentCommissionNote;
 }
 
 class ListingCreateRepository {
@@ -153,6 +161,8 @@ class ListingCreateRepository {
       'listing_type': input.listingType,
       'property_type': input.propertyType,
       'price_net': input.priceNet,
+      if (input.priceSaleNet != null && input.priceSaleNet! > 0)
+        'price_sale_net': input.priceSaleNet,
       'district': input.district,
       'description_public': input.description,
       'area_sqm': input.areaSqm,
@@ -170,7 +180,10 @@ class ListingCreateRepository {
       'agent_exclusive': input.agentExclusive,
       'viewing_access': input.viewingAccess.toJson(),
       ...input.occupancy.toDbFields(salePrice: input.priceNet),
-      if (input.promoPriceNet != null) 'price_internal': input.promoPriceNet,
+      if (input.promoPriceNet != null && input.promoPriceNet! > 0)
+        'price_internal': input.promoPriceNet,
+      if (input.promoSalePriceNet != null && input.promoSalePriceNet! > 0)
+        'price_sale_promo_net': input.promoSalePriceNet,
       if (input.videoUrl != null && input.videoUrl!.isNotEmpty)
         'video_url': input.videoUrl,
       if (input.locationLink != null && input.locationLink!.isNotEmpty)
@@ -294,7 +307,17 @@ String _withCommissionBlock(String desc, ListingCreateInput input) {
       'broker_commission_percent: ${input.brokerCommissionPercent!.toStringAsFixed(2)}',
     if (input.transferTerms != null && input.transferTerms!.trim().isNotEmpty)
       'transfer_terms: ${input.transferTerms!.trim()}',
-    if (!OfferCommissionScheme.isSaleListing(input.listingType))
+    if (OfferCommissionScheme.isDualListing(input.listingType) &&
+        input.rentCommissionScheme != null)
+      'rent_commission_scheme: ${input.rentCommissionScheme}',
+    if (OfferCommissionScheme.isDualListing(input.listingType) &&
+        input.rentCommissionNote != null &&
+        input.rentCommissionNote!.trim().isNotEmpty)
+      'rent_commission_note: ${input.rentCommissionNote!.trim()}',
+    if (!OfferCommissionScheme.isSaleListing(input.listingType) &&
+        !OfferCommissionScheme.isDualListing(input.listingType))
+      'lease_months: ${input.leaseMonths}',
+    if (OfferCommissionScheme.isDualListing(input.listingType))
       'lease_months: ${input.leaseMonths}',
   ];
   final block = lines.join('\n');

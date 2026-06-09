@@ -11,7 +11,21 @@ void main() {
     expect(ListingTransactionTypes.matchesBrowseFilter('sale', 'rent'), isFalse);
   });
 
-  test('createFormOrder ไม่มีเซ้ง/ขายดาวน์', () {
-    expect(ListingTransactionTypes.createFormOrder, ['rent', 'sale', 'sale_installment']);
+  test('แท็บเช่าและซื้อรวม rent_and_sale', () {
+    expect(
+      ListingTransactionTypes.matchesBrowseFilter('rent', 'rent_and_sale'),
+      isTrue,
+    );
+    expect(
+      ListingTransactionTypes.matchesBrowseFilter('sale', 'rent_and_sale'),
+      isTrue,
+    );
+  });
+
+  test('createFormOrder มีเช่า+ขาย', () {
+    expect(
+      ListingTransactionTypes.createFormOrder,
+      ['rent', 'sale', 'sale_installment', 'rent_and_sale'],
+    );
   });
 }

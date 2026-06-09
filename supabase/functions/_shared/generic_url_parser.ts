@@ -172,6 +172,42 @@ function externalIdFromUrl(sourceUrl: string, platform: ListingImportPlatform): 
   }
 }
 
+function extractUrlsFromText(text: string): string[] {
+  const urls = new Set<string>();
+  for (const m of text.matchAll(/https?:\/\/[^\s<>"')\]]+/gi)) {
+    const u = m[0]?.replace(/[.,;:!?)]+$/, "").trim();
+    if (u && u.length > 12) urls.add(u);
+  }
+  return [...urls].slice(0, 30);
+}
+
+function parseFacebookPoster(html: string): { name: string | null; url: string | null } {
+  const author = metaContent(html, [
+    "article:author",
+    "og:article:author",
+    "author",
+    "twitter:creator",
+  ]);
+  if (author?.startsWith("http")) {
+    return { name: null, url: author };
+  }
+  if (author && author.trim()) {
+    return { name: author.trim(), url: null };
+  }
+  const ldAuthor = firstMatch(
+    html,
+    /"author"\s*:\s*\{[^}]*"name"\s*:\s*"([^"]+)"/i,
+  );
+  const ldUrl = firstMatch(
+    html,
+    /"author"\s*:\s*\{[^}]*"url"\s*:\s*"([^"]+)"/i,
+  );
+  return {
+    name: ldAuthor,
+    url: ldUrl,
+  };
+}
+
 function isFacebookLoginWall(html: string): boolean {
   const hay = html.slice(0, 120_000).toLowerCase();
   return (
@@ -230,6 +266,29 @@ export function parseGenericHtml(
 
   flags.push("needs_admin_review");
 
+  const canonicalUrl = metaContent(html, ["og:url", "twitter:url"]) ?? sourceUrl;
+  const postText = rawDescription || description || title;
+  const poster = platform === "facebook" ? parseFacebookPoster(html) : { name: null, url: null };
+  const postLinks = platform === "facebook"
+    ? extractUrlsFromText(`${postText} ${ogDesc}`)
+    : extractUrlsFromText(postText);
+
+  const sourceMeta = platform === "facebook"
+    ? {
+      postUrl: canonicalUrl,
+      postText: postText.slice(0, 12_000),
+      posterName: poster.name,
+      posterUrl: poster.url,
+      postLinks,
+    }
+    : platform === "generic"
+    ? {
+      postUrl: canonicalUrl,
+      postText: postText.slice(0, 12_000),
+      postLinks: extractUrlsFromText(postText),
+    }
+    : undefined;
+
   return {
     sourceExternalId: externalIdFromUrl(sourceUrl, platform),
     title,
@@ -247,5 +306,6 @@ export function parseGenericHtml(
     imageUrls,
     flags,
     contactPrivate,
+    sourceMeta,
   };
 }

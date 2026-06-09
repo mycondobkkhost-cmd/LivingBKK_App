@@ -60,6 +60,12 @@ function labelTh(s: TransitStationCoord): string {
   return `${s.system} ${s.nameTh}`;
 }
 
+export function transitSlug(system: string, nameEn: string): string {
+  const sys = system.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const name = nameEn.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  return `${sys}-${name}`.replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
 export function labelsFromText(text: string | null | undefined): string[] {
   if (!text?.trim()) return [];
   const hay = text.toLowerCase();
@@ -76,6 +82,38 @@ export function labelsFromText(text: string | null | undefined): string[] {
     }
   }
   return [...new Set(found)];
+}
+
+/** สถานีจากพิกัดเท่านั้น — ระดับ A (ไม่รวมข้อความ) */
+export function transitLabelsFromCoords(
+  lat: number,
+  lng: number,
+  maxKm = 0.85,
+  limit = 4,
+): string[] {
+  return STATIONS.map((s) => ({
+    s,
+    km: haversineKm(lat, lng, s.lat, s.lng),
+  }))
+    .filter((h) => h.km <= maxKm)
+    .sort((a, b) => a.km - b.km)
+    .slice(0, limit)
+    .map((h) => labelTh(h.s));
+}
+
+export function nearbyStationsFromCoords(
+  lat: number,
+  lng: number,
+  maxKm = 0.85,
+  limit = 4,
+): { station: TransitStationCoord; km: number }[] {
+  return STATIONS.map((s) => ({
+    station: s,
+    km: haversineKm(lat, lng, s.lat, s.lng),
+  }))
+    .filter((h) => h.km <= maxKm)
+    .sort((a, b) => a.km - b.km)
+    .slice(0, limit);
 }
 
 export function mergeNearbyTransitLabels(input: {

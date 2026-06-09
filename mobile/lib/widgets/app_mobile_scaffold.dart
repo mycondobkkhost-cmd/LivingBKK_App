@@ -11,6 +11,7 @@ class AppMobileScaffold extends StatelessWidget {
     required this.body,
     this.bottomNavigationBar,
     this.floatingActionButton,
+    this.floatingActionButtonLocation,
     this.backgroundColor,
     this.resizeToAvoidBottomInset = true,
     this.extendBodyBehindAppBar = false,
@@ -21,25 +22,44 @@ class AppMobileScaffold extends StatelessWidget {
   final Widget body;
   final Widget? bottomNavigationBar;
   final Widget? floatingActionButton;
+  final FloatingActionButtonLocation? floatingActionButtonLocation;
   final Color? backgroundColor;
   final bool resizeToAvoidBottomInset;
   final bool extendBodyBehindAppBar;
   final bool safeBottomBody;
 
+  PreferredSizeWidget? _appBarWithTopInset(
+    BuildContext context,
+    double topInset,
+  ) {
+    final bar = appBar;
+    if (bar == null || topInset <= 0) return bar;
+    return PreferredSize(
+      preferredSize: Size.fromHeight(bar.preferredSize.height + topInset),
+      child: Padding(
+        padding: EdgeInsets.only(top: topInset),
+        child: bar,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final inShell = MainShellScope.maybeOf(context) != null;
+    final topInset = inShell ? 0.0 : PageSafeInsets.top(context);
     final needsBottom = safeBottomBody &&
         !inShell &&
         bottomNavigationBar == null &&
         PageSafeInsets.bottom(context) > 0;
 
     return Scaffold(
-      appBar: appBar,
+      appBar: _appBarWithTopInset(context, topInset),
       backgroundColor: backgroundColor,
       resizeToAvoidBottomInset: resizeToAvoidBottomInset,
       extendBodyBehindAppBar: extendBodyBehindAppBar,
       floatingActionButton: floatingActionButton,
+      floatingActionButtonLocation: floatingActionButtonLocation ??
+          FloatingActionButtonLocation.endFloat,
       bottomNavigationBar: bottomNavigationBar,
       body: needsBottom
           ? SafeArea(top: false, bottom: true, child: body)

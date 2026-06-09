@@ -1,40 +1,41 @@
 ---
-description: รีแบรนด์ PROPPITER — UX/UI โลโก้ สี ข้อความ (จาก LivingBKK)
+description: รีแบรนด์ RealXtate — UX/UI โลโก้ สี ข้อความ (จาก LivingBKK / PROPPITER)
 alwaysApply: false
 ---
 
-# PROPPITER — โหมดแบรนด์ดิ้ง UX/UI
+# RealXtate — โหมดแบรนด์ดิ้ง UX/UI
 
 **แอปหลัก:** LivingBKK_App (Flutter + Supabase)  
-**เป้าหมาย:** LivingBKK → **PROPPITER** (หน้าตาเท่านั้น)  
-**เอกสารเต็ม:** `docs/PROPPITER-UXUI-HANDOFF.md`
+**แบรนด์ปัจจุบัน:** **RealXtate** (PROPPITER ยกเลิกแล้ว — ไม่ใช้ชื่อนี้อีก)  
+**โดเมน:** RealXtateTH.com (`https://realxtateth.com`)  
+**เอกสารแบรนด์:** `docs/REALXTATE-BRAND.md`  
+**เอกสาร UX เดิม (อ้างอิง):** `docs/PROPPITER-UXUI-HANDOFF.md`
 
 ## ขอบเขต
 
 - ทำ: โลโก้, สี, ฟอนต์, tokens, asset, ข้อความที่ผู้ใช้เห็น, manifest/PWA icons
 - ไม่ทำ (เว้นแต่ผู้ใช้สั่ง): lead, แผนที่, ลงประกาศ, chat, admin logic, migrations/RLS, ฟีเจอร์ใหม่, เปลี่ยน package `livingbkk`, commit/deploy
 
-## ไฟล์ดีไซน์ที่รอ (วางใน `mobile/assets/brand/`)
+## การตั้งชื่อใน UI
 
-`proppiter-brand-brief.txt`, `logo-mark.png`, `app-icon-gradient.png` (1024²), `favicon-256.png`, `logo-lockup-light/dark.png`, `logo-lockup-compact-light/dark.png`, `logo-lockup.png`, `logo-lockup-en-light/dark.png` (ถ้าจำเป็น), `proppiter-brand-guide.png`
+- ใช้ **RealXtate** ในข้อความผู้ใช้ (TH/EN)
+- อย่าเพิ่ม PROPPITER ใน copy ใหม่ — ถ้าเจอในโค้ดเก่าให้แทนที่เมื่อแตะไฟล์นั้น
+- โดเมน/ลิงก์สาธารณะ: `realxtateth.com`
 
-**แทนที่ทับชื่อเดิม** — ไม่เปลี่ยน path ใน `BrandAssets` ถ้าไม่จำเป็น
+## ไฟล์ดีไซน์ (วางใน `mobile/assets/brand/`)
+
+asset ชื่อ `proppiter-*` ใน repo เป็น legacy — รอ asset RealXtate ใหม่หรือ rename ตามรอบรีแบรนด์
 
 ## ศูนย์กลางโค้ด (อย่าแตะ business logic)
 
-`design/tokens.json` · `mobile/lib/theme/living_bkk_brand.dart` · `brand_assets.dart` · `living_bkk_logo.dart` · `app_strings.dart` · `scripts/sync-brand-assets.py` · `mobile/web/manifest.json`
+`design/tokens.json` · `mobile/lib/theme/living_bkk_brand.dart` · `brand_assets.dart` · `living_bkk_logo.dart` · `app_strings.dart` · `scripts/sync-brand-assets.py` · `mobile/web/manifest.json` · `mobile/lib/config/legal_config.dart`
 
 ## หลังได้ asset
 
 1. วาง PNG + brief  
-2. `python3 scripts/sync-brand-assets.py`  
-3. อัปเดต theme + tokens + manifest + `app_strings` (LivingBKK → PROPPITER)  
-4. ตรวจ login, `li_home_header`, `home_browse_layout`, profile — TH/EN, light/dark
-
-## สถานะ
-
-- UI ยัง LivingBKK; สี `#6C5DD3` / `#9B6DFF` / `#FF5B8A` / `#12122B` จนกว่า brief ใหม่
-- รอไฟล์ดีไซน์ก่อนทับ asset และเปลี่ยน copy
+2. sync asset scripts  
+3. อัปเดต theme + tokens + manifest + `app_strings` (PROPPITER/LivingBKK → RealXtate)  
+4. ตรวจ login, header, profile — TH/EN, light/dark
 
 ## ภาษา
 

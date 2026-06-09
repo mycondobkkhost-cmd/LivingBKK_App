@@ -35,6 +35,6 @@ echo "  4) ใส่ลิงก์นั้นใน .env.local → WEB_BASE_UR
 echo "  5) รัน ./scripts/sync-env.sh && ./scripts/build-web.sh อีกครั้ง (ลิงก์แชร์จะถูกต้อง)"
 echo ""
 echo "ทดสอบลิงก์ห้อง: https://your-app.netlify.app/listing/<id>"
-echo "แอดมินบนคอม: /admin/console"
+echo "แอดมินบนคอม: /admin"
 echo ""
 echo "คู่มือ: docs/คู่มือ-ใช้แอปบนมือถือ.md"

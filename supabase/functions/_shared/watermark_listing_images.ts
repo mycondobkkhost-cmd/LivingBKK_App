@@ -86,6 +86,14 @@ async function applyWatermark(
   return out;
 }
 
+function watermarkedStoragePath(originalPath: string): string {
+  const slash = originalPath.lastIndexOf("/");
+  if (slash < 0) return `wm/${originalPath}`;
+  const dir = originalPath.slice(0, slash);
+  const file = originalPath.slice(slash + 1);
+  return `${dir}/wm/${file}`;
+}
+
 export type WatermarkResult = {
   processed: number;
   skipped: number;
@@ -117,7 +125,9 @@ export async function watermarkListingImages(
 
   const { data: rows, error: listErr } = await db
     .from("listing_images")
-    .select("id, storage_path, public_url, watermark_applied_at")
+    .select(
+      "id, storage_path, public_url, watermark_applied_at, watermarked_storage_path",
+    )
     .eq("listing_id", listingId)
     .order("sort_order", { ascending: true });
 
@@ -134,7 +144,8 @@ export async function watermarkListingImages(
     const imageId = row.id as string;
     const path = row.storage_path as string;
 
-    if (row.watermark_applied_at) {
+    const existingWm = row.watermarked_storage_path as string | undefined;
+    if (row.watermark_applied_at && existingWm) {
       result.skipped += 1;
       continue;
     }
@@ -159,14 +170,15 @@ export async function watermarkListingImages(
       }
 
       const marked = await applyWatermark(decoded, logo, config);
-      const outBytes = await encodeImage(marked, path);
+      const wmPath = watermarkedStoragePath(path);
+      const outBytes = await encodeImage(marked, wmPath);
       const hash = await sha256Short(outBytes);
 
       const { error: upErr } = await db.storage
         .from("listing-images")
-        .upload(path, outBytes, {
+        .upload(wmPath, outBytes, {
           upsert: true,
-          contentType: contentTypeForPath(path),
+          contentType: contentTypeForPath(wmPath),
           cacheControl: "3600",
         });
 
@@ -175,9 +187,14 @@ export async function watermarkListingImages(
         continue;
       }
 
+      const { data: pub } = db.storage.from("listing-images").getPublicUrl(wmPath);
+      const publicUrl = pub.publicUrl;
+
       const { error: metaErr } = await db
         .from("listing_images")
         .update({
+          public_url: publicUrl,
+          watermarked_storage_path: wmPath,
           watermark_applied_at: now,
           perceptual_hash: hash,
           moderation_status: "approved",

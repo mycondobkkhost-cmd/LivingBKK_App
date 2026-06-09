@@ -4,11 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_palette.dart';
 import 'app_typography.dart';
 
-/// PROPPITER theme — Canva-style light UI + brand palette
+/// RealXtate theme — Canva-style light UI + brand palette
 class AppTheme {
   AppTheme._();
 
-  static AppPalette _active = AppPalette.dark;
+  static AppPalette _active = AppPalette.light;
 
   // ── Layout tokens ──
   static const double radiusSm = 8;
@@ -20,45 +20,45 @@ class AppTheme {
   static const Duration animNormal = Duration(milliseconds: 250);
 
   // ── Runtime colors (synced via [AppThemeBridge]) ──
-  static Color primary = AppPalette.dark.primary;
-  static Color primaryHover = AppPalette.dark.primary;
-  static Color primaryDark = AppPalette.dark.primary;
-  static Color primaryLight = AppPalette.dark.primaryLight;
-  static Color cta = AppPalette.dark.accent;
-  static Color ctaDark = AppPalette.dark.accent;
-  static Color accentDeep = AppPalette.dark.primary;
-  static Color accentDeepLight = AppPalette.dark.primaryLight;
-  static Color accentMid = AppPalette.dark.primary;
-  static Color accentMidLight = AppPalette.dark.primaryLight;
-  static Color accentSoft = AppPalette.dark.primary;
-  static Color accentSoftLight = AppPalette.dark.primaryLight;
-  static Color accentMuted = AppPalette.dark.textSecondary;
-  static Color accentMutedLight = AppPalette.dark.surfaceVariant;
-  static Color success = AppPalette.dark.success;
-  static Color successLight = AppPalette.dark.surfaceVariant;
-  static Color warning = AppPalette.dark.warning;
-  static Color warningLight = AppPalette.dark.surfaceVariant;
-  static Color live = AppPalette.dark.error;
-  static Color accentTeal = AppPalette.dark.primary;
-  static Color accentTealLight = AppPalette.dark.primaryLight;
-  static Color accentAmber = AppPalette.dark.warning;
-  static Color accentAmberLight = AppPalette.dark.surfaceVariant;
-  static Color accentSky = AppPalette.dark.primary;
-  static Color accentSkyLight = AppPalette.dark.primaryLight;
-  static Color accentRose = AppPalette.dark.accent;
-  static Color accentRoseLight = AppPalette.dark.surfaceVariant;
-  static Color surfaceWarm = AppPalette.dark.background;
-  static Color backgroundAlt = AppPalette.dark.surfaceVariant;
-  static Color headerTint = AppPalette.dark.surface;
-  static Color cardTint = AppPalette.dark.surface;
-  static Color navTint = AppPalette.dark.surface;
-  static Color inputFill = AppPalette.dark.inputFill;
-  static Color surfaceElevated = AppPalette.dark.surfaceElevated;
-  static Color textPrimary = AppPalette.dark.textPrimary;
-  static Color textSecondary = AppPalette.dark.textSecondary;
-  static Color border = AppPalette.dark.border;
-  static Color divider = AppPalette.dark.divider;
-  static Color error = AppPalette.dark.error;
+  static Color primary = AppPalette.light.primary;
+  static Color primaryHover = AppPalette.light.primary;
+  static Color primaryDark = AppPalette.light.primary;
+  static Color primaryLight = AppPalette.light.primaryLight;
+  static Color cta = AppPalette.light.accent;
+  static Color ctaDark = AppPalette.light.accent;
+  static Color accentDeep = AppPalette.light.primary;
+  static Color accentDeepLight = AppPalette.light.primaryLight;
+  static Color accentMid = AppPalette.light.primary;
+  static Color accentMidLight = AppPalette.light.primaryLight;
+  static Color accentSoft = AppPalette.light.primary;
+  static Color accentSoftLight = AppPalette.light.primaryLight;
+  static Color accentMuted = AppPalette.light.textSecondary;
+  static Color accentMutedLight = AppPalette.light.surfaceVariant;
+  static Color success = AppPalette.light.success;
+  static Color successLight = AppPalette.light.surfaceVariant;
+  static Color warning = AppPalette.light.warning;
+  static Color warningLight = AppPalette.light.surfaceVariant;
+  static Color live = AppPalette.light.error;
+  static Color accentTeal = AppPalette.light.primary;
+  static Color accentTealLight = AppPalette.light.primaryLight;
+  static Color accentAmber = AppPalette.light.warning;
+  static Color accentAmberLight = AppPalette.light.surfaceVariant;
+  static Color accentSky = AppPalette.light.primary;
+  static Color accentSkyLight = AppPalette.light.primaryLight;
+  static Color accentRose = AppPalette.light.accent;
+  static Color accentRoseLight = AppPalette.light.surfaceVariant;
+  static Color surfaceWarm = AppPalette.light.background;
+  static Color backgroundAlt = AppPalette.light.surfaceVariant;
+  static Color headerTint = AppPalette.light.surface;
+  static Color cardTint = AppPalette.light.surface;
+  static Color navTint = AppPalette.light.surface;
+  static Color inputFill = AppPalette.light.inputFill;
+  static Color surfaceElevated = AppPalette.light.surfaceElevated;
+  static Color textPrimary = AppPalette.light.textPrimary;
+  static Color textSecondary = AppPalette.light.textSecondary;
+  static Color border = AppPalette.light.border;
+  static Color divider = AppPalette.light.divider;
+  static Color error = AppPalette.light.error;
 
   static void syncPalette(Brightness brightness) {
     _active = brightness == Brightness.light ? AppPalette.light : AppPalette.dark;
@@ -313,13 +313,18 @@ class AppTheme {
 
 /// Syncs [AppTheme] runtime colors with current [ThemeData] brightness
 class AppThemeBridge extends StatelessWidget {
-  const AppThemeBridge({super.key, required this.child});
+  const AppThemeBridge({
+    super.key,
+    required this.child,
+    this.forceBrightness,
+  });
 
   final Widget? child;
+  final Brightness? forceBrightness;
 
   @override
   Widget build(BuildContext context) {
-    AppTheme.syncPalette(Theme.of(context).brightness);
+    AppTheme.syncPalette(forceBrightness ?? Theme.of(context).brightness);
     return child ?? const SizedBox.shrink();
   }
 }

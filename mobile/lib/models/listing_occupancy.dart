@@ -8,6 +8,9 @@ abstract final class ListingOccupancyStatus {
   static const saleWithTenant = 'sale_with_tenant';
 
   static List<String> optionsFor(String listingType) {
+    if (listingType == 'rent_and_sale') {
+      return [ready, renovating, tenanted, saleWithTenant];
+    }
     final isSale =
         listingType == 'sale' || listingType == 'sale_installment';
     if (isSale) {
@@ -24,7 +27,9 @@ abstract final class ListingOccupancyStatus {
 
   static bool needsTenantRent(String status, String listingType) =>
       status == saleWithTenant &&
-      (listingType == 'sale' || listingType == 'sale_installment');
+      (listingType == 'sale' ||
+          listingType == 'sale_installment' ||
+          listingType == 'rent_and_sale');
 
   static double? yieldPercent({
     required double salePrice,

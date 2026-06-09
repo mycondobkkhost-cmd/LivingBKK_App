@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../theme/app_palette.dart';
 import '../../theme/li_layout.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../utils/page_safe_insets.dart';
+import '../../shell/main_shell_scope.dart';
 import '../app_mobile_scaffold.dart';
+import 'consumer_bottom_nav.dart';
 
 /// หัวม่วง + พื้นหลังเทาอ่อน — ธีมเดียวกับหน้าแรก (นอก sticky search)
 class ConsumerPageShell extends StatelessWidget {
@@ -13,32 +16,50 @@ class ConsumerPageShell extends StatelessWidget {
     super.key,
     required this.title,
     required this.body,
+    this.titleWidget,
+    this.titleFontSize,
     this.onBack,
     this.actions = const [],
     this.headerBottom,
     this.floatingActionButton,
+    this.floatingActionButtonLocation,
     this.safeBottomBody = true,
+    this.showBottomNav,
   });
 
   final String title;
+  /// แทนที่ข้อความหัวข้อ — ใช้ dropdown หมวดทรัพย์บนหน้า browse
+  final Widget? titleWidget;
+  /// หัวข้อยาว — ลดขนาดให้พอดีแถบ
+  final double? titleFontSize;
   final Widget body;
   final VoidCallback? onBack;
   final List<Widget> actions;
   final Widget? headerBottom;
   final Widget? floatingActionButton;
+  final FloatingActionButtonLocation? floatingActionButtonLocation;
   final bool safeBottomBody;
+  /// null = แสดงเมนูล่างอัตโนมัติเมื่ออยู่นอก MainShell
+  final bool? showBottomNav;
 
   @override
   Widget build(BuildContext context) {
+    final inShell = MainShellScope.maybeOf(context) != null;
+    final navVisible = showBottomNav ?? !inShell;
+
     return AppMobileScaffold(
-      backgroundColor: LivingBkkBrand.pageBackground,
-      safeBottomBody: safeBottomBody,
+      backgroundColor: LivingBkkBrand.pageBackgroundOf(context),
+      safeBottomBody: safeBottomBody && !navVisible,
       floatingActionButton: floatingActionButton,
+      floatingActionButtonLocation: floatingActionButtonLocation,
+      bottomNavigationBar: navVisible ? const ConsumerBottomNav() : null,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ConsumerPageHeader(
             title: title,
+            titleWidget: titleWidget,
+            titleFontSize: titleFontSize,
             onBack: onBack,
             actions: actions,
             bottom: headerBottom,
@@ -54,12 +75,16 @@ class ConsumerPageHeader extends StatelessWidget {
   const ConsumerPageHeader({
     super.key,
     required this.title,
+    this.titleWidget,
+    this.titleFontSize,
     this.onBack,
     this.actions = const [],
     this.bottom,
   });
 
   final String title;
+  final Widget? titleWidget;
+  final double? titleFontSize;
   final VoidCallback? onBack;
   final List<Widget> actions;
   final Widget? bottom;
@@ -70,13 +95,14 @@ class ConsumerPageHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final top = PageSafeInsets.top(context);
-    final headerTop = top > 0 ? top + 6.0 : 10.0;
+    // Dynamic Island / notch — เว้นระยะเพิ่มเมื่อมี safe top สูง
+    final headerTop = top >= 50 ? top + 10.0 : (top > 0 ? top + 8.0 : 12.0);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          gradient: LivingBkkBrand.homeHeaderBlockGradient,
+        decoration: BoxDecoration(
+          gradient: LivingBkkBrand.homeHeaderBlockGradientOf(context),
         ),
         child: Padding(
           padding: EdgeInsets.fromLTRB(_hPad, headerTop, _hPad, bottom != null ? 12 : 14),
@@ -93,24 +119,43 @@ class ConsumerPageHeader extends StatelessWidget {
                       ConsumerHeaderIconButton(
                         icon: Icons.arrow_back_rounded,
                         onTap: onBack!,
+                        edgeInset: EdgeInsets.zero,
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 6),
                     ],
                     Expanded(
-                      child: Text(
-                        title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.prompt(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          height: 1.15,
-                          color: Colors.white,
-                          letterSpacing: -0.2,
-                        ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: titleWidget ??
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: GoogleFonts.prompt(
+                                        fontSize: titleFontSize ?? 20,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.15,
+                                        color: Colors.white,
+                                        letterSpacing: -0.2,
+                                      ),
+                                    ),
+                                  ),
+                            ),
+                          ),
+                          if (actions.isNotEmpty)
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: actions,
+                            ),
+                        ],
                       ),
                     ),
-                    ...actions,
                   ],
                 ),
               ),
@@ -135,6 +180,7 @@ class ConsumerHeaderIconButton extends StatelessWidget {
     this.tooltip,
     this.badgeLabel,
     this.showBadge = false,
+    this.edgeInset = const EdgeInsets.only(left: 6),
   });
 
   final IconData icon;
@@ -142,6 +188,8 @@ class ConsumerHeaderIconButton extends StatelessWidget {
   final String? tooltip;
   final Widget? badgeLabel;
   final bool showBadge;
+  /// ปุ่มย้อนกลับใช้ [EdgeInsets.zero] — ปุ่มอื่นเว้นซ้ายเล็กน้อย
+  final EdgeInsets edgeInset;
 
   static const double _size = 36;
 
@@ -149,7 +197,7 @@ class ConsumerHeaderIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final iconWidget = Icon(icon, size: 20, color: Colors.white);
     return Padding(
-      padding: const EdgeInsets.only(left: 6),
+      padding: edgeInset,
       child: Material(
         color: Colors.white.withOpacity(0.16),
         shape: const CircleBorder(),
@@ -226,8 +274,9 @@ class ConsumerHeaderSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return Material(
-      color: Colors.white,
+      color: p.surface,
       borderRadius: BorderRadius.circular(LiLayout.searchHeight / 2),
       clipBehavior: Clip.antiAlias,
       child: TextField(
@@ -235,16 +284,17 @@ class ConsumerHeaderSearchField extends StatelessWidget {
         focusNode: focusNode,
         onChanged: onChanged,
         onSubmitted: onSubmitted,
-        style: const TextStyle(fontSize: 14, height: 1.2),
+        style: TextStyle(fontSize: 14, height: 1.2, color: p.textPrimary),
         decoration: InputDecoration(
           hintText: hint,
+          hintStyle: TextStyle(color: p.textSecondary),
           prefixIcon: Icon(
             Icons.search_rounded,
             size: 22,
-            color: LivingBkkBrand.homeHeaderBlockColor,
+            color: p.primary,
           ),
           filled: true,
-          fillColor: Colors.white,
+          fillColor: p.inputFill,
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
           border: InputBorder.none,
           enabledBorder: InputBorder.none,

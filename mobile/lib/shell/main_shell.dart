@@ -7,7 +7,7 @@ import '../features/board/demand_board_page.dart';
 import '../features/contact/contact_tab_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/search/map_home_page.dart';
-import '../features/search/saved_listings_page.dart';
+import '../features/listing/my_listings_page.dart';
 import '../services/auth_service.dart';
 import '../services/user_profile_service.dart';
 import '../services/notification_service.dart';
@@ -16,15 +16,20 @@ import '../services/in_app_notification_hub.dart';
 import '../services/realtime_service.dart';
 import '../services/supabase_service.dart';
 import '../config/env.dart';
+import '../config/demand_board_menu_config.dart';
 import '../config/post_listing_menu_config.dart';
 import '../l10n/app_strings.dart';
 import '../state/locale_controller.dart';
 import '../state/search_session_controller.dart';
 import '../state/theme_controller.dart';
 import '../state/user_role_controller.dart';
+import '../utils/admin_routing.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_theme.dart';
-import '../widgets/design_system/app_bottom_nav.dart';
+import '../utils/shell_tab_navigation.dart';
+import '../widgets/design_system/app_shell_bottom_nav.dart';
+import '../features/notifications/notification_center_sheet.dart';
+import '../services/property_care_notification_service.dart';
 import '../widgets/trial_mode_banner.dart';
 import 'main_shell_scope.dart';
 
@@ -48,6 +53,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _index = 0;
+  bool _boardFromHomeEntry = false;
   final _realtime = RealtimeService();
   final _notifHub = InAppNotificationHub.instance;
   StreamSubscription<String>? _notifSub;
@@ -58,16 +64,30 @@ class _MainShellState extends State<MainShell> {
   @override
   void initState() {
     super.initState();
+    ShellTabNavigation.currentIndex = _index;
     _setupRealtime();
     _setupPushNavigation();
     _syncRoleFromServer();
     widget.roleController.addListener(_syncAdminRealtime);
     _notifHub.addListener(_onNotifHubChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _onNotifHubChanged());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _onNotifHubChanged();
+      PropertyCareNotificationService.instance.init();
+    });
   }
 
   void _onNotifHubChanged() {
     if (!mounted) return;
+    final pendingTab = _notifHub.takePendingShellTab();
+    if (pendingTab != null) {
+      _selectTab(pendingTab);
+      return;
+    }
+    if (_notifHub.openMineTabOnNextShell) {
+      _notifHub.clearPendingNavigation();
+      _selectTab(PostListingMenuConfig.manageListingsShellTabIndex);
+      return;
+    }
     if (_notifHub.openContactTabOnNextShell) {
       _notifHub.clearPendingNavigation();
       _selectTab(_tabContact);
@@ -85,6 +105,11 @@ class _MainShellState extends State<MainShell> {
         case 'listing_archived':
           context.push(PostListingMenuConfig.myListingsRoute);
           break;
+        case 'rental_payment_reminder':
+        case 'rental_payment_confirmed':
+        case 'rental_payment_slip':
+          context.push('/rental-management');
+          break;
       }
     };
   }
@@ -96,9 +121,14 @@ class _MainShellState extends State<MainShell> {
         auth.isRealSupabaseSession) {
       await NotificationService.instance.registerIfPossible();
     }
-    final role = await auth.fetchProfileRole();
+    final access = await auth.fetchProfileAccess();
     if (!mounted) return;
-    widget.roleController.setPlatformAdmin(role == 'admin');
+    widget.roleController.setPlatformAdmin(access.role == 'admin');
+    widget.roleController.setViewingStaff(
+      value: access.role == 'viewing_staff',
+      slug: access.staffSlug,
+      userId: auth.effectiveUserId,
+    );
     await _syncAdminRealtime();
   }
 
@@ -146,11 +176,15 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
-  void _selectTab(int index) {
+  void _selectTab(int index, {bool boardFromHome = false}) {
     if (index == _tabContact) {
       _notifHub.clearUnread();
       ChatService.instance.clearAllUnread();
     }
+    if (index == DemandBoardMenuConfig.boardTabIndex) {
+      _boardFromHomeEntry = boardFromHome;
+    }
+    ShellTabNavigation.currentIndex = index;
     setState(() => _index = index);
   }
 
@@ -184,8 +218,15 @@ class _MainShellState extends State<MainShell> {
             localeController: widget.localeController,
             onOpenProfile: () => _selectTab(_tabProfile),
           ),
-          const SavedListingsPage(),
-          const DemandBoardPage(),
+          MyListingsPage(
+            isShellTab: true,
+            roleController: widget.roleController,
+            localeController: widget.localeController,
+          ),
+          DemandBoardPage(
+            isShellTab: true,
+            fromHomeEntry: _boardFromHomeEntry,
+          ),
           ContactTabPage(isAgent: isAgent, canManageLeads: canManageLeads),
           ProfilePage(
             roleController: widget.roleController,
@@ -202,10 +243,13 @@ class _MainShellState extends State<MainShell> {
           selectTab: _selectTab,
           child: Scaffold(
             backgroundColor: shellBg,
-            body: Column(
+            body: Stack(
+              fit: StackFit.expand,
               children: [
+                Column(
+                  children: [
                 if (widget.roleController.isPlatformAdmin &&
-                    GoRouterState.of(context).uri.queryParameters['preview'] == '1')
+                    isConsumerPreviewUri(GoRouterState.of(context).uri))
                   Material(
                     color: AppTheme.primary,
                     child: SafeArea(
@@ -238,29 +282,13 @@ class _MainShellState extends State<MainShell> {
                 Expanded(
                   child: IndexedStack(index: safeIndex, children: pages),
                 ),
+                  ],
+                ),
               ],
             ),
-            bottomNavigationBar: MediaQuery.removePadding(
-              context: context,
-              removeBottom: true,
-              child: ListenableBuilder(
-                listenable: Listenable.merge([
-                  _notifHub,
-                  ChatService.instance,
-                  UserProfileService.instance,
-                ]),
-                builder: (context, _) {
-                  final badge = ChatService.instance.totalUnreadChats > 0
-                      ? ChatService.instance.totalUnreadChats
-                      : _notifHub.unreadChatCount;
-                  return AppBottomNav(
-                    index: safeIndex,
-                    onChanged: _selectTab,
-                    contactBadgeCount: badge,
-                    profileAvatarUrl: UserProfileService.instance.avatarUrl,
-                  );
-                },
-              ),
+            bottomNavigationBar: AppShellBottomNav(
+              index: safeIndex,
+              onChanged: _selectTab,
             ),
           ),
         );

@@ -9,7 +9,9 @@ import '../services/search_service.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_theme.dart';
 import '../theme/li_layout.dart';
+import 'search_filter_chips.dart';
 import 'search_filter_sheet.dart';
+import 'typewriter_hint_label.dart';
 
 enum SearchBarStyle { standard, livingInsider, airbnb }
 
@@ -23,12 +25,14 @@ class SmartSearchBar extends StatefulWidget {
     this.onMapSearch,
     this.onOpenFilters,
     this.onOpenProject,
+    this.showFilterChips = true,
   });
 
   final SearchFilters filters;
   final void Function(SearchFilters filters) onFiltersChanged;
   final SearchBarStyle style;
   final bool dense;
+  final bool showFilterChips;
   final VoidCallback? onMapSearch;
   final VoidCallback? onOpenFilters;
   final void Function(String projectName, {String? projectSlug})? onOpenProject;
@@ -84,23 +88,30 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
   void initState() {
     super.initState();
     _controller.text = widget.filters.query ?? '';
-    _focus.addListener(() {
-      if (!_focus.hasFocus && mounted) {
-        setState(() {
-          _showSuggestions = false;
-          _showNlpPreview = false;
-        });
-      }
-    });
+    _controller.addListener(_onFieldVisualChanged);
+    _focus.addListener(_onFieldVisualChanged);
+  }
+
+  void _onFieldVisualChanged() {
+    if (!_focus.hasFocus && mounted) {
+      setState(() {
+        _showSuggestions = false;
+        _showNlpPreview = false;
+      });
+    } else if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
   void didUpdateWidget(SmartSearchBar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.filters.query != widget.filters.query &&
-        widget.filters.query != _controller.text &&
-        !_focus.hasFocus) {
-      _controller.text = widget.filters.query ?? '';
+    final incoming = widget.filters.query;
+    if (incoming != oldWidget.filters.query &&
+        incoming != _controller.text &&
+        !_focus.hasFocus &&
+        incoming != null) {
+      _controller.text = incoming;
     }
   }
 
@@ -109,9 +120,24 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
     _debounce?.cancel();
     _parseDebounce?.cancel();
     _queryApplyDebounce?.cancel();
+    _controller.removeListener(_onFieldVisualChanged);
+    _focus.removeListener(_onFieldVisualChanged);
     _controller.dispose();
     _focus.dispose();
     super.dispose();
+  }
+
+  Widget _wrapTypewriterField(Widget field, {double leftPadding = 44}) {
+    return wrapWithTypewriterHint(
+      controller: _controller,
+      focusNode: _focus,
+      leftPadding: leftPadding,
+      hintStyle: TextStyle(
+        fontSize: 14,
+        color: AppTheme.textSecondary.withOpacity(0.9),
+      ),
+      child: field,
+    );
   }
 
   void _apply(SearchFilters next) {
@@ -211,10 +237,29 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
     _apply(const SearchFilters());
   }
 
+  void _commitSuggestion(SearchFilters next, {required String displayText}) {
+    _debounce?.cancel();
+    _parseDebounce?.cancel();
+    _queryApplyDebounce?.cancel();
+    _controller.text = displayText;
+    setState(() {
+      _showSuggestions = false;
+      _showNlpPreview = false;
+      _suggestions = [];
+      _preview = [];
+      _parsedFilters = {};
+    });
+    _focus.unfocus();
+    _apply(next);
+  }
+
   void _onSuggestionTap(SearchSuggestion s) {
     if (s.kind == SearchSuggestionKind.project &&
         s.projectName != null &&
         widget.onOpenProject != null) {
+      _debounce?.cancel();
+      _parseDebounce?.cancel();
+      _queryApplyDebounce?.cancel();
       setState(() {
         _showSuggestions = false;
         _showNlpPreview = false;
@@ -224,41 +269,47 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
       return;
     }
 
-    var next = widget.filters.copyWith(query: _controller.text.trim());
     switch (s.kind) {
       case SearchSuggestionKind.project:
-        if (s.projectName != null && widget.onOpenProject != null) {
-          widget.onOpenProject!(s.projectName!, projectSlug: s.projectSlug);
-          return;
-        }
-        next = next.copyWith(
-          projectName: s.projectName,
-          clearProject: s.projectName == null,
+        _commitSuggestion(
+          widget.filters.copyWith(
+            projectName: s.projectName,
+            projectSlugs: s.projectSlug != null ? [s.projectSlug!] : null,
+            clearProject: s.projectName == null,
+            clearQuery: true,
+          ),
+          displayText: s.title,
         );
-        if (s.projectName != null) {
-          _controller.text = s.projectName!;
-        }
-        break;
       case SearchSuggestionKind.location:
-        next = next.copyWith(geoZoneSlugs: s.geoZoneSlugs);
-        break;
+        _commitSuggestion(
+          widget.filters.copyWith(
+            geoZoneSlugs: s.geoZoneSlugs,
+            clearQuery: true,
+          ),
+          displayText: s.title,
+        );
       case SearchSuggestionKind.listing:
+        _commitSuggestion(
+          widget.filters.copyWith(
+            query: s.title,
+            projectName: s.projectName,
+            clearProject: s.projectName == null,
+          ),
+          displayText: s.title,
+        );
       case SearchSuggestionKind.hint:
-        if (s.projectName != null) {
-          next = next.copyWith(projectName: s.projectName);
-          _controller.text = s.projectName!;
-        }
-        break;
+        _commitSuggestion(
+          widget.filters.copyWith(query: s.title),
+          displayText: s.title,
+        );
     }
-    setState(() {
-      _showSuggestions = false;
-      _showNlpPreview = false;
-    });
-    _focus.unfocus();
-    _apply(next);
   }
 
   Future<void> _openFilters() async {
+    if (widget.onOpenFilters != null) {
+      widget.onOpenFilters!();
+      return;
+    }
     final result = await showSearchFilterSheet(
       context,
       initial: widget.filters,
@@ -269,7 +320,7 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
   InputDecoration _searchDecoration(AppStrings s) {
     final isLi = widget.style == SearchBarStyle.livingInsider;
     return InputDecoration(
-      hintText: s.searchHintProjects,
+      hintText: typewriterFieldHintText(s, _controller, _focus),
       hintStyle: TextStyle(
         fontSize: isLi ? 14 : null,
         color: AppTheme.textSecondary.withOpacity(0.9),
@@ -326,7 +377,7 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
 
   InputDecoration _liInnerDecoration(AppStrings s) {
     return InputDecoration(
-      hintText: s.searchHintProjects,
+      hintText: typewriterFieldHintText(s, _controller, _focus),
       hintStyle: TextStyle(
         fontSize: 14,
         color: AppTheme.textSecondary.withOpacity(0.9),
@@ -367,9 +418,10 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
   Widget _buildAirbnbSearchBox(BuildContext context, AppStrings s) {
     final p = context.palette;
     final dense = widget.dense;
-    final fontSize = dense ? 14.0 : 15.0;
-    final iconSize = dense ? 20.0 : 22.0;
+    final fontSize = dense ? 13.0 : 15.0;
+    final iconSize = dense ? 18.0 : 22.0;
     final vPad = dense ? 0.0 : 14.0;
+    final fieldH = dense ? 36.0 : 48.0;
     return Container(
       decoration: dense
           ? null
@@ -378,7 +430,8 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: TextField(
+            child: _wrapTypewriterField(
+              TextField(
               controller: _controller,
               focusNode: _focus,
               textAlignVertical: TextAlignVertical.center,
@@ -405,7 +458,7 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
               },
               decoration: InputDecoration(
                 isDense: dense,
-                hintText: s.searchHintProjects,
+                hintText: typewriterFieldHintText(s, _controller, _focus),
                 hintStyle: TextStyle(
                   fontSize: fontSize,
                   height: 1.2,
@@ -415,9 +468,10 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
                 filled: false,
                 prefixIcon: Icon(Icons.search, color: p.primary, size: iconSize),
                 prefixIconConstraints: BoxConstraints(
-                  minWidth: dense ? 40 : 48,
-                  minHeight: dense ? 40 : 48,
+                  minWidth: dense ? 34 : 48,
+                  minHeight: fieldH,
                 ),
+                constraints: BoxConstraints(minHeight: fieldH),
                 contentPadding: EdgeInsets.symmetric(
                   vertical: vPad,
                   horizontal: dense ? 0 : 12,
@@ -451,14 +505,16 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
                         : null,
               ),
             ),
+              leftPadding: dense ? 34 : 48,
+            ),
           ),
           if (widget.onMapSearch != null) ...[
-            Container(width: 1, height: dense ? 22 : 28, color: p.divider),
+            Container(width: 1, height: dense ? 20 : 28, color: p.divider),
             IconButton(
               visualDensity: VisualDensity.compact,
               padding: dense ? EdgeInsets.zero : null,
               constraints: dense
-                  ? const BoxConstraints(minWidth: 40, minHeight: 40)
+                  ? const BoxConstraints(minWidth: 36, minHeight: 36)
                   : null,
               tooltip: s.mapSearchShort,
               icon: Icon(Icons.map_outlined, color: p.primary, size: iconSize),
@@ -479,25 +535,28 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Expanded(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focus,
-                onChanged: _onChanged,
-                onTap: () {
-                  if (_suggestions.isNotEmpty) setState(() => _showSuggestions = true);
-                  if (_preview.isNotEmpty) setState(() => _showNlpPreview = true);
-                },
-                onSubmitted: (v) {
-                  _apply(widget.filters.copyWith(
-                    query: v.trim().isEmpty ? null : v,
-                    clearQuery: v.trim().isEmpty,
-                  ));
-                  setState(() {
-                    _showSuggestions = false;
-                    _showNlpPreview = false;
-                  });
-                },
-                decoration: _liInnerDecoration(s),
+              child: _wrapTypewriterField(
+                TextField(
+                  controller: _controller,
+                  focusNode: _focus,
+                  onChanged: _onChanged,
+                  onTap: () {
+                    if (_suggestions.isNotEmpty) setState(() => _showSuggestions = true);
+                    if (_preview.isNotEmpty) setState(() => _showNlpPreview = true);
+                  },
+                  onSubmitted: (v) {
+                    _apply(widget.filters.copyWith(
+                      query: v.trim().isEmpty ? null : v,
+                      clearQuery: v.trim().isEmpty,
+                    ));
+                    setState(() {
+                      _showSuggestions = false;
+                      _showNlpPreview = false;
+                    });
+                  },
+                  decoration: _liInnerDecoration(s),
+                ),
+                leftPadding: 40,
               ),
             ),
             if (widget.onMapSearch != null) ...[
@@ -567,29 +626,31 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              child: TextField(
-                controller: _controller,
-                focusNode: _focus,
-                onChanged: _onChanged,
-                onTap: () {
-                  if (_suggestions.isNotEmpty) {
-                    setState(() => _showSuggestions = true);
-                  }
-                  if (_preview.isNotEmpty) {
-                    setState(() => _showNlpPreview = true);
-                  }
-                },
-                onSubmitted: (v) {
-                  _apply(widget.filters.copyWith(
-                    query: v.trim().isEmpty ? null : v,
-                    clearQuery: v.trim().isEmpty,
-                  ));
-                  setState(() {
-                    _showSuggestions = false;
-                    _showNlpPreview = false;
-                  });
-                },
-                decoration: _searchDecoration(s),
+              child: _wrapTypewriterField(
+                TextField(
+                  controller: _controller,
+                  focusNode: _focus,
+                  onChanged: _onChanged,
+                  onTap: () {
+                    if (_suggestions.isNotEmpty) {
+                      setState(() => _showSuggestions = true);
+                    }
+                    if (_preview.isNotEmpty) {
+                      setState(() => _showNlpPreview = true);
+                    }
+                  },
+                  onSubmitted: (v) {
+                    _apply(widget.filters.copyWith(
+                      query: v.trim().isEmpty ? null : v,
+                      clearQuery: v.trim().isEmpty,
+                    ));
+                    setState(() {
+                      _showSuggestions = false;
+                      _showNlpPreview = false;
+                    });
+                  },
+                  decoration: _searchDecoration(s),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -604,6 +665,12 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
             ),
           ],
         ),
+        if (widget.showFilterChips)
+          SearchFilterChips(
+            filters: widget.filters,
+            onFiltersChanged: _apply,
+            padding: const EdgeInsets.only(top: 6),
+          ),
         if (_showNlpPreview) _buildNlpPreview(s),
         if (_showSuggestions) _buildSuggestions(),
       ],

@@ -1,4 +1,6 @@
-# LivingBKK
+# RealXtate
+
+> แบรนด์: **RealXtate** · โดเมน: **RealXtateTH.com** · repo ชื่อ `LivingBKK_App` (legacy) — ดู [docs/REALXTATE-BRAND.md](docs/REALXTATE-BRAND.md)
 
 แพลตฟอร์มอสังหาริมทรัพย์สำหรับ **เช่า / ซื้อ / ขาย** — โฟกัส **กรุงเทพมหานครและปริมณฑล** เท่านั้น
 
@@ -21,10 +23,18 @@
 | 11 | [docs/phase-11-production-complete.md](docs/phase-11-production-complete.md) | Moderation + Lifecycle + Deploy ครบ |
 | 12 | [docs/phase-12-ai-and-security.md](docs/phase-12-ai-and-security.md) | AI Search + กัน self-admin |
 | 21 | [docs/phase-21-analytics-platform.md](docs/phase-21-analytics-platform.md) | Analytics platform — scale แสนคน |
+| 23 | [docs/phase-23-admin-vault.md](docs/phase-23-admin-vault.md) | Admin Vault — คลังลับ CEO/SUPER + สิทธิ์ per-entity |
+| 23b | [docs/phase-23-admin-layout.md](docs/phase-23-admin-layout.md) | Admin Layout — sidebar + ปักหมุดเร่งด่วน + เมนูกลุ่ม |
+| 24–26 | [docs/phase-24-26-chat-hub-tags.md](docs/phase-24-26-chat-hub-tags.md) | Hub + Threads + Profile Tags + Viewing Requests + Admin 360° |
+| 27 | [docs/phase-27-rental-management-group-chat.md](docs/phase-27-rental-management-group-chat.md) | บริหารจัดการทรัพย์ให้เช่า + แชทกลุ่ม (blind PII) |
 | 13 | [docs/phase-13-เปิดใช้บนมือถือ.md](docs/phase-13-เปิดใช้บนมือถือ.md) | เว็บมือถือ + ติดจอโฮม |
 | — | [docs/คู่มือ-ใช้แอปบนมือถือ.md](docs/คู่มือ-ใช้แอปบนมือถือ.md) | คู่มือภาษาไทย (ไม่ใช่โปรแกรมเมอร์) |
 | — | [docs/ROADMAP-REMAINING.md](docs/ROADMAP-REMAINING.md) | **สิ่งที่เหลือทั้งหมด** |
 | — | [docs/PRODUCTION-CHECKLIST.md](docs/PRODUCTION-CHECKLIST.md) | Checklist ก่อนเปิดใช้จริง |
+| — | [docs/REALXTATE-BRAND.md](docs/REALXTATE-BRAND.md) | ชื่อแบรนด์ + โดเมน (ตัดสินใจแล้ว) |
+| — | [docs/CLOUDFLARE-SETUP.md](docs/CLOUDFLARE-SETUP.md) | **Cloudflare + Netlify** (จดโดเมน — เริ่มที่นี่) |
+| — | [docs/จดโดเมน-RealXtateTH.md](docs/จดโดเมน-RealXtateTH.md) | จดโดเมนทีละขั้น (สรุป) |
+| — | [docs/CUSTOM-DOMAIN.md](docs/CUSTOM-DOMAIN.md) | จดโดเมน + เชื่อม Netlify (อ้างอิงเต็ม) |
 | — | [docs/business-rules.md](docs/business-rules.md) | กฎธุรกิจรวม |
 | — | [docs/flutterflow-setup.md](docs/flutterflow-setup.md) | FlutterFlow integration |
 | — | [docs/SETUP.md](docs/SETUP.md) | คู่มือตั้งค่าทั้งระบบ |

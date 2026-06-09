@@ -12,6 +12,15 @@ abstract final class PostListingMenuConfig {
   /// ประกาศของฉัน / ยืนยันว่าง
   static const myListingsRoute = '/listings/mine';
 
+  /// ทรัพย์ที่แอดมินมอบให้ดูแล
+  static const caredPropertiesRoute = '/listings/cared';
+
+  /// แท็บล่าง — จัดการประกาศของคุณ (แทนบันทึกเดิม)
+  static const manageListingsShellTabIndex = 1;
+
+  /// นำทางจากศูนย์แจ้งเตือน → แท็บของฉัน (ไม่ใช่ route GoRouter)
+  static const mineShellTabRoute = 'shell://mine';
+
   /// มุมมองที่เห็นเมนูลงประกาศ (ตาม business-rules: Owner + Agent)
   static const postPerspectives = <AppPerspective>{
     AppPerspective.owner,
@@ -49,6 +58,12 @@ abstract final class PostListingMenuConfig {
           icon: Icons.list_alt_outlined,
           title: s.myListingsConfirm,
           route: myListingsRoute,
+        ),
+        PostListingMenuEntry(
+          id: 'cared',
+          icon: Icons.home_work_outlined,
+          title: s.myCaredPropertiesMenu,
+          route: caredPropertiesRoute,
         ),
       ];
 }

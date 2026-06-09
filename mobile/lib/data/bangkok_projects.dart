@@ -274,7 +274,7 @@ class BangkokProjects {
       lng: 100.6068,
       bts: 'BTS บางนา',
       aliases: ['วิลล่า บางนา'],
-      propertyType: 'townhome',
+      propertyType: 'townhouse',
     ),
     BangkokProject(
       slug: 'sansiri-house-onnut',

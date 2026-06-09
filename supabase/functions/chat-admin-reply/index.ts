@@ -62,8 +62,8 @@ Deno.serve(async (req) => {
 
     const now = new Date().toISOString();
     const patch: Record<string, unknown> = {
-      admin_reply_done: true,
       assigned_admin_id: auth.userId,
+      last_message_at: now,
     };
     if (!assigned) {
       patch.assigned_at = now;
@@ -71,6 +71,7 @@ Deno.serve(async (req) => {
     if (resolve) {
       patch.status = "resolved";
       patch.admin_escalated = false;
+      patch.admin_reply_done = true;
     }
 
     const { data: thread, error: threadError } = await db
@@ -83,11 +84,11 @@ Deno.serve(async (req) => {
     if (threadError) return jsonResponse({ error: threadError.message }, 400);
 
     const userId = existing.user_id as string | undefined;
-    const code = (existing.listing_code as string) || "PROPPITER";
+    const code = (existing.listing_code as string) || "RealXtate";
     await sendFcmToUser(
       db,
       userId,
-      "PROPPITER — มีข้อความใหม่",
+      "RealXtate — มีข้อความใหม่",
       `${code}: ${text.slice(0, 120)}`,
       { type: "chat_reply", thread_id },
     );

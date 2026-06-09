@@ -3,11 +3,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/create_listing_wizard_config.dart';
 import '../../config/env.dart';
+import '../../config/post_listing_menu_config.dart';
 import '../../data/bangkok_projects.dart';
 import '../../data/listing_form_options.dart';
 import '../../data/property_catalog.dart';
@@ -21,6 +21,7 @@ import '../../models/offer_commission_scheme.dart';
 import '../../navigation/post_listing_navigation.dart';
 import '../../services/auth_service.dart';
 import '../../services/listing_create_repository.dart';
+import '../../services/property_care_notification_service.dart';
 import '../../services/platform_settings_service.dart';
 import 'owner_exclusive_terms_sheet.dart';
 import '../../services/listing_notes_service.dart';
@@ -34,12 +35,17 @@ import '../../utils/listing_draft_translate.dart';
 import '../../widgets/demand/demand_offer_warning_banner.dart';
 import '../../widgets/legal_policy_rich_text.dart';
 import '../../models/listing_pet_policy.dart';
+import '../../widgets/listing_hashtag_picker.dart';
 import '../../widgets/listing_pet_policy_section.dart';
 import '../../models/listing_viewing_access.dart';
+import '../../models/listing_public.dart';
 import '../../widgets/listing_viewing_access_section.dart';
+import '../../widgets/listing_price_form_section.dart';
 import '../../widgets/project_picker_field.dart';
+import 'property_care_listing_preview_panel.dart';
 import '../../utils/legal_navigation.dart';
 import '../../widgets/app_mobile_scaffold.dart';
+import '../../widgets/auth/auth_gate.dart';
 
 /// สร้างประกาศ — wizard อ้างอิง LI (เจ้าของ/เอเจนท์ · ลิงก์แผนที่เมื่อนอกโครงการ)
 class CreateListingPage extends StatefulWidget {
@@ -76,7 +82,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
   final _desc = TextEditingController();
   final _propertyCode = TextEditingController();
   final _price = TextEditingController();
-  final _promoPrice = TextEditingController();
+  final _salePrice = TextEditingController();
+  final _rentPromo = TextEditingController();
+  final _salePromo = TextEditingController();
   final _area = TextEditingController();
   final _bedrooms = TextEditingController();
   final _bathrooms = TextEditingController();
@@ -98,8 +106,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
   final _leaseMonths = TextEditingController(text: '12');
 
   String? _commissionScheme;
+  String? _rentCommissionScheme;
+  final _rentCommissionOther = TextEditingController();
   String? _transferTerms;
-  bool _promoEnabled = false;
+  bool _rentPromoEnabled = false;
+  bool _salePromoEnabled = false;
   bool _acceptedPublishPolicy = false;
   bool _ownerExclusiveInterest = false;
   int _ownerExclusiveContractDays = 30;
@@ -125,6 +136,14 @@ class _CreateListingPageState extends State<CreateListingPage> {
   bool get _isAgentPoster => _posterRole == ListingPosterRole.agent;
 
   bool get _isSaleListing => OfferCommissionScheme.isSaleListing(_listingType);
+
+  bool get _isDualListing => OfferCommissionScheme.isDualListing(_listingType);
+
+  bool get _hasSaleComponent =>
+      _isSaleListing || _isDualListing;
+
+  bool get _hasRentComponent =>
+      _listingType == 'rent' || _isDualListing;
 
   void _syncListedPriceFromNetCommission() {
     if (!mounted) return;
@@ -162,7 +181,21 @@ class _CreateListingPageState extends State<CreateListingPage> {
     if (_commissionScheme == null || !options.contains(_commissionScheme)) {
       _commissionScheme = options.isNotEmpty ? options.first : null;
     }
-    if (!_isSaleListing) _transferTerms = null;
+    if (_isDualListing) {
+      final rentOpts = OfferCommissionScheme.optionsFor(
+        transactionType: ListingTransactionTypes.rent,
+        offererCapacity: OfferCommissionScheme.capacityForPoster(
+          isAgentPoster: _isAgentPoster,
+        ),
+      );
+      if (_rentCommissionScheme == null ||
+          !rentOpts.contains(_rentCommissionScheme)) {
+        _rentCommissionScheme = rentOpts.isNotEmpty ? rentOpts.first : null;
+      }
+    } else {
+      _rentCommissionScheme = null;
+    }
+    if (!_hasSaleComponent) _transferTerms = null;
   }
 
   bool get _requiresLocationLink => ListingCreateRules.requiresLocationLink(
@@ -191,7 +224,21 @@ class _CreateListingPageState extends State<CreateListingPage> {
       if (mounted) setState(() {});
     }
     _price.addListener(onPriceChanged);
-    _promoPrice.addListener(onPriceChanged);
+    _salePrice.addListener(onPriceChanged);
+    _rentPromo.addListener(onPriceChanged);
+    _salePromo.addListener(onPriceChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _guardAuthOnEnter());
+  }
+
+  Future<void> _guardAuthOnEnter() async {
+    if (!mounted) return;
+    if (AuthGate.canProceed) return;
+    await AuthGate.requireRealAccount(
+      context,
+      redirectRoute: PostListingMenuConfig.createRoute,
+    );
+    if (!mounted) return;
+    if (!AuthGate.canProceed) context.pop();
   }
 
   @override
@@ -204,7 +251,9 @@ class _CreateListingPageState extends State<CreateListingPage> {
     _desc.dispose();
     _propertyCode.dispose();
     _price.dispose();
-    _promoPrice.dispose();
+    _salePrice.dispose();
+    _rentPromo.dispose();
+    _salePromo.dispose();
     _area.dispose();
     _bedrooms.dispose();
     _bathrooms.dispose();
@@ -220,6 +269,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
     _descZh.dispose();
     _myNote.dispose();
     _commissionOther.dispose();
+    _rentCommissionOther.dispose();
     _netReceive.dispose();
     _brokerCommissionPct.dispose();
     _transferOther.dispose();
@@ -290,8 +340,25 @@ class _CreateListingPageState extends State<CreateListingPage> {
 
   bool get _isRentListing => _listingType == 'rent';
 
-  String _primaryPriceLabel(AppStrings s) =>
-      _isRentListing ? s.createListingRentPriceLabel : s.createListingSalePriceLabel;
+  String _primaryPriceLabel(AppStrings s) {
+    if (_isDualListing) return s.createListingRentPriceLabel;
+    return _isRentListing
+        ? s.createListingRentPriceLabel
+        : s.createListingSalePriceLabel;
+  }
+
+  double? _salePriceForSubmit() =>
+      double.tryParse(_salePrice.text.replaceAll(',', ''));
+
+  double? _rentPriceForSubmit() {
+    if (_isDualListing) {
+      return double.tryParse(_price.text.replaceAll(',', ''));
+    }
+    if (_isRentListing) {
+      return _listedPriceForSubmit();
+    }
+    return null;
+  }
 
   void _translateFromThai(AppStrings s) {
     final thTitle = _title.text.trim();
@@ -303,7 +370,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
     setState(() {
       if (_listingLangs.contains('en')) {
         _titleEn.text = ListingDraftTranslate.titleEn(thTitle);
-        _descEn.text = ListingDraftTranslate.descriptionEn(thTitle, thDesc);
+        _descEn.text = ListingDraftTranslate.descriptionEn(
+          thTitle,
+          thDesc,
+          hashtagIds: _hashtagIds.toList(),
+          facilityIds: _facilityIds.toList(),
+        );
       }
       if (_listingLangs.contains('zh')) {
         _titleZh.text = ListingDraftTranslate.titleZh(thTitle);
@@ -346,48 +418,31 @@ class _CreateListingPageState extends State<CreateListingPage> {
     }
   }
 
-  Widget? _promoPreviewCard(AppStrings s) {
-    if (!_promoEnabled) return null;
-    final main = double.tryParse(_price.text.replaceAll(',', ''));
-    final promo = double.tryParse(_promoPrice.text.replaceAll(',', ''));
-    if (main == null || main <= 0 || promo == null || promo <= 0 || promo >= main) {
-      return null;
+  String? _validatePromoPrices(AppStrings s) {
+    final rentFull = _isDualListing
+        ? _rentPriceForSubmit()
+        : (_hasRentComponent ? _listedPriceForSubmit() : null);
+    if (_hasRentComponent && _rentPromoEnabled) {
+      if (rentFull == null || rentFull <= 0) return s.titlePriceRequired;
+      final promo = double.tryParse(_rentPromo.text.replaceAll(',', ''));
+      if (promo == null || promo <= 0 || promo >= rentFull) {
+        return s.createListingPromoMustBeLower;
+      }
     }
-    final fmt = NumberFormat.currency(locale: 'th_TH', symbol: '฿', decimalDigits: 0);
-    final suffix = _listingType == 'rent' ? s.perMonth : '';
-    return Card(
-      margin: const EdgeInsets.only(top: 12),
-      color: AppTheme.primaryLight.withOpacity(0.5),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              s.createListingPromoPreviewTitle,
-              style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppTheme.textSecondary),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${fmt.format(main)}$suffix',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.textSecondary,
-                decoration: TextDecoration.lineThrough,
-              ),
-            ),
-            Text(
-              '${fmt.format(promo)}$suffix',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.w800,
-                color: AppTheme.accentDeep,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
+    if (_hasSaleComponent && _salePromoEnabled) {
+      final saleFull = _isDualListing
+          ? _salePriceForSubmit()
+          : _listedPriceForSubmit();
+      final promo = double.tryParse(_salePromo.text.replaceAll(',', ''));
+      if (saleFull == null ||
+          saleFull <= 0 ||
+          promo == null ||
+          promo <= 0 ||
+          promo >= saleFull) {
+        return s.createListingPromoMustBeLower;
+      }
+    }
+    return null;
   }
 
   bool _validateStep(AppStrings s) {
@@ -487,16 +542,33 @@ class _CreateListingPageState extends State<CreateListingPage> {
           _snack(s.titlePriceRequired);
           return false;
         }
-        if (_promoEnabled) {
-          final promo = double.tryParse(_promoPrice.text.replaceAll(',', ''));
-          if (promo == null || promo <= 0 || promo >= price) {
-            _snack(s.t('ราคาโปรโมชั่นต้องต่ำกว่าราคาหลัก', 'Promo must be below main price'));
+        if (_isDualListing) {
+          final sale = _salePriceForSubmit();
+          if (sale == null || sale <= 0) {
+            _snack(s.createListingSalePriceLabel);
             return false;
           }
+        }
+        final promoErr = _validatePromoPrices(s);
+        if (promoErr != null) {
+          _snack(promoErr);
+          return false;
         }
         if (_commissionScheme == null) {
           _snack(s.offerValidationCommission);
           return false;
+        }
+        if (_isDualListing) {
+          if (_rentCommissionScheme == null) {
+            _snack(s.offerValidationCommission);
+            return false;
+          }
+          if (OfferCommissionScheme.requiresNote(_rentCommissionScheme!)) {
+            if (_rentCommissionOther.text.trim().isEmpty) {
+              _snack(s.offerValidationCommissionOther);
+              return false;
+            }
+          }
         }
         if (OfferCommissionScheme.requiresNote(_commissionScheme!)) {
           if (_commissionOther.text.trim().isEmpty) {
@@ -523,7 +595,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
             }
           }
         }
-        if (_isSaleListing) {
+        if (_hasSaleComponent) {
           if (_transferTerms == null) {
             _snack(s.offerValidationTransfer);
             return false;
@@ -571,12 +643,28 @@ class _CreateListingPageState extends State<CreateListingPage> {
           _locationLink.text.trim();
     }
     if (price != null) {
-      summary[_primaryPriceLabel(s).replaceAll(' *', '')] =
-          '฿${price.toStringAsFixed(0)}';
-      if (_promoEnabled) {
-        final promo = double.tryParse(_promoPrice.text.replaceAll(',', ''));
+      if (_isDualListing) {
+        summary[s.createListingDualPriceSummary] =
+            '${s.createListingRentPriceLabel.replaceAll(' *', '')}: ฿${price.toStringAsFixed(0)}';
+        final sale = _salePriceForSubmit();
+        if (sale != null) {
+          summary[s.createListingSalePriceLabel.replaceAll(' *', '')] =
+              '฿${sale.toStringAsFixed(0)}';
+        }
+      } else {
+        summary[_primaryPriceLabel(s).replaceAll(' *', '')] =
+            '฿${price.toStringAsFixed(0)}';
+      }
+      if (_rentPromoEnabled && _hasRentComponent) {
+        final promo = double.tryParse(_rentPromo.text.replaceAll(',', ''));
         if (promo != null) {
-          summary[s.t('ราคาโปรโมชั่น', 'Promo price')] = '฿${promo.toStringAsFixed(0)}';
+          summary[s.t('โปรเช่า', 'Rent promo')] = '฿${promo.toStringAsFixed(0)}';
+        }
+      }
+      if (_salePromoEnabled && _hasSaleComponent) {
+        final promo = double.tryParse(_salePromo.text.replaceAll(',', ''));
+        if (promo != null) {
+          summary[s.t('โปรขาย', 'Sale promo')] = '฿${promo.toStringAsFixed(0)}';
         }
       }
     }
@@ -591,7 +679,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
               '${_brokerCommissionPct.text.trim()}%';
         }
       }
-      if (_isSaleListing && _transferTerms != null) {
+      if (_hasSaleComponent && _transferTerms != null) {
         summary[s.offerTransferLabel.replaceAll(' *', '')] = _transferTermsLabel(s);
       }
     }
@@ -687,13 +775,88 @@ class _CreateListingPageState extends State<CreateListingPage> {
     if (_step > 0) setState(() => _step--);
   }
 
+  bool _validateForPreview(AppStrings s) {
+    if (_title.text.trim().isEmpty) {
+      _snack(s.listingTitleRequired);
+      return false;
+    }
+    if (_isDualListing) {
+      if (_rentPriceForSubmit() == null || _salePriceForSubmit() == null) {
+        _snack(s.titlePriceRequired);
+        return false;
+      }
+    } else if (_listedPriceForSubmit() == null) {
+      _snack(s.titlePriceRequired);
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _openPublicPreview(AppStrings s) async {
+    if (!_validateForPreview(s)) return;
+    final price = _isDualListing
+        ? (_rentPriceForSubmit() ?? 0)
+        : _listedPriceForSubmit()!;
+    var description = _desc.text.trim();
+    final tagsBlock = ListingFormOptions.formatTagsSection(
+      _hashtagIds.toList(),
+      _facilityIds.toList(),
+      isEnglish: s.isEnglish,
+    );
+    if (tagsBlock.isNotEmpty) {
+      description = description.isEmpty ? tagsBlock : '$description\n\n$tagsBlock';
+    }
+    final project = _selectedProject;
+    final listing = ListingPublic(
+      id: 'preview-draft',
+      listingCode: 'PREVIEW',
+      listingType: _listingType,
+      title: _title.text.trim(),
+      titleEn: _listingLangs.contains('en') && _titleEn.text.trim().isNotEmpty
+          ? _titleEn.text.trim()
+          : null,
+      priceNet: price,
+      priceSaleNet: _isDualListing ? _salePriceForSubmit() : null,
+      promoPriceNet: _rentPromoEnabled && _hasRentComponent
+          ? double.tryParse(_rentPromo.text.replaceAll(',', ''))
+          : null,
+      promoSalePriceNet: _salePromoEnabled && _hasSaleComponent
+          ? double.tryParse(_salePromo.text.replaceAll(',', ''))
+          : null,
+      district: _districtForSubmit(),
+      projectName: _projectNameForSubmit(),
+      projectSlug: project?.slug,
+      propertyType: _propertyTypeDb,
+      areaSqm: double.tryParse(_area.text.replaceAll(',', '')),
+      bedrooms: int.tryParse(_bedrooms.text),
+      bathrooms: int.tryParse(_bathrooms.text),
+      floorRange: _floor.text.trim().isEmpty ? null : _floor.text.trim(),
+      petAllowed: _petPolicy.allowed,
+      petPolicy: _petPolicy,
+      imageUrls: _images.isEmpty
+          ? const []
+          : ['https://picsum.photos/seed/create-preview/800/520'],
+      description: description.isEmpty ? null : description,
+      descriptionEn: _listingLangs.contains('en') && _descEn.text.trim().isNotEmpty
+          ? _descEn.text.trim()
+          : null,
+    );
+    await showListingPublicPreviewSheet(
+      context,
+      listing: listing,
+      banner: s.createListingPreviewAction,
+      bannerNote: s.adminListingPreviewWatermarkNote,
+    );
+  }
+
   Future<void> _submit({required bool publish}) async {
     final s = AppStrings.of(context);
     if (!_validateStep(s)) return;
 
-    if (!AuthService.instance.isSignedIn) {
-      _snack(s.configuredNotLoggedIn);
-      context.push('/login');
+    if (!await AuthGate.requireRealAccount(
+      context,
+      redirectRoute: PostListingMenuConfig.createRoute,
+    )) {
       return;
     }
 
@@ -728,9 +891,17 @@ class _CreateListingPageState extends State<CreateListingPage> {
         final commissionNote = OfferCommissionScheme.requiresNote(scheme)
             ? _commissionOther.text.trim()
             : null;
-        final listedPrice = _listedPriceForSubmit();
-        if (listedPrice == null) {
+        final listedPrice = _isDualListing
+            ? _rentPriceForSubmit()
+            : _listedPriceForSubmit();
+        if (listedPrice == null || listedPrice <= 0) {
           throw Exception(s.titlePriceRequired);
+        }
+        if (_isDualListing) {
+          final sale = _salePriceForSubmit();
+          if (sale == null || sale <= 0) {
+            throw Exception(s.createListingSalePriceLabel);
+          }
         }
         final brokerPct = (!_isAgentPoster &&
                 OfferCommissionScheme.isNetSelfAdd(scheme))
@@ -743,6 +914,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
             listingType: _listingType,
             propertyType: _propertyTypeDb,
             priceNet: listedPrice,
+            priceSaleNet: _isDualListing ? _salePriceForSubmit() : null,
             district: _districtForSubmit(),
             posterRole: _posterRole,
             description: description,
@@ -751,8 +923,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
             bathrooms: int.tryParse(_bathrooms.text),
             floorRange: _floor.text.trim().isEmpty ? null : _floor.text.trim(),
             coAgentListingType: coType,
-            promoPriceNet: _promoEnabled
-                ? double.tryParse(_promoPrice.text.replaceAll(',', ''))
+            promoPriceNet: _rentPromoEnabled && _hasRentComponent
+                ? double.tryParse(_rentPromo.text.replaceAll(',', ''))
+                : null,
+            promoSalePriceNet: _salePromoEnabled && _hasSaleComponent
+                ? double.tryParse(_salePromo.text.replaceAll(',', ''))
                 : null,
             videoUrl: _videoUrl.text.trim().isEmpty ? null : _videoUrl.text.trim(),
             tiktokUrl: _tiktok.text.trim().isEmpty ? null : _tiktok.text.trim(),
@@ -772,7 +947,13 @@ class _CreateListingPageState extends State<CreateListingPage> {
                 ? double.tryParse(_netReceive.text.replaceAll(',', ''))
                 : null,
             brokerCommissionPercent: brokerPct,
-            transferTerms: _isSaleListing ? _transferTermsLabel(s) : null,
+            transferTerms: _hasSaleComponent ? _transferTermsLabel(s) : null,
+            rentCommissionScheme: _isDualListing ? _rentCommissionScheme : null,
+            rentCommissionNote: _isDualListing &&
+                    _rentCommissionScheme != null &&
+                    OfferCommissionScheme.requiresNote(_rentCommissionScheme!)
+                ? _rentCommissionOther.text.trim()
+                : null,
             leaseMonths: int.tryParse(_leaseMonths.text) ?? 12,
             petPolicy: _petPolicy.copyWith(
               maxWeightKg: double.tryParse(_petMaxWeight.text.replaceAll(',', '')),
@@ -814,6 +995,11 @@ class _CreateListingPageState extends State<CreateListingPage> {
                 ));
           }
           await _createRepo.submitForReview(id);
+          if (mounted) {
+            await PropertyCareNotificationService.instance.sync(
+              isEnglish: AppStrings.of(context).isEnglish,
+            );
+          }
         }
 
         final note = _myNote.text.trim();
@@ -935,33 +1121,49 @@ class _CreateListingPageState extends State<CreateListingPage> {
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (_step > 0)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _busy ? null : _back,
-                        child: Text(s.createListingBack),
+                  if (_step == _stepCount - 1) ...[
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : () => _openPublicPreview(s),
+                      icon: const Icon(Icons.visibility_outlined, size: 18),
+                      label: Text(s.createListingPreviewAction),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  Row(
+                    children: [
+                      if (_step > 0)
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: _busy ? null : _back,
+                            child: Text(s.createListingBack),
+                          ),
+                        ),
+                      if (_step > 0) const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: FilledButton(
+                          onPressed: _busy ? null : _next,
+                          child: _busy
+                              ? const SizedBox(
+                                  height: 22,
+                                  width: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : Text(
+                                  _step == _stepCount - 1
+                                      ? s.publish
+                                      : s.createListingNext,
+                                ),
+                        ),
                       ),
-                    ),
-                  if (_step > 0) const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: FilledButton(
-                      onPressed: _busy ? null : _next,
-                      child: _busy
-                          ? const SizedBox(
-                              height: 22,
-                              width: 22,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : Text(
-                              _step == _stepCount - 1 ? s.publish : s.createListingNext,
-                            ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -1043,6 +1245,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
             ),
         ],
       ),
+      if (_isDualListing) ...[
+        const SizedBox(height: 12),
+        _infoBox(s.createListingRentAndSaleHint),
+      ],
       if (_isAgentPoster) ...[
         const SizedBox(height: 20),
         _agentExclusiveBlock(s),
@@ -1360,26 +1566,16 @@ class _CreateListingPageState extends State<CreateListingPage> {
       ),
       const SizedBox(height: 20),
       Text(s.createListingHashtagsTitle, style: _labelStyle),
-      const SizedBox(height: 4),
-      Text(s.createListingHashtagsHint, style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
       const SizedBox(height: 8),
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          for (final tag in ListingFormOptions.hashtags)
-            FilterChip(
-              label: Text(tag.label(s.isEnglish)),
-              selected: _hashtagIds.contains(tag.id),
-              onSelected: (v) => setState(() {
-                if (v) {
-                  _hashtagIds.add(tag.id);
-                } else {
-                  _hashtagIds.remove(tag.id);
-                }
-              }),
-            ),
-        ],
+      ListingHashtagPicker(
+        selectedIds: _hashtagIds,
+        listingType: _listingType,
+        propertyType: _propertyTypeDb,
+        onChanged: (v) => setState(() {
+          _hashtagIds
+            ..clear()
+            ..addAll(v);
+        }),
       ),
       const SizedBox(height: 16),
       Text(s.createListingFacilitiesTitle, style: _labelStyle),
@@ -1467,35 +1663,22 @@ class _CreateListingPageState extends State<CreateListingPage> {
 
   List<Widget> _stepPrice(AppStrings s) {
     return [
-      TextField(
-        controller: _price,
-        decoration: InputDecoration(
-          labelText: _primaryPriceLabel(s),
-          border: _inputBorder,
-        ),
-        keyboardType: TextInputType.number,
-        onChanged: (_) => setState(() {}),
+      ListingPriceFormSection(
+        listingType: _listingType,
+        rentPriceController: _price,
+        salePriceController: _salePrice,
+        rentPromoController: _rentPromo,
+        salePromoController: _salePromo,
+        rentPromoEnabled: _rentPromoEnabled,
+        salePromoEnabled: _salePromoEnabled,
+        onRentPromoEnabled: (v) => setState(() => _rentPromoEnabled = v),
+        onSalePromoEnabled: (v) => setState(() => _salePromoEnabled = v),
+        onChanged: () => setState(() {}),
+        inputBorder: _inputBorder,
       ),
       if (ListingOccupancyStatus.needsTenantRent(_occupancy.status, _listingType))
         _occupancyYieldOnPriceStep(s),
       const SizedBox(height: 16),
-      SwitchListTile(
-        contentPadding: EdgeInsets.zero,
-        title: Text(s.t('ตั้งราคาโปรโมชั่น', 'Promotion price')),
-        value: _promoEnabled,
-        onChanged: (v) => setState(() => _promoEnabled = v),
-      ),
-      if (_promoEnabled) ...[
-        TextField(
-          controller: _promoPrice,
-          decoration: InputDecoration(
-            labelText: s.t('ราคาโปรโมชั่น *', 'Promo price *'),
-            border: _inputBorder,
-          ),
-          keyboardType: TextInputType.number,
-        ),
-        if (_promoPreviewCard(s) != null) _promoPreviewCard(s)!,
-      ],
       if (!_isAgentPoster) ...[
         const SizedBox(height: 8),
         _ownerExclusiveBlock(s),
@@ -1540,6 +1723,17 @@ class _CreateListingPageState extends State<CreateListingPage> {
       isAgentPoster: _isAgentPoster,
     );
     final labels = {for (final o in options) o: s.offerCommissionSchemeLabel(o)};
+    final rentOptions = _isDualListing
+        ? OfferCommissionScheme.optionsFor(
+            transactionType: ListingTransactionTypes.rent,
+            offererCapacity: OfferCommissionScheme.capacityForPoster(
+              isAgentPoster: _isAgentPoster,
+            ),
+          )
+        : const <String>[];
+    final rentLabels = {
+      for (final o in rentOptions) o: s.offerCommissionSchemeLabel(o),
+    };
     final price = double.tryParse(_price.text.replaceAll(',', ''));
     final leaseMo = int.tryParse(_leaseMonths.text) ?? 12;
 
@@ -1557,9 +1751,48 @@ class _CreateListingPageState extends State<CreateListingPage> {
             ? s.createListingCommissionPolicyAgent
             : s.createListingCommissionPolicyOwner,
       ),
-      const SizedBox(height: 12),
-      Text(s.createListingCommissionTitle, style: _labelStyle),
-      const SizedBox(height: 8),
+      if (_isDualListing) ...[
+        const SizedBox(height: 12),
+        Text(
+          s.t('ค่าคอม · เช่า', 'Commission · rent'),
+          style: _labelStyle,
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: _rentCommissionScheme,
+          decoration: const InputDecoration(border: _inputBorder),
+          items: rentLabels.entries
+              .map(
+                (e) => DropdownMenuItem(
+                  value: e.key,
+                  child: Text(e.value, style: const TextStyle(fontSize: 14)),
+                ),
+              )
+              .toList(),
+          onChanged: (v) => setState(() => _rentCommissionScheme = v),
+        ),
+        if (_rentCommissionScheme == OfferCommissionScheme.custom) ...[
+          const SizedBox(height: 12),
+          TextField(
+            controller: _rentCommissionOther,
+            decoration: InputDecoration(
+              labelText: s.offerCommissionOtherHint,
+              border: _inputBorder,
+            ),
+            maxLines: 2,
+          ),
+        ],
+        const SizedBox(height: 16),
+        Text(
+          s.t('ค่าคอม · ขาย', 'Commission · sale'),
+          style: _labelStyle,
+        ),
+        const SizedBox(height: 8),
+      ] else ...[
+        const SizedBox(height: 12),
+        Text(s.createListingCommissionTitle, style: _labelStyle),
+        const SizedBox(height: 8),
+      ],
       DropdownButtonFormField<String>(
         value: _commissionScheme,
         decoration: const InputDecoration(border: _inputBorder),
@@ -1619,7 +1852,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
         ),
         if (!_isAgentPoster) _netSelfAddListedPreview(s),
       ],
-      if (!_isSaleListing) ...[
+      if (_hasRentComponent) ...[
         const SizedBox(height: 12),
         TextField(
           controller: _leaseMonths,
@@ -1636,7 +1869,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
         const SizedBox(height: 12),
         _commissionEstimateBox(s, price, leaseMo),
       ],
-      if (_isSaleListing) ...[
+      if (_hasSaleComponent) ...[
         const SizedBox(height: 16),
         Text(s.offerTransferLabel, style: _labelStyle),
         const SizedBox(height: 4),
@@ -1669,8 +1902,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
   }
 
   Widget _occupancyYieldOnPriceStep(AppStrings s) {
-    final price = _listedPriceForSubmit() ??
-        double.tryParse(_price.text.replaceAll(',', ''));
+    final price = _isDualListing
+        ? _salePriceForSubmit()
+        : (_listedPriceForSubmit() ??
+            double.tryParse(_price.text.replaceAll(',', '')));
     final rent = double.tryParse(_tenantRent.text.replaceAll(',', ''));
     if (price == null || price <= 0 || rent == null || rent <= 0) {
       return Padding(

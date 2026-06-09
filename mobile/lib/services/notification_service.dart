@@ -12,7 +12,7 @@ class NotificationService {
 
   static void Function(String message)? onForegroundMessage;
 
-  /// type: chat_reply | listing_bump | listing_archived
+  /// type: chat_reply | listing_bump | listing_archived | rental_payment_*
   static void Function(String type, Map<String, String> data)? onNotificationOpen;
 
   bool _registered = false;
@@ -47,7 +47,7 @@ class NotificationService {
       );
 
       FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-        final title = message.notification?.title ?? 'PROPPITER';
+        final title = message.notification?.title ?? 'RealXtate';
         final body = message.notification?.body ?? '';
         final text = body.isEmpty ? title : '$title · $body';
         onForegroundMessage?.call(text);

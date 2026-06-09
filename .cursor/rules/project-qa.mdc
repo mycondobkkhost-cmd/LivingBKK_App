@@ -1,17 +1,19 @@
 ---
-description: โหมดสอบถามข้อมูลทั่วไปเกี่ยวกับโปรเจกต PROPPITER (repo LivingBKK_App — อ่านเอกสาร อธิบาย ไม่แก้โค้ดโดยอัตโนมัติ)
+description: โหมดสอบถามข้อมูลทั่วไปเกี่ยวกับโปรเจกต RealXtate (repo LivingBKK_App — อ่านเอกสาร อธิบาย ไม่แก้โค้ดโดยอัตโนมัติ)
 alwaysApply: true
 ---
 
-# PROPPITER — โหมดสอบถามโปรเจกต
+# RealXtate — โหมดสอบถามโปรเจกต
 
 แท็บ/เซสชันนี้ตั้งไว้สำหรับ **ถาม–ตอบข้อมูลทั่วไป** เกี่ยวกับโปรเจกต ไม่ใช่โหมด implement เป็นค่าเริ่มต้น
 
 ## ชื่อและ repo
 
-- **แบรนด์ที่กำลังรีแบรนด์:** PROPPITER
-- **โฟลเดอร์โค้ด:** `LivingBKK_App` (ชื่อ repo / package ภายในยังเป็น `livingbkk` จนกว่าจะเปลี่ยนแยก)
-- ในเอกสารและโค้ดเก่าอาจยังเห็น **LivingBKK** — อธิบายว่าเป็นชื่อเดิมหรือกำลัง migrate
+- **แบรนด์ปัจจุบัน (สมบูรณ์):** **RealXtate** — ไม่ใช้ PROPPITER อีกต่อไป
+- **โดเมนหลัก:** **RealXtateTH.com** (`https://realxtateth.com`)
+- **อีเมลกฎหมาย/ติดต่อ:** `privacy@realxtateth.com`
+- **โฟลเดอร์โค้ด:** `LivingBKK_App` (ชื่อ repo / package ภายในยังเป็น `livingbkk` จนกว่าจะ migrate แยก)
+- ในเอกสารและโค้ดเก่าอาจยังเห็น **LivingBKK** หรือ **PROPPITER** — อธิบายว่าเป็นชื่อเดิม กำลัง migrate เป็น RealXtate
 
 ## บทบาท
 
@@ -30,6 +32,8 @@ alwaysApply: true
 
 | หัวข้อ | ไฟล์ |
 |--------|------|
+| แบรนด์ + โดเมน | `docs/REALXTATE-BRAND.md` |
+| โดเมน + Netlify | `docs/CUSTOM-DOMAIN.md` |
 | ภาพรวม + index phase | `README.md` |
 | สถาปัตยกรรม | `docs/phase-1-architecture.md` |
 | กฎธุรกิจ | `docs/business-rules.md` |
@@ -40,12 +44,12 @@ alwaysApply: true
 | DB / Supabase | `docs/phase-3-database.md` |
 | ทดลอง vs จริง | `docs/เข้าใจ-ทดลอง-vs-ใช้จริง.md`, `docs/โหมดทดลอง.md` |
 | แก้ปัญหา | `docs/TROUBLESHOOTING.md` |
-| รีแบรนด์ / asset UX | `docs/PROPPITER-UXUI-HANDOFF.md` |
+| รีแบรนด์ UX/UI (legacy doc) | `docs/PROPPITER-UXUI-HANDOFF.md` |
 | แบรนด์ในแอป | `design/tokens.json`, `mobile/lib/theme/living_bkk_brand.dart` |
 
 ## สรุปโปรเจกต (context สั้น)
 
-- **PROPPITER** (เดิม LivingBKK) — แพลตฟอร์มอสังหา กทม.+ปริมณฑล เช่า/ซื้อ/ขาย ตัวกลาง 100% โพสต์ฟรี รายได้จาก Success Fee
+- **RealXtate** (เดิม LivingBKK / PROPPITER) — แพลตฟอร์มอสังหา กทม.+ปริมณฑล เช่า/ซื้อ/ขาย ตัวกลาง 100% โพสต์ฟรี รายได้จาก Success Fee
 - **Stack:** Flutter (`mobile/`), Supabase, Google Maps, Make.com (สถิติ admin)
 - **Roles:** Seeker, Owner, Agent, Admin — Map-first, Net price, Blind intermediation, E-Contract gate
 

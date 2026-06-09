@@ -64,7 +64,7 @@ echo y | supabase db push
 
 echo ""
 echo "=== Edge Functions (projects) ==="
-for fn in project-import-fetch project-import-propertyhub; do
+for fn in project-import-fetch project-import-propertyhub project-tag-enrich; do
   echo "→ $fn"
   supabase functions deploy "$fn" --use-api
 done

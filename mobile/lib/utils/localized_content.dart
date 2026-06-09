@@ -75,7 +75,41 @@ extension ListingPublicL10n on ListingPublic {
   String displayHeadline(bool isEnglish) =>
       localizedProjectName(isEnglish) ?? localizedTitle(isEnglish);
 
-  /// สเปกบนการ์ด — ห้องนอน · ตร.ม. · ชั้น (ไม่รวมห้องน้ำ — ดูในหน้ารายละเอียด)
+  /// หัวข้อย่อบนการ์ด compact — โครงการแสดงแยกแล้ว ใช้ป้ายห้องนอน/ประเภท
+  String localizedCompactCardHeading(bool isEnglish) {
+    final project = localizedProjectName(isEnglish);
+    if (project != null && project.isNotEmpty && bedrooms != null) {
+      if (isEnglish) {
+        final bed = bedrooms == 0 ? 'Studio' : '$bedrooms bed';
+        return listingType == 'rent' ? bed : 'For sale · $bed';
+      }
+      final bed = bedrooms == 0 ? 'สตูดิโอ' : '$bedrooms นอน';
+      return listingType == 'rent' ? bed : 'ขาย $bed';
+    }
+    return _compactCardHeadingFromTitle(isEnglish, project);
+  }
+
+  String _compactCardHeadingFromTitle(bool isEnglish, String? project) {
+    final firstLine = localizedTitle(isEnglish).split('\n').first.trim();
+    if (project == null || project.isEmpty) return firstLine;
+
+    final sep = ' · $project';
+    if (firstLine.endsWith(sep)) {
+      return firstLine.substring(0, firstLine.length - sep.length).trim();
+    }
+
+    final parts = firstLine.split(' · ');
+    if (parts.length >= 2) {
+      final last = parts.last.trim();
+      final proj = project.trim();
+      if (last.toLowerCase() == proj.toLowerCase()) {
+        return parts.sublist(0, parts.length - 1).join(' · ');
+      }
+    }
+    return firstLine;
+  }
+
+  /// สเปกบนการ์ด — ตัวเลข + ไอคอน (ห้องนอน · ตร.ม. · ชั้น)
   List<({IconData icon, String label})> listingCardSpecItems(AppStrings s) {
     final en = s.isEnglish;
     final out = <({IconData icon, String label})>[];
@@ -83,23 +117,33 @@ extension ListingPublicL10n on ListingPublic {
     if (bedrooms != null) {
       out.add((
         icon: Icons.bed_outlined,
-        label: s.bedroomCardLabel(bedrooms!),
+        label: bedrooms! == 0 ? 'S' : '$bedrooms',
       ));
     }
     if (areaSqm != null && areaSqm! > 0) {
       out.add((
         icon: Icons.square_foot_outlined,
-        label: s.areaCardLabel(areaSqm!),
+        label: '${areaSqm!.round()}',
       ));
     }
-    final floor = localizedFloorRange(en);
-    if (floor != null && floor.isNotEmpty) {
+    final floorLabel = _floorCardNumericLabel(localizedFloorRange(en));
+    if (floorLabel != null) {
       out.add((
-        icon: Icons.layers_outlined,
-        label: floor,
+        icon: Icons.stairs_outlined,
+        label: floorLabel,
       ));
     }
     return out;
+  }
+
+  static String? _floorCardNumericLabel(String? floorText) {
+    if (floorText == null || floorText.trim().isEmpty) return null;
+    final digits = RegExp(r'\d+').firstMatch(floorText);
+    if (digits != null) return digits.group(0);
+    final lower = floorText.toLowerCase();
+    if (floorText.contains('สูง') || lower.contains('high')) return 'Hi';
+    if (floorText.contains('ล่าง') || lower.contains('low')) return 'Lo';
+    return null;
   }
 
   /// แท็กทำเลบนการ์ด — สถานีรถไฟ (ชัวร์) ก่อน แล้วตามด้วยย่าน

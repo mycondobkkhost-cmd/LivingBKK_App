@@ -5,7 +5,7 @@ import '../../models/listing_exclusive_options.dart';
 import '../../services/platform_settings_service.dart';
 import '../../theme/app_theme.dart';
 
-/// เงื่อนไขเบื้องต้น — ฝากทรัพย์ Exclusive กับ PROPPITER (เจ้าของ)
+/// เงื่อนไขเบื้องต้น — ฝากทรัพย์ Exclusive กับ RealXtate (เจ้าของ)
 Future<bool?> showOwnerExclusiveTermsSheet(
   BuildContext context, {
   required String listingType,

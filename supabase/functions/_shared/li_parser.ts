@@ -1,5 +1,13 @@
 /** Living Insider HTML parser — istockdetail / livingdetail */
 
+export type ImportSourceMeta = {
+  postUrl?: string | null;
+  postText?: string | null;
+  posterName?: string | null;
+  posterUrl?: string | null;
+  postLinks?: string[];
+};
+
 export type LiParsedListing = {
   sourceExternalId: string | null;
   title: string;
@@ -17,6 +25,7 @@ export type LiParsedListing = {
   imageUrls: string[];
   flags: string[];
   contactPrivate: { phones: string[]; lines: string[]; urls: string[] };
+  sourceMeta?: ImportSourceMeta;
 };
 
 const UA =
@@ -280,13 +289,12 @@ export async function matchProject(
 
   // deno-lint-ignore no-explicit-any
   const client = db as any;
+  const safe = name.replace(/[%_,.()]/g, " ").trim();
   const { data } = await client
     .from("property_projects")
     .select("id, slug, name_th, name_en, district, lat, lng, geo_zone_id, bts_station")
     .eq("is_active", true)
-    .or(
-      `name_th.ilike.%${name}%,name_en.ilike.%${name}%,aliases.cs.{${name}}`,
-    )
+    .or(`name_th.ilike.%${safe}%,name_en.ilike.%${safe}%`)
     .limit(1)
     .maybeSingle();
 

@@ -13,6 +13,7 @@ enum AppNotificationType {
   demandOffer,
   systemAnnouncement,
   leadNew,
+  propertyCareGrant,
 }
 
 enum AppNotificationFilter { all, chat, appointment, listing, system }
@@ -31,7 +32,8 @@ extension AppNotificationTypeX on AppNotificationType {
         AppNotificationType.listingBumpDue ||
         AppNotificationType.listingStaleWarning ||
         AppNotificationType.listingDraftFix ||
-        AppNotificationType.listingPublished =>
+        AppNotificationType.listingPublished ||
+        AppNotificationType.propertyCareGrant =>
           AppNotificationFilter.listing,
         _ => AppNotificationFilter.system,
       };
@@ -46,6 +48,7 @@ extension AppNotificationTypeX on AppNotificationType {
         AppNotificationType.savedSearchMatch => Icons.notifications_active_rounded,
         AppNotificationType.demandOffer => Icons.forum_rounded,
         AppNotificationType.systemAnnouncement => Icons.info_outline_rounded,
+        AppNotificationType.propertyCareGrant => Icons.verified_user_outlined,
       };
 }
 

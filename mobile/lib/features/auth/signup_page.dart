@@ -6,14 +6,15 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../config/env.dart';
+import '../../config/post_listing_menu_config.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/app_perspective.dart';
 import '../../services/auth_service.dart';
 import '../../services/user_profile_service.dart';
 import '../../state/session_gate.dart';
 import '../../state/user_role_controller.dart';
+import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/living_bkk_brand.dart';
 import '../../utils/admin_routing.dart';
 import '../../widgets/legal_policy_rich_text.dart';
 import '../../widgets/proppiter_brand_hero.dart';
@@ -74,6 +75,13 @@ class _SignUpPageState extends State<SignUpPage> {
     if (!mounted) return;
     if (role == 'admin') {
       context.go(adminHomePath());
+      return;
+    }
+    final redirect = GoRouterState.of(context).uri.queryParameters['redirect'];
+    if (redirect != null &&
+        redirect.isNotEmpty &&
+        _auth.canCreateListing) {
+      context.go(redirect);
       return;
     }
     context.go('/');
@@ -137,6 +145,7 @@ class _SignUpPageState extends State<SignUpPage> {
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
+    final p = context.palette;
 
     return AuthScreenShell(
       onBack: () => context.canPop() ? context.pop() : context.go('/login'),
@@ -175,9 +184,9 @@ class _SignUpPageState extends State<SignUpPage> {
                   height: 52,
                   padding: const EdgeInsets.symmetric(horizontal: 12),
                   decoration: BoxDecoration(
-                    color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.08),
+                    color: p.primaryLight,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppTheme.border),
+                    border: Border.all(color: p.border),
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -186,7 +195,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       fontSize: 15,
                       fontWeight: FontWeight.w600,
                       height: 1.3,
-                      color: LivingBkkBrand.homeHeaderBlockColor,
+                      color: p.primary,
                     ),
                   ),
                 ),
@@ -225,7 +234,7 @@ class _SignUpPageState extends State<SignUpPage> {
               onChanged: (v) => setState(() => _acceptedTerms = v ?? false),
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
-              activeColor: LivingBkkBrand.homeHeaderBlockColor,
+              activeColor: p.primary,
               title: LegalPolicyRichText(
                 s: s,
                 prefix: s.signUpTermsPrefix,
@@ -237,7 +246,7 @@ class _SignUpPageState extends State<SignUpPage> {
               height: 50,
               child: FilledButton(
                 onPressed: _loading ? null : _submit,
-                style: authPrimaryButtonStyle(),
+                style: authPrimaryButtonStyle(context),
                 child: _loading
                     ? const SizedBox(
                         height: 22,
@@ -260,7 +269,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       height: 1.35,
-                      color: LivingBkkBrand.homeHeaderBlockColor,
+                      color: p.primary,
                     ),
                   ),
                 ),
@@ -281,6 +290,7 @@ class _AvatarPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final p = context.palette;
     return GestureDetector(
       onTap: onTap,
       child: Stack(
@@ -291,9 +301,9 @@ class _AvatarPicker extends StatelessWidget {
             height: 88,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(20),
-              color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.08),
+              color: p.primaryLight,
               border: Border.all(
-                color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.35),
+                color: p.primary.withOpacity(0.35),
                 width: 2,
               ),
               image: bytes != null
@@ -304,7 +314,7 @@ class _AvatarPicker extends StatelessWidget {
                 ? Icon(
                     Icons.person_outline,
                     size: 40,
-                    color: LivingBkkBrand.homeHeaderBlockColor.withOpacity(0.45),
+                    color: p.primary.withOpacity(0.45),
                   )
                 : null,
           ),
@@ -314,7 +324,7 @@ class _AvatarPicker extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: LivingBkkBrand.homeHeaderBlockColor,
+                color: p.primary,
                 borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: Colors.white, width: 2),
               ),

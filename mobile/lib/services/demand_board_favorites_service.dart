@@ -68,6 +68,18 @@ class DemandBoardFavoritesService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> removeMany(Iterable<String> postIds) async {
+    await load();
+    final remove = postIds.toSet();
+    if (remove.isEmpty) return;
+    _orderedIds.removeWhere(remove.contains);
+    for (final id in remove) {
+      _snapshots.remove(id);
+    }
+    await _persist();
+    notifyListeners();
+  }
+
   /// รวมข้อมูลล่าสุดจากฟีด (ถ้ามี) กับ snapshot ที่บันทึกไว้
   List<DemandPost> resolvePosts(Iterable<DemandPost> currentFeed) {
     final byId = {for (final p in currentFeed) p.id: p};

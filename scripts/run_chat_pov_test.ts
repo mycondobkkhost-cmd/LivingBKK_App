@@ -81,7 +81,7 @@ const mockListing = {
 
 let unclearStreak = 0;
 
-console.log("=== PROPPITER Chat POV Test ===\n");
+console.log("=== RealXtate Chat POV Test ===\n");
 console.log(`FAQ rules loaded: ${faqRules.length}`);
 console.log(`OPENAI_API_KEY: ${Deno.env.get("OPENAI_API_KEY") ? "set (RAG may run)" : "not set (FAQ/rules only)"}\n`);
 

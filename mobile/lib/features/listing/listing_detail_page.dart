@@ -11,6 +11,8 @@ import '../../services/listing_activity_service.dart';
 import '../../services/listing_repository.dart';
 import '../../services/preferred_stock_service.dart';
 import '../../utils/listing_navigation.dart';
+import '../../utils/listing_price_helpers.dart';
+import '../../models/listing_transaction_types.dart';
 import '../../l10n/app_strings.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../utils/localized_content.dart';
@@ -25,6 +27,81 @@ import '../../widgets/reference_code_chip.dart';
 import '../../shell/main_shell_scope.dart';
 import '../contact/property_chat_page.dart';
 import '../../widgets/app_mobile_scaffold.dart';
+import '../../utils/page_safe_insets.dart';
+
+Widget _detailPriceLine(
+  ListingPublic listing,
+  NumberFormat currency,
+  AppStrings s,
+  AppPalette p,
+) {
+  TextStyle strikeStyle() => TextStyle(
+        fontSize: 14,
+        color: p.textSecondary,
+        decoration: TextDecoration.lineThrough,
+      );
+  TextStyle mainStyle() => AppTypography.price(p).copyWith(fontSize: 20);
+
+  if (ListingPriceHelpers.showDualPrices(listing)) {
+    final rentStrike = ListingPriceHelpers.strikethroughAmount(
+      listing,
+      rentSide: true,
+    );
+    final rentDisplay = ListingPriceHelpers.displayAmount(
+      listing,
+      rentSide: true,
+    );
+    final saleStrike = ListingPriceHelpers.strikethroughAmount(
+      listing,
+      rentSide: false,
+    );
+    final saleDisplay = ListingPriceHelpers.displayAmount(
+      listing,
+      rentSide: false,
+    );
+    return Text.rich(
+      TextSpan(
+        children: [
+          if (rentStrike != null) ...[
+            TextSpan(text: currency.format(rentStrike), style: strikeStyle()),
+            const TextSpan(text: ' '),
+          ],
+          TextSpan(text: currency.format(rentDisplay), style: mainStyle()),
+          TextSpan(text: '${s.perMonth} · ', style: strikeStyle()),
+          if (saleStrike != null) ...[
+            TextSpan(text: currency.format(saleStrike), style: strikeStyle()),
+            const TextSpan(text: ' '),
+          ],
+          TextSpan(text: currency.format(saleDisplay), style: mainStyle()),
+        ],
+      ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
+    );
+  }
+
+  final isRent = ListingPriceHelpers.showPerMonth(listing);
+  final strike = ListingPriceHelpers.strikethroughAmount(
+    listing,
+    rentSide: isRent,
+  );
+  final display = ListingPriceHelpers.effectivePrice(listing);
+  return Text.rich(
+    TextSpan(
+      children: [
+        if (strike != null) ...[
+          TextSpan(text: currency.format(strike), style: strikeStyle()),
+          const TextSpan(text: ' '),
+        ],
+        TextSpan(text: currency.format(display), style: mainStyle()),
+        if (isRent)
+          TextSpan(text: s.perMonth, style: strikeStyle()),
+      ],
+    ),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
+}
 
 class ListingDetailPage extends StatefulWidget {
   const ListingDetailPage({
@@ -202,8 +279,7 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
       symbol: '฿',
       decimalDigits: 0,
     );
-    final price = currency.format(listing.priceNet);
-    final priceSuffix = listing.listingType == 'rent' ? s.perMonth : '';
+    final priceLine = _detailPriceLine(listing, currency, s, p);
     final sqmPrice = listing.areaSqm != null && listing.areaSqm! > 0
         ? s.pricePerSqm(
             NumberFormat('#,###', en ? 'en_US' : 'th_TH')
@@ -217,9 +293,9 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
         ? localizedDesc
         : (en
             ? 'Great location near ${project?.bts ?? listing.localizedDistrict(en) ?? 'Bangkok'}. '
-                'Ideal for ${listing.listingType == 'rent' ? 'renting' : 'living or investment'}.'
+                'Ideal for ${ListingTransactionTypes.hasRentComponent(listing.listingType) ? 'renting' : 'living or investment'}.'
             : 'ทำเลดี ใกล้${project?.bts ?? listing.district ?? 'กรุงเทพ'} '
-                'เหมาะ${listing.listingType == 'rent' ? 'เช่าอยู่อาศัย' : 'ลงทุนหรืออยู่อาศัย'}');
+                'เหมาะ${ListingTransactionTypes.hasRentComponent(listing.listingType) ? 'เช่าอยู่อาศัย' : 'ลงทุนหรืออยู่อาศัย'}');
     final liveViewers = _simulatedLiveViewers(listing);
 
     return AppMobileScaffold(
@@ -443,18 +519,21 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
             top: 0,
             left: 0,
             right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 6, 12, 0),
-                child: Row(
-                  children: [
-                    _CircleIconButton(
-                      icon: Icons.arrow_back,
-                      onTap: () => context.pop(),
-                    ),
-                    const Spacer(),
-                    _FloatingToolBar(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                8,
+                PageSafeInsets.top(context) + 6,
+                12,
+                0,
+              ),
+              child: Row(
+                children: [
+                  _CircleIconButton(
+                    icon: Icons.arrow_back,
+                    onTap: () => context.pop(),
+                  ),
+                  const Spacer(),
+                  _FloatingToolBar(
                       listingId: listing.id,
                       isAgent: widget.isAgent,
                       onShare: () {
@@ -472,13 +551,12 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                     ),
                   ],
                 ),
-              ),
             ),
           ),
         ],
       ),
       bottomNavigationBar: _StickyDetailBar(
-        price: '$price$priceSuffix',
+        priceLine: priceLine,
         sqmPrice: sqmPrice,
         contactLabel: s.detailContactCta,
         bookLabel: s.detailBookPropertyCta,
@@ -869,7 +947,7 @@ class _FactItem {
 
 class _StickyDetailBar extends StatelessWidget {
   const _StickyDetailBar({
-    required this.price,
+    required this.priceLine,
     required this.contactLabel,
     required this.bookLabel,
     required this.scheduleLabel,
@@ -883,7 +961,7 @@ class _StickyDetailBar extends StatelessWidget {
     this.onDismissViewers,
   });
 
-  final String price;
+  final Widget priceLine;
   final String? sqmPrice;
   final String contactLabel;
   final String bookLabel;
@@ -921,14 +999,7 @@ class _StickyDetailBar extends StatelessWidget {
                 ),
               Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      price,
-                      style: AppTypography.price(p).copyWith(fontSize: 20),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  Expanded(child: priceLine),
                   if (sqmPrice != null)
                     Text(
                       sqmPrice!,

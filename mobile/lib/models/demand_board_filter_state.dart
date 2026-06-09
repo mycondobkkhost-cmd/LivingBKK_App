@@ -24,8 +24,11 @@ class DemandBoardFilterState {
     'office',
     'commercial',
     'home_office',
+    'showroom',
+    'business',
     'warehouse',
     'factory',
+    'co_working',
   };
 
   static const residentialFilterSlugs = <String>{

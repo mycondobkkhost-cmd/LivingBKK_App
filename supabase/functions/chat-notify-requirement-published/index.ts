@@ -75,7 +75,7 @@ Deno.serve(async (req) => {
       await sendFcmToUser(
         db,
         userId,
-        "PROPPITER — บอร์ดเผยแพร่แล้ว",
+        "RealXtate — บอร์ดเผยแพร่แล้ว",
         `${postCode}: ทีมกำลังรับข้อเสนอทรัพย์ให้คุณ`,
         { type: "requirement_published", thread_id: threadId, post_code: postCode },
       );

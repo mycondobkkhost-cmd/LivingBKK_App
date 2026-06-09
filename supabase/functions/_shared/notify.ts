@@ -4,11 +4,17 @@ export type NotifyPayload = {
   event: string;
   lead_id?: string;
   appointment_id?: string;
+  calendar_event_id?: string;
   listing_code?: string;
   status?: string;
   scheduled_date?: string;
   time_slot?: string;
   seeker_nickname?: string;
+  title?: string;
+  description?: string;
+  external_event_id?: string;
+  start_at?: string;
+  end_at?: string;
 };
 
 /** POST censored event to Make.com (no phone). */
@@ -68,4 +74,20 @@ export async function sendFcmToUser(
   } catch (_) {
     return { sent: false };
   }
+}
+
+export async function sendFcmToUsers(
+  supabase: SupabaseClient,
+  userIds: string[],
+  title: string,
+  body: string,
+  data: Record<string, string> = {},
+): Promise<{ sent: number }> {
+  const unique = [...new Set(userIds.filter((id) => id && id.length > 4))];
+  let sent = 0;
+  for (const uid of unique) {
+    const res = await sendFcmToUser(supabase, uid, title, body, data);
+    if (res.sent) sent++;
+  }
+  return { sent };
 }

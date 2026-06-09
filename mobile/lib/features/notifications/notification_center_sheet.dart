@@ -3,8 +3,9 @@ import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../models/app_notification.dart';
+import '../../config/post_listing_menu_config.dart';
+import '../../services/in_app_notification_hub.dart';
 import '../../services/notification_center_repository.dart';
-import '../../shell/main_shell_scope.dart';
 import '../../state/locale_controller.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/app_palette.dart';
@@ -61,14 +62,19 @@ class _NotificationCenterSheetState extends State<NotificationCenterSheet> {
 
   void _onTap(AppNotification n) {
     NotificationCenterRepository.instance.markRead(n.id);
-    Navigator.of(context).pop();
     final route = n.route;
+    final router = GoRouter.of(context);
+    Navigator.of(context).pop();
     if (route == null || route.isEmpty) return;
     if (route == '/contact') {
-      MainShellScope.maybeOf(context)?.selectTab(3);
+      InAppNotificationHub.instance.requestOpenContactTab();
       return;
     }
-    context.push(route);
+    if (route == PostListingMenuConfig.mineShellTabRoute) {
+      InAppNotificationHub.instance.requestOpenMineTab();
+      return;
+    }
+    router.push(route);
   }
 
   @override

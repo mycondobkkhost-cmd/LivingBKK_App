@@ -110,12 +110,14 @@ VALUES (
 )
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO public.profiles (id, role, display_name)
+INSERT INTO public.profiles (id, role, display_name, admin_tier)
 VALUES (
   '22222222-2222-2222-2222-222222222222',
   'admin',
-  'LivingBKK Demo Admin'
+  'LivingBKK Demo Admin',
+  'ceo'
 )
 ON CONFLICT (id) DO UPDATE SET
   role = 'admin',
-  display_name = EXCLUDED.display_name;
+  display_name = EXCLUDED.display_name,
+  admin_tier = 'ceo';

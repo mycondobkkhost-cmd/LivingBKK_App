@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../features/admin/admin_nav_model.dart';
 import '../l10n/app_strings.dart';
 import '../models/admin_dashboard_overview.dart';
 import '../theme/admin_theme.dart';
 import '../theme/app_theme.dart';
 import '../theme/living_bkk_brand.dart';
 
-/// แถบ KPI ด้านบนศูนย์แอดมิน — กดเพื่อไปแท็บที่เกี่ยวข้อง
+/// แถบ KPI ด้านบนศูนย์แอดมิน — กดเพื่อไปหน้าที่เกี่ยวข้อง
 class AdminDashboardBar extends StatelessWidget {
   const AdminDashboardBar({
     super.key,
@@ -16,32 +17,32 @@ class AdminDashboardBar extends StatelessWidget {
   });
 
   final AdminDashboardOverview data;
-  final void Function(int tabIndex) onJump;
+  final void Function(AdminNavId id) onJump;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final s = context.s;
     final tiles = [
-      _Tile(s.adminDashProjects, data.projects, 10, Icons.apartment_outlined),
-      _Tile(s.adminDashListings, data.listingsPublished, -1, Icons.home_work_outlined,
+      _Tile(s.adminDashProjects, data.projects, AdminNavId.projects, Icons.apartment_outlined),
+      _Tile(s.adminDashListings, data.listingsPublished, null, Icons.home_work_outlined,
           subtitle: s.adminDashListingsSub(data.listingsTotal)),
-      _Tile(s.adminDashLeads, data.leadsNew, 3, Icons.support_agent_outlined,
+      _Tile(s.adminDashLeads, data.leadsNew, AdminNavId.leads, Icons.support_agent_outlined,
           subtitle: s.adminDashLeadsSub(data.leadsTotal), alert: data.leadsNew > 0),
-      _Tile(s.adminDashChat, data.chatWaiting, 1, Icons.chat_bubble_outline,
+      _Tile(s.adminDashChat, data.chatWaiting, AdminNavId.queue, Icons.chat_bubble_outline,
           alert: data.chatWaiting > 0),
-      _Tile(s.adminDashAppointments, data.appointmentsPending, 4, Icons.event_outlined,
-          alert: data.appointmentsPending > 0),
-      _Tile(s.adminDashOffers, data.offersPending, 2, Icons.local_offer_outlined,
+      _Tile(s.adminDashAppointments, data.appointmentsPending, AdminNavId.viewingCalendar,
+          Icons.calendar_month_outlined, alert: data.appointmentsPending > 0),
+      _Tile(s.adminDashOffers, data.offersPending, AdminNavId.offers, Icons.local_offer_outlined,
           alert: data.offersPending > 0),
-      _Tile(s.adminDashModeration, data.moderationImages + data.moderationFlags, 6,
-          Icons.shield_outlined,
+      _Tile(s.adminDashModeration, data.moderationImages + data.moderationFlags,
+          AdminNavId.moderation, Icons.shield_outlined,
           subtitle: s.adminDashModerationSub(data.moderationImages, data.moderationFlags),
           alert: data.moderationImages + data.moderationFlags > 0),
-      _Tile(s.adminDashImports, data.importsPending, 9, Icons.cloud_download_outlined,
-          alert: data.importsPending > 0),
-      _Tile(s.adminDashRequirements, data.customerRequirementsPending, 8,
-          Icons.assignment_outlined,
+      _Tile(s.adminDashImports, data.importsPending, AdminNavId.import,
+          Icons.cloud_download_outlined, alert: data.importsPending > 0),
+      _Tile(s.adminDashRequirements, data.customerRequirementsPending,
+          AdminNavId.requirements, Icons.assignment_outlined,
           alert: data.customerRequirementsPending > 0),
     ];
 
@@ -68,7 +69,11 @@ class AdminDashboardBar extends StatelessWidget {
                     ),
                     child: Text(
                       s.adminDashNeedsAction(data.attentionTotal),
-                      style: TextStyle(fontSize: 11, color: AppTheme.error, fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppTheme.error,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
               ],
@@ -88,7 +93,7 @@ class AdminDashboardBar extends StatelessWidget {
                     subtitle: t.subtitle,
                     icon: t.icon,
                     alert: t.alert,
-                    onTap: t.tabIndex >= 0 ? () => onJump(t.tabIndex) : null,
+                    onTap: t.navId != null ? () => onJump(t.navId!) : null,
                   );
                 },
               ),
@@ -101,11 +106,11 @@ class AdminDashboardBar extends StatelessWidget {
 }
 
 class _Tile {
-  const _Tile(this.label, this.value, this.tabIndex, this.icon,
+  const _Tile(this.label, this.value, this.navId, this.icon,
       {this.subtitle, this.alert = false});
   final String label;
   final int value;
-  final int tabIndex;
+  final AdminNavId? navId;
   final IconData icon;
   final String? subtitle;
   final bool alert;

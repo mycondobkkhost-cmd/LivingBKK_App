@@ -11,9 +11,16 @@ class UserRoleController extends ChangeNotifier {
 
   AppPerspective _perspective;
   bool _platformAdmin = false;
+  bool _viewingStaff = false;
+  String? _staffSlug;
+  String? _staffUserId;
 
   AppPerspective get perspective => _perspective;
   bool get isPlatformAdmin => _platformAdmin;
+  bool get isViewingStaff => _viewingStaff;
+  String? get staffSlug => _staffSlug;
+  String? get staffUserId => _staffUserId;
+  bool get canAccessBackOffice => _platformAdmin || _viewingStaff;
 
   void _notifySafely() {
     final phase = SchedulerBinding.instance.schedulerPhase;
@@ -35,6 +42,27 @@ class UserRoleController extends ChangeNotifier {
     if (_platformAdmin == value) return;
     _platformAdmin = value;
     _notifySafely();
+  }
+
+  void setViewingStaff({
+    required bool value,
+    String? slug,
+    String? userId,
+  }) {
+    if (_viewingStaff == value &&
+        _staffSlug == slug &&
+        _staffUserId == userId) {
+      return;
+    }
+    _viewingStaff = value;
+    _staffSlug = slug;
+    _staffUserId = userId;
+    _notifySafely();
+  }
+
+  void clearBackOfficeAccess() {
+    setPlatformAdmin(false);
+    setViewingStaff(value: false, slug: null, userId: null);
   }
 
   /// ใช้กับโค้ดเดิมที่อ้าง role เป็น string

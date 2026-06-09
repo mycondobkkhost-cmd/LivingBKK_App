@@ -94,6 +94,10 @@ class ChatRepository {
   }
 
   Future<ChatRoom?> fetchThreadById(String threadId) async {
+    if (threadId.startsWith('demo-') || threadId.startsWith('cast-chat-')) {
+      return null;
+    }
+    if (!SupabaseService.isReady) return null;
     final client = SupabaseService.client!;
     final thread = await client
         .from('chat_threads')
@@ -254,6 +258,14 @@ class ChatRepository {
     room.updatedAt = DateTime.now();
   }
 
+  Future<void> updateAdminDisplayName(String threadId, String? name) async {
+    final client = SupabaseService.client;
+    if (client == null) return;
+    await client.from('chat_threads').update({
+      'admin_display_name': name,
+    }).eq('id', threadId);
+  }
+
   Future<void> markResolved(ChatRoom room) async {
     final client = SupabaseService.client!;
     await client.from('chat_threads').update({
@@ -404,10 +416,25 @@ class ChatRepository {
     final rows = await client
         .from('chat_threads')
         .select('*')
-        .or('status.eq.resolved,admin_reply_done.eq.true')
+        .eq('status', 'resolved')
         .gte('last_message_at', cutoff)
         .order('last_message_at', ascending: false)
         .limit(50);
+    return _roomsWithMessages(rows as List, inboxPreview: true);
+  }
+
+  /// เคสที่รับงานแล้วแต่ยังไม่ปิด — ไม่อยู่ใน chat_admin_inbox หลังตอบครั้งแรก
+  Future<List<ChatRoom>> fetchAdminOpenAssigned() async {
+    final client = SupabaseService.client!;
+    final cutoff = DateTime.now().subtract(const Duration(days: 14)).toIso8601String();
+    final rows = await client
+        .from('chat_threads')
+        .select('*')
+        .neq('status', 'resolved')
+        .not('assigned_admin_id', 'is', null)
+        .gte('last_message_at', cutoff)
+        .order('last_message_at', ascending: false)
+        .limit(100);
     return _roomsWithMessages(rows as List, inboxPreview: true);
   }
 
@@ -599,11 +626,32 @@ class ChatRepository {
     final direct = lead['thread_id']?.toString();
     if (direct != null && direct.isNotEmpty) return direct;
 
+    final leadId = lead['id']?.toString();
+    if (leadId != null && leadId.startsWith('demo-lead')) {
+      return 'demo-lead-chat-$leadId';
+    }
+
     if (!SupabaseService.isReady) return null;
     final client = SupabaseService.client!;
     final code = lead['listing_code']?.toString();
-    final seekerId = lead['seeker_id']?.toString();
-    if (code == null || code.isEmpty || seekerId == null) return null;
+    var seekerId = lead['seeker_id']?.toString();
+
+    if ((seekerId == null || seekerId.isEmpty) && leadId != null && leadId.isNotEmpty) {
+      try {
+        final row = await client
+            .from('leads')
+            .select('seeker_id, thread_id, listing_code')
+            .eq('id', leadId)
+            .maybeSingle();
+        seekerId = row?['seeker_id']?.toString() ?? seekerId;
+        final tid = row?['thread_id']?.toString();
+        if (tid != null && tid.isNotEmpty) return tid;
+      } catch (_) {}
+    }
+
+    if (code == null || code.isEmpty || seekerId == null || seekerId.isEmpty) {
+      return null;
+    }
 
     final row = await client
         .from('chat_threads')
@@ -614,6 +662,102 @@ class ChatRepository {
         .limit(1)
         .maybeSingle();
     return row?['id']?.toString();
+  }
+
+  /// แชทลูกค้าจริงสำหรับ Lead — ไม่สร้างห้องของแอดมิน
+  Future<ChatRoom?> fetchCustomerThreadForLead({
+    Map<String, dynamic>? lead,
+    String? leadId,
+    String? listingCode,
+    String? seekerPhone,
+  }) async {
+    if (!SupabaseService.isReady) return null;
+    final client = SupabaseService.client!;
+
+    Map<String, dynamic>? resolved = lead;
+    if (resolved == null && leadId != null && leadId.isNotEmpty) {
+      try {
+        resolved = await client
+            .from('leads')
+            .select()
+            .eq('id', leadId)
+            .maybeSingle();
+      } catch (_) {}
+    }
+
+    if (resolved != null) {
+      final threadId = await resolveThreadIdForLead(resolved);
+      if (threadId != null && threadId.isNotEmpty) {
+        return fetchThreadById(threadId);
+      }
+    }
+
+    final code = listingCode?.trim().isNotEmpty == true
+        ? listingCode!.trim()
+        : resolved?['listing_code']?.toString();
+    var seekerId = resolved?['seeker_id']?.toString();
+    final phone = seekerPhone?.trim().isNotEmpty == true
+        ? seekerPhone!.trim()
+        : resolved?['seeker_phone']?.toString();
+
+    if ((seekerId == null || seekerId.isEmpty) &&
+        phone != null &&
+        phone.isNotEmpty &&
+        code != null &&
+        code.isNotEmpty) {
+      try {
+        final row = await client
+            .from('leads')
+            .select('seeker_id, thread_id')
+            .eq('listing_code', code)
+            .eq('seeker_phone', phone)
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        seekerId = row?['seeker_id']?.toString() ?? seekerId;
+        final tid = row?['thread_id']?.toString();
+        if (tid != null && tid.isNotEmpty) {
+          return fetchThreadById(tid);
+        }
+      } catch (_) {}
+    }
+
+    if (code != null && code.isNotEmpty && seekerId != null && seekerId.isNotEmpty) {
+      try {
+        final row = await client
+            .from('chat_threads')
+            .select('id')
+            .eq('listing_code', code)
+            .eq('user_id', seekerId)
+            .order('last_message_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
+        final tid = row?['id']?.toString();
+        if (tid != null && tid.isNotEmpty) {
+          return fetchThreadById(tid);
+        }
+      } catch (_) {}
+    }
+
+    if (code != null && code.isNotEmpty) {
+      try {
+        final rows = await client
+            .from('chat_threads')
+            .select('id')
+            .eq('listing_code', code)
+            .eq('viewing_submitted', true)
+            .order('last_message_at', ascending: false)
+            .limit(1);
+        if (rows is List && rows.isNotEmpty) {
+          final tid = rows.first['id']?.toString();
+          if (tid != null && tid.isNotEmpty) {
+            return fetchThreadById(tid);
+          }
+        }
+      } catch (_) {}
+    }
+
+    return null;
   }
 
   Future<void> recordBookingInterest(
@@ -895,9 +1039,9 @@ class ChatRepository {
 
     final welcome = welcomeText ??
         (listingTitle.isNotEmpty
-            ? 'สวัสดีครับ ผมผู้ช่วย PROPPITER สำหรับ $listingTitle\n'
+            ? 'สวัสดีครับ ผมผู้ช่วย RealXtate สำหรับ $listingTitle\n'
                 'ถามรายละเอียดทรัพย์นี้ได้เลย — หากต้องการนัดดูห้อง กด「ขอนัดดูห้อง」ด้านล่างเมื่อพร้อมครับ'
-            : 'สวัสดีครับ ผมผู้ช่วย PROPPITER พร้อมช่วยเหลือครับ');
+            : 'สวัสดีครับ ผมผู้ช่วย RealXtate พร้อมช่วยเหลือครับ');
 
     final welcomeRole = roomKind == 'staff_support' ? 'admin_notice' : 'ai';
     await client.from('chat_messages').insert({
@@ -1168,5 +1312,118 @@ class ChatRepository {
           DateTime.tryParse(thread['last_message_at'].toString()) ??
               room.updatedAt;
     }
+  }
+
+  /// แจ้งลูกค้าในแชท (ข้อความระบบ — ไม่ขึ้นคิวแอดมิน)
+  Future<void> postCustomerSystemNotice({
+    required ChatRoom room,
+    required String text,
+    List<ChatMessageLink> links = const [],
+  }) async {
+    if (!SupabaseService.isReady || text.trim().isEmpty) return;
+    final client = SupabaseService.client!;
+    final now = DateTime.now().toUtc().toIso8601String();
+    final payload = <String, dynamic>{
+      'thread_id': room.id,
+      'role': 'system',
+      'text': text.trim(),
+      'requires_admin': false,
+    };
+    if (links.isNotEmpty) {
+      payload['links'] = links.map((l) => l.toJson()).toList();
+    }
+    final row = await client
+        .from('chat_messages')
+        .insert(payload)
+        .select('*')
+        .single();
+    room.messages.add(ChatMessage.fromJson(Map<String, dynamic>.from(row)));
+    await client.from('chat_threads').update({
+      'last_message_at': now,
+    }).eq('id', room.id);
+    room.updatedAt = DateTime.now();
+  }
+
+  /// ข้อความหลังนัดดู — โน้ตภายในแอดมิน + ข้อความระบบให้ลูกค้าเห็น
+  Future<void> postViewingFollowUpNotice({
+    required ChatRoom room,
+    String? internalNoteText,
+    String? systemNoticeText,
+    required bool keepOpen,
+  }) async {
+    if (!SupabaseService.isReady) return;
+    final client = SupabaseService.client!;
+    final uid = client.auth.currentUser?.id;
+    final now = DateTime.now().toUtc().toIso8601String();
+
+    if (internalNoteText != null && internalNoteText.trim().isNotEmpty) {
+      final internal = await client
+          .from('chat_messages')
+          .insert({
+            'thread_id': room.id,
+            'role': 'admin_notice',
+            'text': '${ChatMessage.adminInternalPrefix}${internalNoteText.trim()}',
+            if (uid != null) 'sender_id': uid,
+            'requires_admin': true,
+          })
+          .select('*')
+          .single();
+      room.messages.add(ChatMessage.fromJson(Map<String, dynamic>.from(internal)));
+    }
+
+    if (keepOpen &&
+        systemNoticeText != null &&
+        systemNoticeText.trim().isNotEmpty) {
+      final system = await client
+          .from('chat_messages')
+          .insert({
+            'thread_id': room.id,
+            'role': 'system',
+            'text': systemNoticeText.trim(),
+            'requires_admin': true,
+          })
+          .select('*')
+          .single();
+      room.messages.add(ChatMessage.fromJson(Map<String, dynamic>.from(system)));
+    }
+
+    final patch = keepOpen
+        ? {
+            'status': 'waiting_admin',
+            'admin_escalated': true,
+            'admin_reply_done': false,
+            'viewing_submitted': true,
+            'category': 'viewing_request',
+            'priority': 'high',
+            'last_message_at': now,
+          }
+        : {
+            'status': 'resolved',
+            'admin_escalated': false,
+            'admin_reply_done': true,
+            'last_message_at': now,
+          };
+
+    final updated = await client
+        .from('chat_threads')
+        .update(patch)
+        .eq('id', room.id)
+        .select('*')
+        .single();
+
+    _applyThreadPatch(room, Map<String, dynamic>.from(updated));
+    if (keepOpen) {
+      room.adminReplyDone = false;
+      room.adminEscalated = true;
+      room.viewingSubmitted = true;
+      room.category = 'viewing_request';
+      room.status = 'waiting_admin';
+      room.priority = 'high';
+    } else {
+      room.adminReplyDone = true;
+      room.adminEscalated = false;
+      room.status = 'resolved';
+    }
+    room.updatedAt = DateTime.now();
   }
 }

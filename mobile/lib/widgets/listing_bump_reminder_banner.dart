@@ -3,6 +3,7 @@ import '../config/post_listing_menu_config.dart';
 import '../l10n/app_strings.dart';
 import '../navigation/post_listing_navigation.dart';
 import '../services/listing_owner_repository.dart';
+import '../services/notification_center_repository.dart';
 import '../state/user_role_controller.dart';
 import '../theme/app_theme.dart';
 import '../theme/li_layout.dart';
@@ -27,12 +28,14 @@ class _ListingBumpReminderBannerState extends State<ListingBumpReminderBanner> {
   void initState() {
     super.initState();
     widget.roleController.addListener(_load);
+    NotificationCenterRepository.instance.addListener(_load);
     _load();
   }
 
   @override
   void dispose() {
     widget.roleController.removeListener(_load);
+    NotificationCenterRepository.instance.removeListener(_load);
     super.dispose();
   }
 

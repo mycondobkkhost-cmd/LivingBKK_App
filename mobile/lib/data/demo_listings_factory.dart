@@ -6,6 +6,8 @@ import '../utils/localized_content.dart';
 import '../utils/metro_region.dart';
 import '../utils/reference_codes.dart';
 import 'bangkok_projects.dart';
+import 'demo_cast_listing_pins.dart';
+import 'demo_category_listings.dart';
 
 /// สร้างทรัพย์ตัวอย่างจำนวนมากจากฐานโครงการกรุงเทพ
 class DemoListingsFactory {
@@ -61,18 +63,23 @@ class DemoListingsFactory {
 
         final bedLabelTh = bedrooms == 0 ? 'สตูดิโอ' : '$bedrooms นอน';
         final bedLabelEn = bedrooms == 0 ? 'Studio' : '$bedrooms bed';
+        final floor = _floorOptions[_rng.nextInt(_floorOptions.length)];
+        final btsOrDistrict = project.bts ?? project.district;
+
+        // หัวข้อ 2 บรรทัด — บรรทัด 1 ประเภท+โครงการ · บรรทัด 2 ชั้น+พื้นที่+ทำเล
         final title = isRent
-            ? '$bedLabelTh · ${project.nameTh}'
-            : '${project.nameTh} ขาย';
+            ? '$bedLabelTh · ${project.nameTh}\n'
+                '${floor.$1} · ${area.toInt()} ตร.ม. · ใกล้$btsOrDistrict'
+            : 'ขาย $bedLabelTh · ${project.nameTh}\n'
+                '${floor.$1} · ${area.toInt()} ตร.ม. · $btsOrDistrict';
         final titleEn = isRent
-            ? '$bedLabelEn · ${project.nameEn}'
-            : '${project.nameEn} for sale';
+            ? '$bedLabelEn · ${project.nameEn}\n'
+                '${floor.$2} · ${area.toInt()} sqm · near $btsOrDistrict'
+            : 'For sale · $bedLabelEn · ${project.nameEn}\n'
+                '${floor.$2} · ${area.toInt()} sqm · $btsOrDistrict';
 
         final coEligible = _rng.nextDouble() > 0.65;
         final pet = _rng.nextDouble() > 0.55;
-        final floor = _floorOptions[_rng.nextInt(_floorOptions.length)];
-
-        final btsOrDistrict = project.bts ?? project.district;
         final desc = isRent
             ? 'ห้อง$bedLabelTh โครงการ${project.nameTh} ทำเล$btsOrDistrict '
                 'พื้นที่ ${area.toInt()} ตร.ม. สภาพพร้อมเข้าอยู่ วิวเมือง ส่วนกลางครบ'
@@ -146,14 +153,34 @@ class DemoListingsFactory {
     return out;
   }
 
+  static const _cacheVersion = 3;
+
   static List<ListingPublic> get cached {
-    _cache ??= generate();
+    if (_cache == null || _cacheVersion != _builtCacheVersion) {
+      _builtCacheVersion = _cacheVersion;
+      final generated = generate();
+      final pinned = DemoCastListingPins.all();
+      final pinnedCodes =
+          pinned.map((l) => l.listingCode.toUpperCase()).toSet();
+      final category = DemoCategoryListings.all();
+      final categoryIds = category.map((l) => l.id).toSet();
+      _cache = [
+        ...pinned,
+        ...category,
+        ...generated.where(
+          (l) =>
+              !pinnedCodes.contains(l.listingCode.toUpperCase()) &&
+              !categoryIds.contains(l.id),
+        ),
+      ];
+    }
     return _cache!;
   }
 
   static void invalidateCache() => _cache = null;
 
   static List<ListingPublic>? _cache;
+  static int _builtCacheVersion = 0;
 
   static String _geoZoneFor(BangkokProject project) {
     final probe = ListingPublic(

@@ -119,12 +119,7 @@ CREATE INDEX IF NOT EXISTS demand_posts_seeker_idx
   WHERE seeker_user_id IS NOT NULL;
 
 -- ── Customer requirement ↔ chat thread ──
-
-DO $$ BEGIN
-  ALTER TYPE public.chat_thread_category ADD VALUE IF NOT EXISTS 'customer_requirement';
-EXCEPTION
-  WHEN duplicate_object THEN NULL;
-END $$;
+-- enum customer_requirement เพิ่มใน 20260605165000_chat_category_customer_requirement.sql
 
 ALTER TABLE public.customer_requirements
   ADD COLUMN IF NOT EXISTS thread_id uuid REFERENCES public.chat_threads (id) ON DELETE SET NULL;

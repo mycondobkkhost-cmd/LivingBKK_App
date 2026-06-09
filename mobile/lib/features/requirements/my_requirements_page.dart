@@ -14,7 +14,7 @@ import '../../services/listing_repository.dart';
 import '../../services/requirement_match_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/demand/demand_urgent_rush_strip.dart';
-import '../../widgets/listing_card.dart';
+import '../../widgets/listing_grid.dart';
 import '../contact/property_chat_page.dart';
 import '../../services/chat_service.dart';
 import '../../utils/page_safe_insets.dart';
@@ -148,7 +148,7 @@ class _RequirementCard extends StatelessWidget {
         ? DateFormat('d MMM yyyy', 'th').format(created)
         : null;
     final matches = loadingPool
-        ? const []
+        ? <ListingPublic>[]
         : RequirementMatchService.instance.match(
             req: requirement,
             pool: pool.cast<ListingPublic>(),
@@ -268,19 +268,14 @@ class _RequirementCard extends StatelessWidget {
                 style: TextStyle(fontSize: 12, color: AppTheme.primary),
               ),
               const SizedBox(height: 8),
-              ...matches.take(3).map(
-                    (l) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: ListingCard(
-                        listing: l,
-                        style: ListingCardStyle.list,
-                        onTap: () => context.push(
-                          '/listing/${l.id}',
-                          extra: ListingRouteExtra(listing: l, isAgent: false),
-                        ),
-                      ),
-                    ),
-                  ),
+              ListingGrid(
+                items: matches.take(6).toList(),
+                showFavorite: false,
+                onTapListing: (l) => context.push(
+                  '/listing/${l.id}',
+                  extra: ListingRouteExtra(listing: l, isAgent: false),
+                ),
+              ),
             ],
           ],
         ),

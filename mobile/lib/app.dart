@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -13,10 +14,14 @@ import 'widgets/in_app_notification_banner.dart';
 import 'state/locale_controller.dart';
 import 'state/search_session_controller.dart';
 import 'state/session_gate.dart';
+import 'state/admin_viewport_controller.dart';
 import 'state/theme_controller.dart';
 import 'state/user_role_controller.dart';
+import 'theme/admin_theme.dart';
 import 'theme/app_theme.dart';
 import 'utils/admin_desktop.dart';
+import 'utils/admin_routing.dart';
+import 'utils/web_browser_path.dart';
 import 'widgets/mobile_route_shell.dart';
 import 'widgets/mobile_viewport_shell.dart';
 
@@ -28,6 +33,7 @@ class LivingBkkApp extends StatefulWidget {
     required this.localeController,
     required this.sessionGate,
     required this.themeController,
+    required this.adminViewportController,
   });
 
   final UserRoleController roleController;
@@ -35,6 +41,7 @@ class LivingBkkApp extends StatefulWidget {
   final LocaleController localeController;
   final SessionGate sessionGate;
   final ThemeController themeController;
+  final AdminViewportController adminViewportController;
 
   @override
   State<LivingBkkApp> createState() => _LivingBkkAppState();
@@ -73,13 +80,47 @@ class _LivingBkkAppState extends State<LivingBkkApp> with WidgetsBindingObserver
   void _onRouteChanged() {
     final nextUri = _router.routeInformationProvider.value.uri;
     if (nextUri.path == _location && nextUri.query == _uri.query) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      setState(() {
-        _uri = nextUri;
-        _location = nextUri.path;
-      });
+    setState(() {
+      _uri = nextUri;
+      _location = nextUri.path;
     });
+  }
+
+  /// บนเว็บ: ผสม router + address bar (กัน `/admin` ค้างตอน redirect ไป login)
+  String _shellPath() {
+    final routerUri = _router.routeInformationProvider.value.uri;
+    if (isConsumerPreviewUri(routerUri)) {
+      return routerUri.path.isEmpty ? '/' : routerUri.path;
+    }
+    final routerPath = routerUri.path;
+    if (kIsWeb) {
+      if (routerPath.isNotEmpty && routerPath != '/') {
+        return routerPath;
+      }
+      final browser = webBrowserPath();
+      if (browser.isNotEmpty && browser != '/') return browser;
+      if (Uri.base.path.isNotEmpty && Uri.base.path != '/') {
+        return Uri.base.path;
+      }
+    }
+    return routerPath.isNotEmpty ? routerPath : _location;
+  }
+
+  Uri _shellUri() {
+    final routerUri = _router.routeInformationProvider.value.uri;
+    if (isConsumerPreviewUri(routerUri)) return routerUri;
+    if (kIsWeb && isAdminPath(Uri.base.path)) {
+      return Uri.base;
+    }
+    return routerUri;
+  }
+
+  bool _shellFullWidth() {
+    final path = _shellPath();
+    if (kIsWeb && isAdminPath(path)) {
+      return true;
+    }
+    return adminShellFullWidth(path, query: _shellUri().queryParameters);
   }
 
   @override
@@ -107,10 +148,12 @@ class _LivingBkkAppState extends State<LivingBkkApp> with WidgetsBindingObserver
         widget.roleController,
         widget.localeController,
         widget.themeController,
+        widget.adminViewportController,
+        _router.routeInformationProvider,
       ]),
       builder: (context, _) {
         return MaterialApp.router(
-          title: 'PROPPITER',
+          title: 'RealXtate',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
@@ -128,7 +171,25 @@ class _LivingBkkAppState extends State<LivingBkkApp> with WidgetsBindingObserver
           routerConfig: _router,
           builder: (context, child) {
             final hub = InAppNotificationHub.instance;
+            final shellPath = _shellPath();
+            final fullWidth = _shellFullWidth();
+            Widget routed = child ??
+                const ColoredBox(
+                  color: Color(0xFFF4F4F5),
+                  child: Center(child: CircularProgressIndicator()),
+                );
+            final adminShell = isAdminPath(shellPath) &&
+                !shellPath.startsWith('/login') &&
+                !shellPath.startsWith('/signup');
+            if (adminShell) {
+              routed = Theme(
+                data: AdminTheme.shellTheme(),
+                child: AdminTheme.lightPaletteScope(child: routed),
+              );
+            }
+            final adminLight = adminShell;
             return AppThemeBridge(
+              forceBrightness: adminLight ? Brightness.light : null,
               child: AppStringsScope(
                 localeController: widget.localeController,
                 child: Stack(
@@ -136,13 +197,14 @@ class _LivingBkkAppState extends State<LivingBkkApp> with WidgetsBindingObserver
                   children: [
                     AppSplashOverlay(
                       child: MobileViewportShell(
-                        fullWidth: adminShellFullWidth(
-                          _location,
-                          query: _uri.queryParameters,
+                        key: ValueKey(
+                          'viewport-$shellPath-${widget.adminViewportController.mode.name}-$fullWidth',
                         ),
+                        path: shellPath,
+                        fullWidth: fullWidth,
                         child: MobileRouteShell(
-                          path: _location,
-                          child: child ?? const SizedBox.shrink(),
+                          path: shellPath,
+                          child: routed,
                         ),
                       ),
                     ),
@@ -154,8 +216,13 @@ class _LivingBkkAppState extends State<LivingBkkApp> with WidgetsBindingObserver
                         hub: hub,
                         onTap: () {
                           hub.dismissBanner();
+                          if (hub.openMineTabOnNextShell) {
+                            hub.clearPendingNavigation();
+                            _router.go('/');
+                            return;
+                          }
                           hub.clearUnread();
-                          if (isAdminPath(_location)) {
+                          if (isAdminPath(shellPath)) {
                             _router.go('/admin/console');
                           } else {
                             hub.requestOpenContactTab();

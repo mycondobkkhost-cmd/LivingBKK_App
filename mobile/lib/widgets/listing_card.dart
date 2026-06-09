@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../l10n/app_strings.dart';
 import '../models/listing_public.dart';
 import '../services/favorites_service.dart';
+import '../utils/listing_price_helpers.dart';
 import '../utils/localized_content.dart';
 import '../utils/reference_codes.dart';
 import '../theme/app_theme.dart';
@@ -30,12 +31,16 @@ class ListingCard extends StatelessWidget {
 
   String _priceLabel(AppStrings s) {
     final locale = s.isEnglish ? 'en_US' : 'th_TH';
-    final price = NumberFormat.currency(
+    final fmt = NumberFormat.currency(
       locale: locale,
       symbol: '฿',
       decimalDigits: 0,
-    ).format(listing.priceNet);
-    return '$price${listing.listingType == 'rent' ? s.perMonth : ''}';
+    );
+    if (ListingPriceHelpers.showDualPrices(listing)) {
+      return '${fmt.format(listing.priceNet)}${s.perMonth} · ${fmt.format(listing.priceSaleNet!)}';
+    }
+    final price = fmt.format(ListingPriceHelpers.effectivePrice(listing));
+    return '$price${ListingPriceHelpers.showPerMonth(listing) ? s.perMonth : ''}';
   }
 
   Widget _metaRow(AppStrings s) {
@@ -87,10 +92,11 @@ class ListingCard extends StatelessWidget {
     if (style == ListingCardStyle.feed || style == ListingCardStyle.compact) {
       return Padding(
         padding: style == ListingCardStyle.feed
-            ? const EdgeInsets.only(bottom: 12)
+            ? const EdgeInsets.only(bottom: 8)
             : EdgeInsets.zero,
         child: AppPropertyCard(
           listing: listing,
+          compactBody: true,
           showCoAgentStrip: showCoAgentStrip,
           showFavorite: showFavorite,
           onTap: onTap,

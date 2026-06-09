@@ -38,7 +38,7 @@ class ErrorReportingService {
     Map<String, dynamic>? metadata,
   }) {
     final key = errorKey ?? ErrorCatalog.classifyFromMessage(message);
-    debugPrint('PROPPITER error [$key]: $message');
+    debugPrint('RealXtate error [$key]: $message');
 
     AnalyticsService.instance.trackClientError(
       errorKey: key,

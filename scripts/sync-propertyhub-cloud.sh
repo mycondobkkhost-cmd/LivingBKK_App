@@ -67,9 +67,13 @@ invoke_fn() {
 
 echo ""
 echo "=== ค้นหารายชื่อโครงการ (Property Hub — แบบเต็ม) ==="
-if [[ "${SKIP_DISCOVER:-0}" == "1" && -f /tmp/ph-all-slugs.json ]]; then
-  cp /tmp/ph-all-slugs.json /tmp/ph-discover.json
-  echo "ใช้รายชื่อที่ค้นหาไว้แล้ว (/tmp/ph-all-slugs.json)"
+if [[ "${SKIP_DISCOVER:-0}" == "1" && ( -f /tmp/ph-discover.json || -f /tmp/ph-all-slugs.json ) ]]; then
+  if [[ -f /tmp/ph-discover.json ]]; then
+    echo "ใช้รายชื่อที่กรองแล้ว (/tmp/ph-discover.json)"
+  else
+    cp /tmp/ph-all-slugs.json /tmp/ph-discover.json
+    echo "ใช้รายชื่อที่ค้นหาไว้แล้ว (/tmp/ph-all-slugs.json)"
+  fi
 elif [[ "${USE_CLOUD_DISCOVER:-0}" == "1" ]]; then
   DISCOVER=$(invoke_fn '{"mode":"discover"}')
   echo "$DISCOVER" > /tmp/ph-discover.json

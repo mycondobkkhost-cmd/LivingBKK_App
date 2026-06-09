@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>PROPPITER</string>
+	<string>RealXtate</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>PROPPITER</string>
+	<string>RealXtate</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -45,5 +45,24 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>RealXtate ใช้ตำแหน่งของคุณเพื่อแสดงทรัพย์ใกล้เคียงบนแผนที่</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>RealXtate ใช้รูปภาพจากคลังเพื่ออัปโหลดรูปโปรไฟล์และรูปประกาศทรัพย์</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.livingbkk.livingbkk</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.livingbkk.livingbkk</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

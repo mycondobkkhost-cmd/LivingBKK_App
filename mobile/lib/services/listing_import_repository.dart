@@ -1,11 +1,18 @@
+import '../data/admin_demo_data.dart';
+import '../models/listing_import_meta.dart';
 import 'auth_service.dart';
 import 'supabase_service.dart';
 
 class ListingImportFetchException implements Exception {
-  ListingImportFetchException(this.message, {this.importId});
+  ListingImportFetchException(
+    this.message, {
+    this.importId,
+    this.duplicateOf,
+  });
 
   final String message;
   final String? importId;
+  final ImportDuplicateRef? duplicateOf;
 
   @override
   String toString() => message;
@@ -26,6 +33,7 @@ class ListingImportRow {
     this.errorMessage,
     this.parseFlags = const [],
     this.createdAt,
+    this.duplicateOf,
   });
 
   final String id;
@@ -41,6 +49,7 @@ class ListingImportRow {
   final String? errorMessage;
   final List<String> parseFlags;
   final DateTime? createdAt;
+  final ImportDuplicateRef? duplicateOf;
 
   bool get needsAdminAttention =>
       parseFlags.contains('facebook_login_wall') ||
@@ -54,6 +63,10 @@ class ListingImportRow {
     final flags = parsed is Map
         ? (parsed['flags'] as List?)?.map((e) => e.toString()).toList() ?? const []
         : const <String>[];
+    final dupRaw = parsed is Map ? parsed['duplicate_of'] : null;
+    final duplicateOf = dupRaw is Map
+        ? ImportDuplicateRef.fromJson(Map<String, dynamic>.from(dupRaw))
+        : null;
 
     return ListingImportRow(
       id: j['id'] as String,
@@ -71,8 +84,13 @@ class ListingImportRow {
       createdAt: j['created_at'] != null
           ? DateTime.tryParse(j['created_at'].toString())
           : null,
+      duplicateOf: duplicateOf,
     );
   }
+
+  bool get isDuplicateFailure =>
+      status == 'failed' &&
+      (duplicateOf != null || parseFlags.contains('duplicate_import'));
 
   bool get canApprove => status == 'draft_ready' || status == 'needs_fix';
 
@@ -149,16 +167,65 @@ class ListingImportDraft {
       };
 }
 
+/// ตัวอย่างโครงการจาก Google Maps (ยังไม่บันทึก — ให้แอดมินตรวจก่อน)
+class GeocodeProjectPreview {
+  const GeocodeProjectPreview({
+    required this.nameTh,
+    required this.nameEn,
+    required this.district,
+    required this.lat,
+    required this.lng,
+    this.formattedAddress,
+    this.placeId,
+    this.mapsUrl,
+  });
+
+  final String nameTh;
+  final String nameEn;
+  final String district;
+  final double lat;
+  final double lng;
+  final String? formattedAddress;
+  final String? placeId;
+  final String? mapsUrl;
+
+  factory GeocodeProjectPreview.fromJson(Map<String, dynamic> j) {
+    return GeocodeProjectPreview(
+      nameTh: j['name_th'] as String? ?? '',
+      nameEn: j['name_en'] as String? ?? '',
+      district: j['district'] as String? ?? 'กรุงเทพฯ',
+      lat: (j['lat'] as num?)?.toDouble() ?? 13.7367,
+      lng: (j['lng'] as num?)?.toDouble() ?? 100.5608,
+      formattedAddress: j['formatted_address'] as String?,
+      placeId: j['place_id'] as String?,
+      mapsUrl: j['maps_url'] as String?,
+    );
+  }
+}
+
 class ListingImportDetail {
   const ListingImportDetail({
     required this.import,
     this.listing,
     this.parseFlags = const [],
+    this.geocodePreview,
+    this.matchedProjectId,
+    this.duplicateOf,
+    this.sourceMeta,
   });
 
   final ListingImportRow import;
   final ListingImportDraft? listing;
   final List<String> parseFlags;
+  final GeocodeProjectPreview? geocodePreview;
+  final String? matchedProjectId;
+  final ImportDuplicateRef? duplicateOf;
+  final ImportSourceMeta? sourceMeta;
+
+  bool get projectNotInRegistry =>
+      parseFlags.contains('project_not_in_registry') && matchedProjectId == null;
+
+  bool get geocodePreviewReady => parseFlags.contains('geocode_preview_ready');
 }
 
 class ListingImportRepository {
@@ -217,9 +284,15 @@ class ListingImportRepository {
     }
 
     final data = await q.order('created_at', ascending: false).limit(100);
-    return (data as List)
+    final list = (data as List)
         .map((e) => ListingImportRow.fromJson(Map<String, dynamic>.from(e)))
         .toList();
+    if (AdminDemoData.useWhenEmpty(list)) {
+      if (_demo.isEmpty) _seedDemo();
+      if (includeArchived) return List.from(_demo);
+      return _demo.where((r) => !r.isArchived).toList();
+    }
+    return list;
   }
 
   Future<ListingImportDetail> getImportDetail(String importId) async {
@@ -243,9 +316,25 @@ class ListingImportRepository {
     final map = Map<String, dynamic>.from(data);
     final import = ListingImportRow.fromJson(map);
     final parsed = map['parsed'];
-    final flags = parsed is Map
-        ? (parsed['flags'] as List?)?.map((e) => e.toString()).toList() ?? const []
+    final parsedMap = parsed is Map ? Map<String, dynamic>.from(parsed) : null;
+    final flags = parsedMap != null
+        ? (parsedMap['flags'] as List?)?.map((e) => e.toString()).toList() ??
+            const []
         : import.parseFlags;
+    final geocodeRaw = parsedMap?['geocode_preview'];
+    final geocodePreview = geocodeRaw is Map
+        ? GeocodeProjectPreview.fromJson(Map<String, dynamic>.from(geocodeRaw))
+        : null;
+    final matchedProjectId = parsedMap?['matched_project_id']?.toString();
+    final dupRaw = parsedMap?['duplicate_of'];
+    final duplicateOf = dupRaw is Map
+        ? ImportDuplicateRef.fromJson(Map<String, dynamic>.from(dupRaw))
+        : import.duplicateOf;
+    final sourceMeta = ImportSourceMeta.fromJson(
+      parsedMap?['source_meta'] is Map
+          ? Map<String, dynamic>.from(parsedMap!['source_meta'] as Map)
+          : null,
+    );
 
     ListingImportDraft? listing;
     if (import.listingId != null) {
@@ -263,7 +352,75 @@ class ListingImportRepository {
       }
     }
 
-    return ListingImportDetail(import: import, listing: listing, parseFlags: flags);
+    return ListingImportDetail(
+      import: import,
+      listing: listing,
+      parseFlags: flags,
+      geocodePreview: geocodePreview,
+      matchedProjectId: matchedProjectId,
+      duplicateOf: duplicateOf,
+      sourceMeta: sourceMeta.postText != null || sourceMeta.posterName != null
+          ? sourceMeta
+          : null,
+    );
+  }
+
+  Future<void> linkListingToProject({
+    required String importId,
+    required String listingId,
+    required String projectId,
+    required String projectName,
+    required String district,
+    required double lat,
+    required double lng,
+  }) async {
+    if (!_live) return;
+
+    await SupabaseService.client!.from('listings').update({
+      'project_id': projectId,
+      'project_name': projectName,
+      'district': district,
+      'location_exact': {
+        'type': 'Point',
+        'coordinates': [lng, lat],
+      },
+      'location_public': {
+        'type': 'Point',
+        'coordinates': [lng, lat],
+      },
+    }).eq('id', listingId);
+
+    final current = await _loadImportRow(importId);
+    final parsed = await SupabaseService.client!
+        .from('listing_imports')
+        .select('parsed')
+        .eq('id', importId)
+        .single();
+    final parsedMap = parsed['parsed'] is Map
+        ? Map<String, dynamic>.from(parsed['parsed'] as Map)
+        : <String, dynamic>{};
+    final flags = (parsedMap['flags'] as List?)?.map((e) => e.toString()).toList() ??
+        <String>[];
+    final nextFlags = flags
+        .where((f) =>
+            f != 'project_not_in_registry' &&
+            f != 'missing_project' &&
+            f != 'missing_coords' &&
+            f != 'geocode_preview_ready')
+        .toList();
+    if (!nextFlags.contains('project_linked')) {
+      nextFlags.add('project_linked');
+    }
+    parsedMap['flags'] = nextFlags;
+    parsedMap['matched_project_id'] = projectId;
+    parsedMap.remove('geocode_preview');
+
+    await SupabaseService.client!.from('listing_imports').update({
+      'project_preview': projectName,
+      'parsed': parsedMap,
+      if (current.status == 'needs_fix') 'status': 'draft_ready',
+      'error_message': null,
+    }).eq('id', importId);
   }
 
   Future<ListingImportRow> _loadImportRow(String importId) async {
@@ -292,10 +449,15 @@ class ListingImportRepository {
 
     final importId = data['import_id']?.toString();
     final err = data['error']?.toString();
+    final dupRaw = data['duplicate_of'];
+    final duplicateOf = dupRaw is Map
+        ? ImportDuplicateRef.fromJson(Map<String, dynamic>.from(dupRaw))
+        : null;
     if (importId != null) {
       throw ListingImportFetchException(
         err ?? 'ดึงข้อมูลไม่สำเร็จ',
         importId: importId,
+        duplicateOf: duplicateOf,
       );
     }
     throw Exception(err ?? 'listing-import-fetch failed');
@@ -449,6 +611,22 @@ class ListingImportRepository {
     );
   }
 
+  Future<ListingImportRow> discard(String importId, {bool purgeDraft = false}) async {
+    if (!_live) return archive(importId);
+
+    final res = await SupabaseService.client!.functions.invoke(
+      'listing-import-archive',
+      body: {'import_id': importId, if (purgeDraft) 'purge': true},
+    );
+    final data = res.data as Map<String, dynamic>?;
+    if (data == null || data['error'] != null) {
+      throw Exception(data?['error'] ?? 'discard failed');
+    }
+    return ListingImportRow.fromJson(
+      Map<String, dynamic>.from(data['import'] as Map),
+    );
+  }
+
   Future<ListingImportRow> archive(String importId) async {
     if (!_live) {
       final i = _demo.indexWhere((r) => r.id == importId);
@@ -502,19 +680,38 @@ class ListingImportRepository {
   }
 
   void _seedDemo() {
-    final row = ListingImportRow(
-      id: 'demo-seed',
-      sourceUrl: 'https://www.livinginsider.com/istockdetail/DIoooI_DojybCI.html',
-      status: 'draft_ready',
-      sourceExternalId: '3097128',
-      titlePreview: '2 Commercial Units for rent on Udomsuk Road',
-      projectPreview: 'Origin Play',
-      pricePreview: 50000,
-      imageCount: 9,
-      listingId: 'demo-listing-seed',
-      createdAt: DateTime.now(),
-    );
-    _demo.add(row);
-    _demoListings[row.id] = _demoDraftFor(row);
+    final now = DateTime.now();
+    final rows = [
+      ListingImportRow(
+        id: 'demo-seed-1',
+        sourceUrl: 'https://www.livinginsider.com/istockdetail/DIoooI_DojybCI.html',
+        status: 'draft_ready',
+        sourcePlatform: 'livinginsider',
+        sourceExternalId: '3097128',
+        titlePreview: '2 Commercial Units for rent on Udomsuk Road',
+        projectPreview: 'Origin Play',
+        pricePreview: 50000,
+        imageCount: 9,
+        listingId: 'demo-listing-seed-1',
+        createdAt: now.subtract(const Duration(hours: 6)),
+      ),
+      ListingImportRow(
+        id: 'demo-seed-2',
+        sourceUrl: 'https://www.facebook.com/marketplace/item/demo-condo-thonglor',
+        status: 'needs_fix',
+        sourcePlatform: 'facebook',
+        titlePreview: 'คอนโด 2 นอน ทองหล่อ — ราคาต่อรอง',
+        projectPreview: 'The Lofts Ekkamai',
+        pricePreview: 32000,
+        imageCount: 6,
+        listingId: 'demo-listing-seed-2',
+        parseFlags: const ['missing_price', 'needs_admin_review'],
+        createdAt: now.subtract(const Duration(days: 1)),
+      ),
+    ];
+    for (final row in rows) {
+      _demo.add(row);
+      _demoListings[row.id] = _demoDraftFor(row);
+    }
   }
 }

@@ -4,25 +4,35 @@ import '../data/property_catalog.dart';
 import '../l10n/app_strings.dart';
 import '../models/listing_transaction_types.dart';
 import '../models/search_filters.dart';
+import '../widgets/search_zone_unified_tag_input.dart';
 import '../theme/app_theme.dart';
+import '../utils/listing_navigation.dart';
 import '../utils/price_slider_scale.dart';
 
 Future<SearchFilters?> showSearchFilterSheet(
   BuildContext context, {
   required SearchFilters initial,
+  String? lockPropertyType,
 }) {
   return showModalBottomSheet<SearchFilters>(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (ctx) => _SearchFilterSheetBody(initial: initial),
+    builder: (ctx) => _SearchFilterSheetBody(
+      initial: initial,
+      lockPropertyType: lockPropertyType,
+    ),
   );
 }
 
 class _SearchFilterSheetBody extends StatefulWidget {
-  const _SearchFilterSheetBody({required this.initial});
+  const _SearchFilterSheetBody({
+    required this.initial,
+    this.lockPropertyType,
+  });
 
   final SearchFilters initial;
+  final String? lockPropertyType;
 
   @override
   State<_SearchFilterSheetBody> createState() => _SearchFilterSheetBodyState();
@@ -37,6 +47,14 @@ class _SearchFilterSheetBodyState extends State<_SearchFilterSheetBody> {
   late bool _petAllowed;
   late String? _investorCategory;
   late double _minYield;
+  late List<String>? _geoZoneSlugs;
+  late List<String>? _transitSlugs;
+  late List<String>? _projectSlugs;
+  late List<String>? _educationSlugs;
+  late Set<String> _selGeoZones;
+  late Set<String> _selTransit;
+  late Set<String> _selProjects;
+  late Set<String> _selEducation;
 
   bool get _isSale => ListingTransactionTypes.isSaleFamily(_listingType);
 
@@ -57,6 +75,14 @@ class _SearchFilterSheetBodyState extends State<_SearchFilterSheetBody> {
     _petAllowed = widget.initial.petAllowed ?? false;
     _investorCategory = widget.initial.investorCategory;
     _minYield = widget.initial.minYield ?? 0;
+    _geoZoneSlugs = widget.initial.geoZoneSlugs;
+    _transitSlugs = widget.initial.transitSlugs;
+    _projectSlugs = widget.initial.projectSlugs;
+    _educationSlugs = widget.initial.educationSlugs;
+    _selGeoZones = {...?widget.initial.geoZoneSlugs};
+    _selTransit = {...?widget.initial.transitSlugs};
+    _selProjects = {};
+    _selEducation = {...?widget.initial.educationSlugs};
 
     final minB = widget.initial.minPrice ?? 0;
     final maxB = widget.initial.maxPrice ??
@@ -77,7 +103,11 @@ class _SearchFilterSheetBodyState extends State<_SearchFilterSheetBody> {
   void _onListingTypeChanged(String? type) {
     setState(() {
       _listingType = type;
-      if (!_isSale) _investorCategory = null;
+      if (type == 'sale' || type == 'sale_installment') {
+        _investorCategory = null;
+      } else if (!_isSale) {
+        _investorCategory = null;
+      }
       _syncPositionsFromBaht(
         0,
         _isSale ? PriceSliderScale.defaultSaleMax : PriceSliderScale.defaultRentMax,
@@ -85,17 +115,46 @@ class _SearchFilterSheetBodyState extends State<_SearchFilterSheetBody> {
     });
   }
 
+  void _syncZoneListsFromSets() {
+    _geoZoneSlugs = _selGeoZones.isEmpty ? null : _selGeoZones.toList();
+    _transitSlugs = _selTransit.isEmpty ? null : _selTransit.toList();
+    _projectSlugs = null;
+    _educationSlugs = _selEducation.isEmpty ? null : _selEducation.toList();
+  }
+
+  void _onZoneSelectionChanged({
+    required Set<String> geoZoneSlugs,
+    required Set<String> transitSlugs,
+    required Set<String> projectSlugs,
+    required Set<String> educationSlugs,
+  }) {
+    setState(() {
+      _selGeoZones = geoZoneSlugs;
+      _selTransit = transitSlugs;
+      _selProjects = {};
+      _selEducation = educationSlugs;
+      _syncZoneListsFromSets();
+    });
+  }
+
   SearchFilters _build() {
+    _syncZoneListsFromSets();
     final cap = _isSale ? PriceSliderScale.saleCap : PriceSliderScale.rentCap;
     return SearchFilters(
       query: widget.initial.query,
       listingType: _listingType,
-      propertyType: _propertyType,
+      propertyType: widget.lockPropertyType ?? _propertyType,
       minPrice: _minPrice > 0 ? _minPrice : null,
       maxPrice: _maxPrice < cap - 1 ? _maxPrice : null,
       bedrooms: _bedrooms,
       projectName: widget.initial.projectName,
-      geoZoneSlugs: widget.initial.geoZoneSlugs,
+      geoZoneSlugs: _geoZoneSlugs,
+      transitSlugs: _transitSlugs,
+      projectSlugs: _projectSlugs,
+      educationSlugs: _educationSlugs,
+      pinLatitude: widget.initial.pinLatitude,
+      pinLongitude: widget.initial.pinLongitude,
+      radiusKm: widget.initial.radiusKm,
       petAllowed: _petAllowed ? true : null,
       investorCategory: _isSale ? _investorCategory : null,
       minYield: _isSale && _minYield > 0 ? _minYield : null,
@@ -134,40 +193,72 @@ class _SearchFilterSheetBodyState extends State<_SearchFilterSheetBody> {
                 ),
               ],
             ),
+            const SizedBox(height: 8),
+            Text(
+              s.searchZoneTagAddTitle,
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            const SizedBox(height: 8),
+            SearchZoneUnifiedTagInput(
+              geoZoneSlugs: _selGeoZones,
+              transitSlugs: _selTransit,
+              projectSlugs: _selProjects,
+              educationSlugs: _selEducation,
+              onSelectionChanged: _onZoneSelectionChanged,
+              maxListHeight: 280,
+              onOpenProject: (name, {projectSlug}) {
+                Navigator.pop(context);
+                ListingNavigation.openProject(
+                  context,
+                  projectName: name,
+                  projectSlug: projectSlug,
+                  isAgent: false,
+                );
+              },
+            ),
+            const SizedBox(height: 16),
             Text(s.filterTransactionType, style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Wrap(
               spacing: 8,
+              runSpacing: 8,
               children: [
                 _typeChip(s.filterRentSeek, 'rent', _listingType == 'rent'),
-                _typeChip(s.filterBuySeek, 'sale', _listingType == 'sale'),
+                _typeChip(
+                  s.filterBuySeek,
+                  'sale',
+                  _listingType == 'sale' && _investorCategory != 'with_tenant',
+                ),
                 _typeChip(s.listingTypeSaleInstallment, 'sale_installment',
                     _listingType == 'sale_installment'),
+                _saleWithTenantChip(s),
               ],
             ),
-            const SizedBox(height: 16),
-            Text(s.filterPropertyType, style: TextStyle(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              value: _propertyType,
-              decoration: InputDecoration(
-                hintText: s.allCategories,
-                border: const OutlineInputBorder(),
-              ),
-              items: [
-                DropdownMenuItem<String>(
-                  value: null,
-                  child: Text(s.allCategories),
+            if (widget.lockPropertyType == null) ...[
+              const SizedBox(height: 16),
+              Text(s.filterPropertyType, style: TextStyle(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                value: _propertyType,
+                decoration: InputDecoration(
+                  hintText: s.allCategories,
+                  border: const OutlineInputBorder(),
                 ),
-                ...PropertyCatalog.categories.map(
-                  (c) => DropdownMenuItem(
-                    value: c.slug,
-                    child: Text(c.label(s.isEnglish)),
+                items: [
+                  DropdownMenuItem<String>(
+                    value: null,
+                    child: Text(s.allCategories),
                   ),
-                ),
-              ],
-              onChanged: (v) => setState(() => _propertyType = v),
-            ),
+                  ...PropertyCatalog.categories.map(
+                    (c) => DropdownMenuItem(
+                      value: c.slug,
+                      child: Text(c.label(s.isEnglish)),
+                    ),
+                  ),
+                ],
+                onChanged: (v) => setState(() => _propertyType = v),
+              ),
+            ],
             const SizedBox(height: 16),
             Text(s.filterBedrooms, style: TextStyle(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
@@ -224,16 +315,6 @@ class _SearchFilterSheetBodyState extends State<_SearchFilterSheetBody> {
                 spacing: 8,
                 children: [
                   FilterChip(
-                    label: Text(s.filterWithTenant),
-                    selected: _investorCategory == 'with_tenant',
-                    onSelected: (_) => setState(() {
-                      _investorCategory = _investorCategory == 'with_tenant'
-                          ? null
-                          : 'with_tenant';
-                    }),
-                    selectedColor: AppTheme.primaryLight,
-                  ),
-                  FilterChip(
                     label: Text(s.filterBmv),
                     selected: _investorCategory == 'bmv',
                     onSelected: (_) => setState(() {
@@ -268,11 +349,16 @@ class _SearchFilterSheetBodyState extends State<_SearchFilterSheetBody> {
                   onPressed: () {
                     setState(() {
                       _listingType = null;
-                      _propertyType = null;
+                      _propertyType = widget.lockPropertyType;
                       _bedrooms = null;
                       _petAllowed = false;
                       _investorCategory = null;
                       _minYield = 0;
+                      _selGeoZones = {};
+                      _selTransit = {};
+                      _selProjects = {};
+                      _selEducation = {};
+                      _syncZoneListsFromSets();
                       _syncPositionsFromBaht(
                         0,
                         _isSale
@@ -301,6 +387,24 @@ class _SearchFilterSheetBodyState extends State<_SearchFilterSheetBody> {
       label: Text(label),
       selected: selected,
       onSelected: (_) => _onListingTypeChanged(selected ? null : value),
+      selectedColor: AppTheme.primaryLight,
+    );
+  }
+
+  Widget _saleWithTenantChip(AppStrings s) {
+    final selected = _investorCategory == 'with_tenant';
+    return FilterChip(
+      label: Text(s.filterSaleWithTenant),
+      selected: selected,
+      onSelected: (_) => setState(() {
+        if (selected) {
+          _investorCategory = null;
+        } else {
+          _listingType = 'sale';
+          _syncPositionsFromBaht(0, PriceSliderScale.defaultSaleMax);
+          _investorCategory = 'with_tenant';
+        }
+      }),
       selectedColor: AppTheme.primaryLight,
     );
   }

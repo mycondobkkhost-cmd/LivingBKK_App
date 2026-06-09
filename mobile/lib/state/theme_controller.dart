@@ -6,6 +6,9 @@ import '../services/local_prefs_service.dart';
 class ThemeController extends ChangeNotifier {
   static const _prefsKey = 'app_theme_mode';
 
+  /// ให้หน้าแอดมิน (ไม่มี controller ใน widget tree) สลับธีมได้
+  static ThemeController? instance;
+
   ThemeMode _mode = ThemeMode.light;
 
   ThemeMode get mode => _mode;

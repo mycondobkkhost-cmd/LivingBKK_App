@@ -3,6 +3,7 @@ data/ph-pipeline/
 .env
 .env.local
 .env.*.local
+.netlify-token
 ใส่รหัส-database-ตรงนี้.env
 *.local
 .supabase/

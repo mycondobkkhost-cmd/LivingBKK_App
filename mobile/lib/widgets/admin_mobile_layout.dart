@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Safe area + spacing หลังบ้าน — อ่าน `viewPadding` แบบหน้าแรก (Dynamic Island / notch)
 abstract final class AdminMobileLayout {
+  /// หลังบ้านใช้พื้นที่ล่างเต็มจอ (ไม่เว้น home indicator / ขอบล่างบนเว็บ)
+  static bool bleedBottom(BuildContext context) => kIsWeb;
   static const double compactBreakpoint = 600;
 
   static bool isCompact(BuildContext context) =>
@@ -23,16 +26,28 @@ abstract final class AdminMobileLayout {
   static double fabBottom(BuildContext context) => bottomInset(context, extra: 16);
 
   /// ผสาน viewPadding → padding ให้ Scaffold / SafeArea อ่านค่าเดียวกับหน้าหลัก
-  static Widget withInsets(BuildContext context, Widget child) {
+  static Widget withInsets(
+    BuildContext context,
+    Widget child, {
+    bool bleedBottom = false,
+  }) {
     final mq = MediaQuery.of(context);
     final top = topInset(context);
-    final bottom = mq.viewPadding.bottom > 0 ? mq.viewPadding.bottom : mq.padding.bottom;
-    if ((top - mq.padding.top).abs() < 0.5 && (bottom - mq.padding.bottom).abs() < 0.5) {
+    final bottom = bleedBottom || AdminMobileLayout.bleedBottom(context)
+        ? 0.0
+        : (mq.viewPadding.bottom > 0 ? mq.viewPadding.bottom : mq.padding.bottom);
+    final viewBottom = bleedBottom || AdminMobileLayout.bleedBottom(context)
+        ? 0.0
+        : mq.viewPadding.bottom;
+    if ((top - mq.padding.top).abs() < 0.5 &&
+        (bottom - mq.padding.bottom).abs() < 0.5 &&
+        (viewBottom - mq.viewPadding.bottom).abs() < 0.5) {
       return child;
     }
     return MediaQuery(
       data: mq.copyWith(
         padding: mq.padding.copyWith(top: top, bottom: bottom),
+        viewPadding: mq.viewPadding.copyWith(bottom: viewBottom),
       ),
       child: child,
     );
@@ -44,12 +59,16 @@ abstract final class AdminMobileLayout {
     double top = 12,
     double horizontal = 16,
     double fabClearance = 80,
+    bool bleedBottom = false,
   }) {
+    final padBottom = bleedBottom || AdminMobileLayout.bleedBottom(context)
+        ? top + fabClearance
+        : top + fabClearance + bottomInset(context);
     return EdgeInsets.fromLTRB(
       horizontal,
       top,
       horizontal,
-      top + fabClearance + bottomInset(context),
+      padBottom,
     );
   }
 
@@ -58,11 +77,16 @@ abstract final class AdminMobileLayout {
     BuildContext context, {
     required Widget child,
     bool top = false,
+    bool? bottom,
   }) {
+    final padBottom = bottom ?? !bleedBottom(context);
+    if (!top && !padBottom) return child;
     return SafeArea(
       top: top,
-      bottom: true,
-      minimum: EdgeInsets.only(bottom: bottomInset(context) > 0 ? 4 : 8),
+      bottom: padBottom,
+      minimum: padBottom
+          ? EdgeInsets.only(bottom: bottomInset(context) > 0 ? 4 : 8)
+          : EdgeInsets.zero,
       child: child,
     );
   }
@@ -85,8 +109,9 @@ abstract final class AdminMobileLayout {
   static Widget page({
     required BuildContext context,
     required Widget child,
+    bool bleedBottom = false,
   }) {
-    return withInsets(context, child);
+    return withInsets(context, child, bleedBottom: bleedBottom);
   }
 
   /// AppBar กะทัดรัดบนมือถือ
@@ -117,10 +142,11 @@ abstract final class AdminMobileLayout {
     required Widget body,
     Widget? floatingActionButton,
     Color? backgroundColor,
-    bool safeBottom = true,
+    bool safeBottom = false,
   }) {
     return page(
       context: context,
+      bleedBottom: !safeBottom || bleedBottom(context),
       child: Scaffold(
         appBar: appBar,
         backgroundColor: backgroundColor,

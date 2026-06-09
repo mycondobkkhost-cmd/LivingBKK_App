@@ -1,0 +1,11 @@
+# คัดลอกเป็น key.properties (ไฟล์นี้ไม่ commit — ดู android/.gitignore)
+# cp key.properties.example key.properties
+#
+# สร้าง keystore (ครั้งเดียว — เก็บรหัสและไฟล์ให้ปลอดภัย):
+#   keytool -genkey -v -keystore ~/upload-keystore.jks -keyalg RSA \
+#     -keysize 2048 -validity 10000 -alias upload
+
+storePassword=YOUR_STORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=/absolute/path/to/upload-keystore.jks

@@ -1,7 +1,9 @@
 import '../config/env.dart';
 import '../models/property_project_admin.dart';
+import '../data/search_poi_catalog.dart';
 import '../utils/project_import_url.dart';
 import '../utils/project_location_tags.dart';
+import '../utils/project_search_tag_enrich.dart';
 import 'auth_service.dart';
 import 'project_catalog.dart';
 import 'supabase_service.dart';
@@ -21,7 +23,8 @@ class ProjectRepository {
   static final ProjectRepository instance = ProjectRepository._();
 
   static const _selectCols =
-      'id, slug, name_th, name_en, district, bts_station, nearby_transit, property_type, '
+      'id, slug, name_th, name_en, district, bts_station, nearby_transit, search_tag_slugs, '
+      'tag_enrich_status, tag_enrich_meta, property_type, '
       'lat, lng, aliases, year_built, facilities, geo_zone_id, is_active, '
       'source_url, source_platform, description_th, description_en, '
       'cover_image_url, admin_notes';
@@ -88,19 +91,30 @@ class ProjectRepository {
           .toList();
     }
 
-    var query = SupabaseService.client!.from('property_projects').select(_selectCols);
-    if (!includeInactive) {
-      query = query.eq('is_active', true);
+    const pageSize = 1000;
+    final all = <PropertyProjectRow>[];
+    var offset = 0;
+
+    while (true) {
+      var query = SupabaseService.client!.from('property_projects').select(_selectCols);
+      if (!includeInactive) {
+        query = query.eq('is_active', true);
+      }
+      final rows = await query.order('name_th').range(offset, offset + pageSize - 1);
+      final batch = (rows as List)
+          .map((e) => PropertyProjectRow.fromJson(Map<String, dynamic>.from(e as Map)))
+          .toList();
+      all.addAll(batch);
+      if (batch.length < pageSize) break;
+      offset += pageSize;
     }
-    final rows = await query.order('name_th');
-    return (rows as List)
-        .map((e) => PropertyProjectRow.fromJson(Map<String, dynamic>.from(e as Map)))
-        .toList();
+
+    return all;
   }
 
   Future<PropertyProjectRow> create(PropertyProjectRow draft) async {
     await _ensureImportAllowed();
-    final enriched = enrichTransit(draft);
+    final enriched = await enrichProject(draft);
     final row = await SupabaseService.client!
         .from('property_projects')
         .insert(enriched.toInsertJson())
@@ -112,7 +126,7 @@ class ProjectRepository {
 
   Future<PropertyProjectRow> update(String id, PropertyProjectRow draft) async {
     await _ensureImportAllowed();
-    final enriched = enrichTransit(draft);
+    final enriched = await enrichProject(draft);
     final row = await SupabaseService.client!
         .from('property_projects')
         .update(enriched.toInsertJson())
@@ -266,36 +280,84 @@ class ProjectRepository {
     return _rowFromPropertyHub(parsed, sourceUrl: url);
   }
 
+  /// คงชื่อเดิม — enrich แบบ sync สำหรับ UI draft (ไม่ resolve geo zone)
   PropertyProjectRow enrichTransit(PropertyProjectRow row) {
-    final stored = row.nearbyTransit.isNotEmpty
-        ? row.nearbyTransit
-        : ProjectLocationTags.labelsFromTags(
-            ProjectLocationTags.detect(
-              lat: row.lat,
-              lng: row.lng,
-              district: row.district,
-              htmlOrDesc: row.descriptionTh,
-              existingBts: row.btsStation,
-            ).autoSelected,
-          );
-    if (stored.isEmpty) return row;
-    final extraAliases = ProjectLocationTags.extraAliases(stored);
+    return _buildEnrichedRow(row, _enrichSync(row));
+  }
+
+  Future<PropertyProjectRow> enrichProject(PropertyProjectRow row) async {
+    await SearchPoiCatalog.load();
+    return _applyEnrichResult(row, _enrichSync(row), resolveGeoZone: true);
+  }
+
+  ProjectSearchTagEnrichResult _enrichSync(PropertyProjectRow row) {
+    return ProjectSearchTagEnrich.enrich(
+      lat: row.lat,
+      lng: row.lng,
+      district: row.district,
+      nameTh: row.nameTh,
+      nameEn: row.nameEn,
+      slug: row.slug,
+      descriptionTh: row.descriptionTh,
+      existingBts: row.btsStation,
+      existingAliases: row.aliases,
+      existingSlugs: row.searchTagSlugs,
+    );
+  }
+
+  Future<PropertyProjectRow> _applyEnrichResult(
+    PropertyProjectRow row,
+    ProjectSearchTagEnrichResult result, {
+    bool resolveGeoZone = false,
+  }) async {
+    var geoZoneId = row.geoZoneId;
+    if (resolveGeoZone &&
+        result.primaryGeoZoneSlug != null &&
+        _ready) {
+      geoZoneId =
+          await _resolveGeoZoneId(result.primaryGeoZoneSlug!) ?? geoZoneId;
+    }
+    return _buildEnrichedRow(row, result, geoZoneId: geoZoneId);
+  }
+
+  PropertyProjectRow _buildEnrichedRow(
+    PropertyProjectRow row,
+    ProjectSearchTagEnrichResult result, {
+    String? geoZoneId,
+  }) {
+    final labels = result.nearbyTransitLabels.isNotEmpty
+        ? result.nearbyTransitLabels
+        : row.nearbyTransit;
+    final baseSlugs = result.searchTagSlugs.isNotEmpty
+        ? result.searchTagSlugs
+        : row.searchTagSlugs;
+    final mergedSlugs = <String>{
+      ...baseSlugs,
+      if (row.slug.isNotEmpty) row.slug,
+    }.toList();
+
     return PropertyProjectRow(
       id: row.id,
       slug: row.slug,
       nameTh: row.nameTh,
       nameEn: row.nameEn,
       district: row.district,
-      btsStation: ProjectLocationTags.formatBtsField(stored) ?? row.btsStation,
-      nearbyTransit: stored,
+      btsStation: result.btsStation ?? row.btsStation,
+      nearbyTransit: labels,
+      searchTagSlugs: mergedSlugs,
+      tagEnrichStatus: result.status,
+      tagEnrichMeta: result.meta,
       propertyType: row.propertyType,
       lat: row.lat,
       lng: row.lng,
       isActive: row.isActive,
-      aliases: [...row.aliases, ...extraAliases.where((a) => !row.aliases.contains(a))],
+      aliases: [
+        ...row.aliases,
+        ...result.extraAliases.where((a) => !row.aliases.contains(a)),
+      ],
       yearBuilt: row.yearBuilt,
       facilities: row.facilities,
-      geoZoneId: row.geoZoneId,
+      geoZoneId: geoZoneId ?? row.geoZoneId,
       sourceUrl: row.sourceUrl,
       sourcePlatform: row.sourcePlatform,
       descriptionTh: row.descriptionTh,
@@ -303,6 +365,51 @@ class ProjectRepository {
       coverImageUrl: row.coverImageUrl,
       adminNotes: row.adminNotes,
     );
+  }
+
+  Future<String?> _resolveGeoZoneId(String slug) async {
+    try {
+      final row = await SupabaseService.client!
+          .from('geo_zones')
+          .select('id')
+          .eq('slug', slug)
+          .maybeSingle();
+      return row?['id']?.toString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// รัน enrich ทุกโครงการบนคลาวด์ (แอดมิน)
+  Future<Map<String, dynamic>> bulkEnrichAllTags({int batchSize = 200}) async {
+    await _ensureImportAllowed();
+    var offset = 0;
+    var totalUpdated = 0;
+    var totalNeedsReview = 0;
+    var done = false;
+
+    while (!done) {
+      final res = await SupabaseService.client!.functions.invoke(
+        'project-tag-enrich',
+        body: {'mode': 'bulk', 'limit': batchSize, 'offset': offset},
+      );
+      final data = res.data as Map<String, dynamic>?;
+      if (data == null || data['error'] != null) {
+        throw Exception(data?['error'] ?? 'project-tag-enrich failed');
+      }
+      totalUpdated += (data['updated'] as num?)?.toInt() ?? 0;
+      totalNeedsReview += (data['needs_review'] as num?)?.toInt() ?? 0;
+      done = data['done'] == true;
+      final next = data['next_offset'];
+      if (next == null) break;
+      offset = next as int;
+    }
+
+    await ProjectCatalog.instance.load();
+    return {
+      'updated': totalUpdated,
+      'needs_review': totalNeedsReview,
+    };
   }
 
   PropertyProjectRow _rowFromPropertyHub(

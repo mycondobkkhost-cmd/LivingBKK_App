@@ -8,7 +8,7 @@ import '../theme/living_bkk_brand.dart';
 
 enum LivingBkkLogoSize { sm, md, lg }
 
-/// PROPPITER logo — official lockup PNG จาก master (ห้ามประกอบฟอนต์เอง)
+/// RealXtate logo — official lockup PNG จาก master (ห้ามประกอบฟอนต์เอง)
 class LivingBkkLogo extends StatelessWidget {
   const LivingBkkLogo({
     super.key,
@@ -123,7 +123,7 @@ class LivingBkkLogoMarkWidget extends StatelessWidget {
       height: height,
       fit: BoxFit.contain,
       filterQuality: FilterQuality.high,
-      semanticLabel: 'PROPPITER',
+      semanticLabel: 'RealXtate',
     );
   }
 }

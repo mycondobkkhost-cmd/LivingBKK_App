@@ -23,6 +23,8 @@ class ChatRoom {
     this.assignedAdminId,
     this.assignedAdminName,
     this.assignedAt,
+    this.participantUserId,
+    this.adminDisplayName,
   })  : messages = messages ?? [],
         updatedAt = updatedAt ?? DateTime.now();
 
@@ -48,9 +50,13 @@ class ChatRoom {
   String? assignedAdminId;
   String? assignedAdminName;
   DateTime? assignedAt;
+  /// ลูกค้า/ผู้ใช้ที่เปิดแชท (จาก chat_threads.user_id)
+  String? participantUserId;
 
-  bool get isResolved =>
-      status == 'resolved' || (adminReplyDone && status != 'waiting_admin');
+  /// ชื่อที่แอดมินตั้งเอง (CRM)
+  String? adminDisplayName;
+
+  bool get isResolved => status == 'resolved';
 
   bool isClaimedBy(String? adminId) =>
       adminId != null && assignedAdminId == adminId;
@@ -77,8 +83,20 @@ class ChatRoom {
 
   bool get isSupportRoom =>
       isDiscovery || isStaffSupport || isDemandOffer || isCustomerRequirement;
+  bool get isParticipantHub =>
+      roomKind == 'seeker_hub' ||
+      roomKind == 'agent_hub' ||
+      roomKind == 'owner_hub';
+
+  /// แชทกลุ่มสัญญาเช่า — ผู้เช่า/เจ้าของ/เอเจ้นท์/แอดมิน (blind PII)
+  bool get isRentalLeaseGroup => roomKind == 'rental_lease_group';
+
   bool get isPropertyListing =>
-      !isStaffSupport && !isDiscovery && listingCode != 'DISCOVERY';
+      !isStaffSupport &&
+      !isDiscovery &&
+      !isParticipantHub &&
+      !isRentalLeaseGroup &&
+      listingCode != 'DISCOVERY';
   bool get isPersisted => !id.startsWith('__') && !id.startsWith('demo-');
 
   String get effectiveTransactionRef =>
@@ -126,6 +144,8 @@ class ChatRoom {
       assignedAt: thread['assigned_at'] != null
           ? DateTime.tryParse(thread['assigned_at'].toString())
           : null,
+      participantUserId: thread['user_id']?.toString(),
+      adminDisplayName: thread['admin_display_name']?.toString(),
     );
   }
 }
@@ -138,4 +158,6 @@ abstract final class ChatServiceIds {
   static const staffSupport = '__support_staff__';
   static const demandOffer = '__demand_offer__';
   static String customerRequirement(String reqId) => '__req__$reqId';
+  static String seekerHub(String userId) => '__hub_seeker__$userId';
+  static String agentHub(String userId) => '__hub_agent__$userId';
 }

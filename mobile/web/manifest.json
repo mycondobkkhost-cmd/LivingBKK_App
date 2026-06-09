@@ -1,11 +1,11 @@
 {
-    "name": "PROPPITER",
-    "short_name": "PROPPITER",
+    "name": "RealXtate",
+    "short_name": "RealXtate",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#18104B",
     "theme_color": "#583AD6",
-    "description": "PROPPITER — แพลตฟอร์มแมตช์อสังหาฯ ข้อมูลแม่นยำ ลงประกาศฟรี บริการครบวงจร กทม.และปริมณฑล",
+    "description": "RealXtate — แพลตฟอร์มแมตช์อสังหาฯ ข้อมูลแม่นยำ ลงประกาศฟรี บริการครบวงจร กทม.และปริมณฑล",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

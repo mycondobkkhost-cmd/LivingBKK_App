@@ -15,13 +15,13 @@ class ListingShareActions {
     final url = Env.listingShareUrl(listing.id, origin: origin);
     if (url.startsWith('http')) return url;
     if (kIsWeb && origin != null && origin.isNotEmpty) return '$origin$url';
-    return 'https://livingbkk.app$url';
+    return 'https://realxtateth.com$url';
   }
 
   static String shareText(ListingPublic listing, {bool isEnglish = false}) {
     final s = AppStrings(isEnglish);
     final type = s.listingTransactionLabel(listing.listingType);
-    return 'PROPPITER · ${listing.listingCode}\n'
+    return 'RealXtate · ${listing.listingCode}\n'
         '${listing.localizedTitle(isEnglish)}\n'
         '฿${listing.priceNet.toStringAsFixed(0)} ($type)\n'
         '${listingUrl(listing)}';

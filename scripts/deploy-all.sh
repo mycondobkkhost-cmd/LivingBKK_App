@@ -24,6 +24,8 @@ FUNCTIONS=(
   lead-bot-turn
   route-lead-notification
   notify-appointment
+  calendar-ai-draft
+  calendar-event-sync
   notify-chat-escalation
   chat-open-thread
   chat-turn
@@ -41,8 +43,11 @@ FUNCTIONS=(
   listing-import-archive
   project-import-fetch
   project-import-propertyhub
+  project-tag-enrich
+  project-geocode-preview
   analytics-track
   analytics-rollup-cron
+  delete-account
 )
 
 echo ""

@@ -5,8 +5,18 @@ import '../l10n/app_strings.dart';
 import '../theme/brand_assets.dart';
 import '../theme/living_bkk_brand.dart';
 
-/// ขนาด lockup P + PROPPITER — ใช้ร่วม header / splash / auth
+/// ขนาด lockup P + RealXtate — ใช้ร่วม header / splash / auth
 enum ProppiterBrandHeroSize { compact, standard, auth, splash }
+
+/// ขนาดต้นฉบับ `proppiter-header-lockup.png` — จุดเริ่มคำ RealXtate ≈ x=48
+abstract final class ProppiterHeaderLockupMetrics {
+  static const assetWidth = 214.0;
+  static const assetHeight = 56.0;
+  static const textStartX = 48.0;
+
+  static double sloganIndentFor(double lockupHeight) =>
+      lockupHeight * textStartX / assetHeight;
+}
 
 /// Lockup PNG + สโลแกน (ธีมเดียวกับหน้าแรก)
 class ProppiterBrandHero extends StatelessWidget {
@@ -15,11 +25,17 @@ class ProppiterBrandHero extends StatelessWidget {
     this.size = ProppiterBrandHeroSize.standard,
     this.centered = false,
     this.showSlogan = true,
+    this.sloganLeftIndent,
+    this.sloganLift = 0,
   });
 
   final ProppiterBrandHeroSize size;
   final bool centered;
   final bool showSlogan;
+  /// จัดสโลแกนให้ตรงจุดเริ่มคำว่า RealXtate (ไม่ใต้ไอคอน P)
+  final double? sloganLeftIndent;
+  /// ดึงสโลแกนขึ้น — กึ่งกลางช่องว่างใต้ lockup
+  final double sloganLift;
 
   double get _lockupHeight {
     switch (size) {
@@ -89,22 +105,28 @@ class ProppiterBrandHero extends StatelessWidget {
             ),
           ),
         ),
-        if (showSlogan) ...[
-          SizedBox(
-            height: switch (size) {
-              ProppiterBrandHeroSize.compact => 3,
-              ProppiterBrandHeroSize.auth => 6,
-              _ => 8,
-            },
+        if (showSlogan)
+          Transform.translate(
+            offset: Offset(0, -sloganLift),
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: sloganLeftIndent ??
+                    ProppiterHeaderLockupMetrics.sloganIndentFor(_lockupHeight),
+                top: switch (size) {
+                  ProppiterBrandHeroSize.compact => 0,
+                  ProppiterBrandHeroSize.auth => 3,
+                  _ => 1,
+                },
+              ),
+              child: Text(
+                s.homeHeaderSlogan,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: centered ? TextAlign.center : TextAlign.start,
+                style: _sloganTextStyle(),
+              ),
+            ),
           ),
-          Text(
-            s.homeHeaderSlogan,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: centered ? TextAlign.center : TextAlign.start,
-            style: _sloganTextStyle(),
-          ),
-        ],
       ],
     );
   }

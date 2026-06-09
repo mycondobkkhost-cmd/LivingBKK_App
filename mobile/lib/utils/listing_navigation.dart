@@ -15,6 +15,12 @@ import '../services/home_sections_builder.dart';
 /// นำทางไปหน้ารายการทรัพย์ / โครงการ จากทุกจุดในแอp
 class ListingNavigation {
   static void openBrowse(BuildContext context, BrowseListRouteExtra extra) {
+    if (extra.mode == BrowseListMode.category &&
+        extra.categorySlug != null &&
+        extra.categorySlug!.isNotEmpty) {
+      context.push('/browse/category/${extra.categorySlug}');
+      return;
+    }
     context.push('/browse', extra: extra);
   }
 
@@ -23,17 +29,7 @@ class ListingNavigation {
     required String slug,
     required bool isAgent,
   }) {
-    final s = AppStrings.of(context);
-    final cat = PropertyCatalog.bySlug(slug);
-    openBrowse(
-      context,
-      BrowseListRouteExtra(
-        title: cat?.label(s.isEnglish) ?? slug,
-        mode: BrowseListMode.category,
-        categorySlug: slug,
-        isAgent: isAgent,
-      ),
-    );
+    context.push('/browse/category/$slug');
   }
 
   static void openProject(

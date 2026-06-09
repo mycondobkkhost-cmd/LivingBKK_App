@@ -18,7 +18,7 @@ class HomeListingRail extends StatefulWidget {
     this.showCoAgentStrip = false,
     this.accentIndex = 0,
     this.highlightRecommended = false,
-    this.topInset = 2,
+    this.topInset = 0,
   });
 
   final String title;
@@ -33,14 +33,16 @@ class HomeListingRail extends StatefulWidget {
 
   static const cardGap = 10.0;
 
-  /// ~46% ความกว้างจอ — เห็นการ์ดถัดไปแบบ PropertyHub
+  /// ~2.5 การ์ดต่อแถว — เห็นครึ่งการ์ดถัดไปเป็น teaser
   static double cardWidthFor(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
-    return (w * 0.46).clamp(168.0, 200.0);
+    final available = w - 2 * LiLayout.pagePadding;
+    const gaps = 2 * cardGap;
+    return ((available - gaps) / 2.5).clamp(136.0, 168.0);
   }
 
-  /// รูป 4:3 + body compact — สูงพอดีการ์ด ไม่เว้นช่องว่างล่าง
-  static double compactCardHeight(double cardWidth) => cardWidth * 3 / 4 + 88;
+  /// รูป 4:3 + body compact (โครงการ + หัวข้อ — สเปกอยู่บนรูป)
+  static double compactCardHeight(double cardWidth) => cardWidth * 3 / 4 + 56;
 
   static double railHeightFor(BuildContext context) {
     final scale = MediaQuery.textScalerOf(context).scale(1).clamp(1.0, 1.3);
@@ -122,7 +124,7 @@ class _HomeListingRailState extends State<HomeListingRail> {
             LiLayout.pagePadding,
             widget.topInset.clamp(0, 48),
             LiLayout.pagePadding,
-            2,
+            0,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -159,7 +161,8 @@ class _HomeListingRailState extends State<HomeListingRail> {
         ),
         SizedBox(
           height: railHeight,
-          child: NotificationListener<ScrollNotification>(
+          child: ClipRect(
+            child: NotificationListener<ScrollNotification>(
             onNotification: (_) {
               _updateCenteredIndex();
               return false;
@@ -185,24 +188,29 @@ class _HomeListingRailState extends State<HomeListingRail> {
                   );
                 }
                 final item = widget.items[i];
-                return SizedBox(
-                  width: cardWidth,
-                  child: AppPropertyCard(
-                    listing: item,
+                // ListView แนวนอนบังคับความสูงเท่า viewport — จัดการ์ดชิดบน ไม่ยืดพื้นขาวใต้ body
+                return Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
                     width: cardWidth,
-                    compactBody: true,
-                    highlightRecommended: widget.highlightRecommended,
-                    showCoAgentStrip: widget.showCoAgentStrip,
-                    enableImageSwipe: true,
-                    railScrollController:
-                        _centeredIndex == i ? _scrollController : null,
-                    onImageDragStart: _lockRailScroll,
-                    onImageDragEnd: _unlockRailScroll,
-                    onTap: () => widget.onTapListing(item),
+                    child: AppPropertyCard(
+                      listing: item,
+                      width: cardWidth,
+                      compactBody: true,
+                      highlightRecommended: widget.highlightRecommended,
+                      showCoAgentStrip: widget.showCoAgentStrip,
+                      enableImageSwipe: true,
+                      railScrollController:
+                          _centeredIndex == i ? _scrollController : null,
+                      onImageDragStart: _lockRailScroll,
+                      onImageDragEnd: _unlockRailScroll,
+                      onTap: () => widget.onTapListing(item),
+                    ),
                   ),
                 );
               },
             ),
+          ),
           ),
         ),
       ],

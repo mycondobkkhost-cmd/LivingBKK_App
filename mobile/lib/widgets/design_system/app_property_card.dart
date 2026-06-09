@@ -8,6 +8,7 @@ import '../../services/listing_activity_service.dart';
 import '../../services/platform_settings_service.dart';
 import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/listing_price_helpers.dart';
 import '../../utils/localized_content.dart';
 import 'app_badge.dart';
 import 'property_card_image_pager.dart';
@@ -64,7 +65,7 @@ class AppPropertyCard extends StatelessWidget {
           );
           final cardW = width ?? constraints.maxWidth;
 
-          return Material(
+          final card = Material(
             color: Colors.transparent,
             borderRadius: BorderRadius.circular(AppTheme.radiusLg),
             clipBehavior: Clip.antiAlias,
@@ -89,6 +90,10 @@ class AppPropertyCard extends StatelessWidget {
                               showFavorite: showFavorite,
                               highlightRecommended: highlightRecommended,
                               compact: compactBody || railCompact,
+                              specsOnImage: compactBody,
+                              showCoAgentBadge: compactBody &&
+                                  showCoAgentStrip &&
+                                  listing.coAgentEligible,
                             ),
                             railScrollController: railScrollController,
                             railStep: cardW + 10,
@@ -115,6 +120,10 @@ class AppPropertyCard extends StatelessWidget {
                                   showFavorite: showFavorite,
                                   highlightRecommended: highlightRecommended,
                                   compact: compactBody || railCompact,
+                                  specsOnImage: compactBody,
+                                  showCoAgentBadge: compactBody &&
+                                      showCoAgentStrip &&
+                                      listing.coAgentEligible,
                                 ),
                               ],
                             ),
@@ -125,6 +134,11 @@ class AppPropertyCard extends StatelessWidget {
               ),
             ),
           );
+
+          if (compactBody && constraints.maxHeight.isFinite) {
+            return Align(alignment: Alignment.topCenter, child: card);
+          }
+          return card;
         },
       ),
     );
@@ -144,12 +158,17 @@ class _ImageOverlay extends StatelessWidget {
     required this.showFavorite,
     required this.highlightRecommended,
     this.compact = false,
+    this.specsOnImage = false,
+    this.showCoAgentBadge = false,
   });
 
   final ListingPublic listing;
   final bool showFavorite;
   final bool highlightRecommended;
   final bool compact;
+  /// สเปกบนรูป (หน้าแรก rail) — ราคาอยู่เหนือห้องนอน/ตร.ม./ชั้น
+  final bool specsOnImage;
+  final bool showCoAgentBadge;
 
   @override
   Widget build(BuildContext context) {
@@ -173,6 +192,15 @@ class _ImageOverlay extends StatelessWidget {
       children: [
         if (showExclusiveRibbon)
           _ExclusiveRibbon(compact: compact),
+        if (showCoAgentBadge)
+          Positioned(
+            left: compact ? 6 : 8,
+            top: showExclusiveRibbon ? (compact ? 24 : 28) : (compact ? 6 : 8),
+            child: AppBadge(
+              label: s.coAgentEligible,
+              tone: AppBadgeTone.primary,
+            ),
+          ),
         if (showFavorite)
           Positioned(
             top: compact ? 6 : 8,
@@ -187,12 +215,20 @@ class _ImageOverlay extends StatelessWidget {
           ),
         Positioned(
           left: compact ? 6 : 8,
+          right: compact ? 40 : 48,
           bottom: compact ? 6 : 8,
-          child: _ImagePriceBadge(
-            listing: listing,
-            perMonthLabel: s.perMonth,
-            compact: compact,
-          ),
+          child: specsOnImage
+              ? _ImagePriceAndSpecsBadge(
+                  listing: listing,
+                  perMonthLabel: s.perMonth,
+                  specs: listing.listingCardSpecItems(s),
+                  compact: compact,
+                )
+              : _ImagePriceBadge(
+                  listing: listing,
+                  perMonthLabel: s.perMonth,
+                  compact: compact,
+                ),
         ),
       ],
         );
@@ -307,26 +343,284 @@ class _HotBadge extends StatelessWidget {
   }
 }
 
+/// ราคา + สเปกบนรูป (rail หน้าแรก)
+class _ImagePriceAndSpecsBadge extends StatelessWidget {
+  const _ImagePriceAndSpecsBadge({
+    required this.listing,
+    required this.perMonthLabel,
+    required this.specs,
+    required this.compact,
+  });
+
+  final ListingPublic listing;
+  final String perMonthLabel;
+  final List<({IconData icon, String label})> specs;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 6 : 8,
+          vertical: compact ? 4 : 5,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _ImagePriceBadge(
+              listing: listing,
+              perMonthLabel: perMonthLabel,
+              compact: compact,
+              bare: true,
+            ),
+            if (specs.isNotEmpty) ...[
+              SizedBox(height: compact ? 3 : 4),
+              _ImageSpecStrip(items: specs, compact: compact),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ImageSpecStrip extends StatelessWidget {
+  const _ImageSpecStrip({
+    required this.items,
+    required this.compact,
+  });
+
+  final List<({IconData icon, String label})> items;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconSize = compact ? 11.0 : 12.0;
+    final fontSize = compact ? 9.5 : 10.0;
+    final gap = compact ? 6.0 : 8.0;
+
+    return Row(
+      children: [
+        for (var i = 0; i < items.length; i++) ...[
+          if (i > 0) SizedBox(width: gap),
+          Flexible(
+            fit: FlexFit.loose,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  items[i].label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    fontWeight: FontWeight.w700,
+                    height: 1.1,
+                    color: Colors.white.withOpacity(0.95),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(
+                  items[i].icon,
+                  size: iconSize,
+                  color: Colors.white.withOpacity(0.92),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
 class _ImagePriceBadge extends StatelessWidget {
   const _ImagePriceBadge({
     required this.listing,
     required this.perMonthLabel,
     this.compact = false,
+    this.bare = false,
   });
 
   final ListingPublic listing;
   final String perMonthLabel;
   final bool compact;
+  /// ไม่ใส่พื้นหลัง — อยู่ใน [_ImagePriceAndSpecsBadge]
+  final bool bare;
 
   @override
   Widget build(BuildContext context) {
     final locale = Localizations.localeOf(context).toString();
-    final price = NumberFormat.currency(
+    final fmt = NumberFormat.currency(
       locale: locale,
       symbol: '฿',
       decimalDigits: 0,
-    ).format(listing.priceNet);
-    final isRent = listing.listingType == 'rent';
+    );
+    if (ListingPriceHelpers.showDualPrices(listing)) {
+      final rentStrike = ListingPriceHelpers.strikethroughAmount(
+        listing,
+        rentSide: true,
+      );
+      final rentDisplay = ListingPriceHelpers.displayAmount(
+        listing,
+        rentSide: true,
+      );
+      final saleStrike = ListingPriceHelpers.strikethroughAmount(
+        listing,
+        rentSide: false,
+      );
+      final saleDisplay = ListingPriceHelpers.displayAmount(
+        listing,
+        rentSide: false,
+      );
+      final spans = <InlineSpan>[
+        if (rentStrike != null) ...[
+          TextSpan(
+            text: fmt.format(rentStrike),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.75),
+              fontSize: compact ? 9 : 10,
+              decoration: TextDecoration.lineThrough,
+            ),
+          ),
+          const TextSpan(text: ' '),
+        ],
+        TextSpan(
+          text: fmt.format(rentDisplay),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: compact ? 11 : 13,
+            fontWeight: FontWeight.w800,
+            height: 1.05,
+          ),
+        ),
+        TextSpan(
+          text: ' $perMonthLabel · ',
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.92),
+            fontSize: compact ? 8 : 9,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        if (saleStrike != null) ...[
+          TextSpan(
+            text: fmt.format(saleStrike),
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.75),
+              fontSize: compact ? 9 : 10,
+              decoration: TextDecoration.lineThrough,
+            ),
+          ),
+          const TextSpan(text: ' '),
+        ],
+        TextSpan(
+          text: fmt.format(saleDisplay),
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: compact ? 11 : 13,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+      ];
+      final priceWidget = Text.rich(
+        TextSpan(children: spans),
+        maxLines: 2,
+      );
+      if (bare) return priceWidget;
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.55),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 6 : 8,
+            vertical: compact ? 3 : 5,
+          ),
+          child: priceWidget,
+        ),
+      );
+    }
+    final isRent = ListingPriceHelpers.showPerMonth(listing);
+    final strike = ListingPriceHelpers.strikethroughAmount(
+      listing,
+      rentSide: isRent,
+    );
+    final price = fmt.format(
+      ListingPriceHelpers.effectivePrice(listing),
+    );
+
+    final priceWidget = isRent
+        ? Text.rich(
+            TextSpan(
+              children: [
+                if (strike != null) ...[
+                  TextSpan(
+                    text: fmt.format(strike),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.75),
+                      fontSize: compact ? 9 : 10,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                  const TextSpan(text: ' '),
+                ],
+                TextSpan(
+                  text: price,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compact ? 12 : 14,
+                    fontWeight: FontWeight.w800,
+                    height: 1.05,
+                  ),
+                ),
+                TextSpan(
+                  text: ' $perMonthLabel',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.92),
+                    fontSize: compact ? 9 : 10,
+                    fontWeight: FontWeight.w600,
+                    height: 1.05,
+                  ),
+                ),
+              ],
+            ),
+            maxLines: 1,
+          )
+        : Text.rich(
+            TextSpan(
+              children: [
+                if (strike != null) ...[
+                  TextSpan(
+                    text: fmt.format(strike),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.75),
+                      fontSize: compact ? 9 : 10,
+                      decoration: TextDecoration.lineThrough,
+                    ),
+                  ),
+                  const TextSpan(text: ' '),
+                ],
+                TextSpan(
+                  text: price,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: compact ? 12 : 14,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            maxLines: 1,
+          );
+
+    if (bare) return priceWidget;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -338,41 +632,7 @@ class _ImagePriceBadge extends StatelessWidget {
           horizontal: compact ? 6 : 8,
           vertical: compact ? 3 : 5,
         ),
-        child: isRent
-            ? Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: price,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: compact ? 12 : 14,
-                        fontWeight: FontWeight.w800,
-                        height: 1.05,
-                      ),
-                    ),
-                    TextSpan(
-                      text: ' $perMonthLabel',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.92),
-                        fontSize: compact ? 9 : 10,
-                        fontWeight: FontWeight.w600,
-                        height: 1.05,
-                      ),
-                    ),
-                  ],
-                ),
-                maxLines: 1,
-              )
-            : Text(
-                price,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: compact ? 12 : 14,
-                  fontWeight: FontWeight.w800,
-                  height: 1.05,
-                ),
-              ),
+        child: priceWidget,
       ),
     );
   }
@@ -402,17 +662,18 @@ class _CardBody extends StatelessWidget {
     final project = listing.localizedProjectName(en);
     final district = listing.localizedDistrict(en);
     final hPad = railCompact ? 8.0 : (compactBody ? 10.0 : 12.0);
-    final vPad = railCompact ? 6.0 : (compactBody ? 4.0 : 12.0);
+    final vPadTop = railCompact ? 6.0 : (compactBody ? 3.0 : 12.0);
+    final vPadBottom = railCompact ? 6.0 : (compactBody ? 1.0 : 12.0);
 
     return InkWell(
       onTap: onTap,
       child: Padding(
-        padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad),
+        padding: EdgeInsets.fromLTRB(hPad, vPadTop, hPad, vPadBottom),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (!railCompact && specs.isNotEmpty) ...[
+            if (!railCompact && !compactBody && specs.isNotEmpty) ...[
               _ListingSpecStrip(items: specs, palette: p, compact: compactBody),
               SizedBox(height: compactBody ? 4 : 6),
             ],
@@ -422,21 +683,23 @@ class _CardBody extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  fontSize: compactBody ? 11.5 : 12,
+                  fontSize: compactBody ? 10.5 : 12,
                   fontWeight: FontWeight.w600,
                   height: 1.1,
                   color: p.textSecondary,
                 ),
               ),
-              SizedBox(height: compactBody ? 2 : 4),
+              SizedBox(height: compactBody ? 1 : 4),
             ],
             Text(
-              listing.localizedTitle(en),
-              maxLines: 2,
+              compactBody
+                  ? listing.localizedCompactCardHeading(en)
+                  : listing.localizedTitle(en),
+              maxLines: compactBody ? 1 : 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontWeight: FontWeight.w700,
-                fontSize: railCompact ? 12.5 : (compactBody ? 13.5 : 14.5),
+                fontSize: railCompact ? 12.5 : (compactBody ? 12.5 : 14.5),
                 height: 1.2,
                 color: p.textPrimary,
               ),
@@ -462,7 +725,10 @@ class _CardBody extends StatelessWidget {
                 ],
               ),
             ],
-            if (!railCompact && showCoAgentStrip && listing.coAgentEligible) ...[
+            if (!railCompact &&
+                !compactBody &&
+                showCoAgentStrip &&
+                listing.coAgentEligible) ...[
               SizedBox(height: compactBody ? 5 : 8),
               AppBadge(label: s.coAgentEligible, tone: AppBadgeTone.primary),
             ],
@@ -501,24 +767,22 @@ class _ListingSpecStrip extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  Text(
+                    items[i].label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w700,
+                      height: 1.1,
+                      color: palette.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(width: 3),
                   Icon(
                     items[i].icon,
                     size: iconSize,
                     color: palette.textSecondary,
-                  ),
-                  const SizedBox(width: 3),
-                  Flexible(
-                    child: Text(
-                      items[i].label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: fontSize,
-                        fontWeight: FontWeight.w600,
-                        height: 1.1,
-                        color: palette.textSecondary,
-                      ),
-                    ),
                   ),
                 ],
               ),

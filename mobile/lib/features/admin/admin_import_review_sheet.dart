@@ -5,6 +5,10 @@ import '../../l10n/app_strings.dart';
 import '../../services/listing_import_repository.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/admin_listing_nav.dart';
+import 'admin_import_add_project_sheet.dart';
+import 'admin_import_duplicate_panel.dart';
+import 'admin_import_source_panel.dart';
 
 /// ตรวจสอบและแก้ไข draft ก่อนเผยแพร่ — คล้ายฟอร์มโครงการ
 class AdminImportReviewSheet extends StatefulWidget {
@@ -13,11 +17,13 @@ class AdminImportReviewSheet extends StatefulWidget {
     required this.importId,
     required this.scrollController,
     required this.onChanged,
+    this.onSwitchImport,
   });
 
   final String importId;
   final ScrollController scrollController;
   final VoidCallback onChanged;
+  final Future<void> Function(String importId)? onSwitchImport;
 
   @override
   State<AdminImportReviewSheet> createState() => _AdminImportReviewSheetState();
@@ -58,6 +64,45 @@ class _AdminImportReviewSheetState extends State<AdminImportReviewSheet> {
     super.dispose();
   }
 
+  Future<void> _openAddProject() async {
+    final detail = _detail;
+    final listingId = detail?.import.listingId;
+    if (detail == null || listingId == null) return;
+
+    final added = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.viewInsetsOf(ctx).bottom,
+        ),
+        child: DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.78,
+          minChildSize: 0.45,
+          maxChildSize: 0.92,
+          builder: (_, __) => AdminImportAddProjectSheet(
+            importId: widget.importId,
+            listingId: listingId,
+            initialProjectName: _project.text.trim().isNotEmpty
+                ? _project.text.trim()
+                : (detail.import.projectPreview ?? ''),
+            initialDistrict: _district.text.trim().isEmpty
+                ? detail.listing?.district
+                : _district.text.trim(),
+            propertyType: _propertyType,
+            onDone: widget.onChanged,
+          ),
+        ),
+      ),
+    );
+    if (added == true) {
+      await _load();
+      widget.onChanged();
+    }
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
@@ -65,6 +110,8 @@ class _AdminImportReviewSheetState extends State<AdminImportReviewSheet> {
       if (!mounted) return;
       _detail = detail;
       _applyDraft(detail);
+    } catch (_) {
+      if (mounted) _detail = null;
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -179,6 +226,54 @@ class _AdminImportReviewSheetState extends State<AdminImportReviewSheet> {
     }
   }
 
+  Future<void> _discardDuplicate() async {
+    final s = context.s;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s.adminImportDiscardDuplicate),
+        content: Text(s.adminImportDiscardConfirm),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: Text(s.cancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: Text(s.adminImportDiscardDuplicate),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _busy = true);
+    try {
+      await _repo.discard(widget.importId, purgeDraft: true);
+      widget.onChanged();
+      if (!mounted) return;
+      Navigator.of(context).pop(false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminImportDiscarded)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ListingImportRepository.friendlyError(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _openOriginalImport() {
+    final origId = _detail?.duplicateOf?.importId;
+    if (origId == null || origId.isEmpty) return;
+    if (widget.onSwitchImport != null) {
+      widget.onSwitchImport!(origId);
+    }
+  }
+
   Future<void> _archive() async {
     setState(() => _busy = true);
     try {
@@ -208,8 +303,32 @@ class _AdminImportReviewSheetState extends State<AdminImportReviewSheet> {
       );
     }
 
+    if (_detail == null) {
+      return SizedBox(
+        height: 280,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(s.adminRegistryImportNotFound, textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(s.cancel),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     final imp = _detail!.import;
     final listing = _detail!.listing;
+    final duplicateOf = _detail!.duplicateOf;
+    final isDuplicate = imp.isDuplicateFailure && duplicateOf != null;
     final priceFmt = NumberFormat.currency(locale: locale, symbol: '฿', decimalDigits: 0);
 
     return Padding(
@@ -236,6 +355,51 @@ class _AdminImportReviewSheetState extends State<AdminImportReviewSheet> {
           Text(s.adminImportReviewTitle, style: AdminTheme.title.copyWith(fontSize: 18)),
           const SizedBox(height: 8),
           AdminHint(s.adminImportReviewHint),
+          if (isDuplicate) ...[
+            const SizedBox(height: 8),
+            AdminImportDuplicatePanel(
+              duplicateOf: duplicateOf,
+              busy: _busy,
+              onOpenOriginalImport: _openOriginalImport,
+              onContinuePublish: _openOriginalImport,
+              onDiscard: _discardDuplicate,
+            ),
+          ],
+          if (_detail!.sourceMeta != null) ...[
+            const SizedBox(height: 8),
+            AdminImportSourcePanel(
+              platform: imp.sourcePlatform,
+              sourceMeta: _detail!.sourceMeta!,
+              imageCount: imp.imageCount,
+            ),
+          ],
+          if (_detail!.projectNotInRegistry) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: AdminTheme.card(alert: true),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    s.adminImportProjectNotFound,
+                    style: AdminTheme.body.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.error,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  AdminHint(s.adminImportProjectNotFoundHint),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: _busy ? null : _openAddProject,
+                    icon: const Icon(Icons.add_location_alt_outlined, size: 18),
+                    label: Text(s.adminImportAddProjectFromMaps),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (_detail!.parseFlags.isNotEmpty) ...[
             const SizedBox(height: 8),
             AdminNote(s.adminImportParseWarnings(_detail!.parseFlags)),
@@ -277,9 +441,16 @@ class _AdminImportReviewSheetState extends State<AdminImportReviewSheet> {
                       visualDensity: VisualDensity.compact,
                     ),
                     if (listing?.listingCode != null)
-                      Chip(
+                      ActionChip(
                         label: Text(listing!.listingCode!),
                         visualDensity: VisualDensity.compact,
+                        onPressed: _busy
+                            ? null
+                            : () => openAdminListing(
+                                  context,
+                                  listingId: listing.id,
+                                  listingCode: listing.listingCode,
+                                ),
                       ),
                     if (imp.pricePreview != null)
                       Chip(
@@ -394,7 +565,7 @@ class _AdminImportReviewSheetState extends State<AdminImportReviewSheet> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              if (imp.canApprove)
+              if (imp.canApprove && !isDuplicate)
                 FilledButton(
                   onPressed: _busy ? null : _approve,
                   child: Text(s.adminImportApprove),

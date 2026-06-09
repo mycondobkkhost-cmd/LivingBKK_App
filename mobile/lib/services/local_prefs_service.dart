@@ -99,4 +99,14 @@ class LocalPrefsService {
     await init();
     await _prefs!.remove(key);
   }
+
+  Future<int?> getInt(String key) async {
+    await init();
+    return _prefs!.getInt(key);
+  }
+
+  Future<void> setInt(String key, int value) async {
+    await init();
+    await _prefs!.setInt(key, value);
+  }
 }

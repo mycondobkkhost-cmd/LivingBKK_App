@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/in_app_notification_hub.dart';
-import '../theme/app_theme.dart';
+import '../theme/app_palette.dart';
 
 /// แบนเนอร์แจ้งเตือนด้านบนแอป
 class InAppNotificationBanner extends StatelessWidget {
@@ -21,12 +21,25 @@ class InAppNotificationBanner extends StatelessWidget {
       builder: (context, _) {
         final msg = hub.bannerMessage;
         if (msg == null || msg.isEmpty) return const SizedBox.shrink();
+        // ดันประกาศ / ทรัพย์ — ใช้ SnackBar ล่างจอ ไม่แสดงแบนเนอร์บน
+        final isListingOps = msg.contains('ยืนยันว่าง') ||
+            msg.contains('ดันประกาศ') ||
+            msg.contains('Bump') ||
+            msg.contains('มอบสิทธิ์') ||
+            msg.contains('care access');
+        if (isListingOps) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            hub.dismissBanner();
+          });
+          return const SizedBox.shrink();
+        }
         final isChat = msg.contains('ข้อความจากทีม') ||
             msg.contains('Message from team') ||
             msg.contains('แชท');
+        final p = context.palette;
         return Material(
           elevation: 6,
-          color: AppTheme.primary,
+          color: p.primary,
           child: SafeArea(
             bottom: false,
             child: InkWell(

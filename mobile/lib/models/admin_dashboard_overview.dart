@@ -14,6 +14,8 @@ class AdminDashboardOverview {
     this.usersTotal = 0,
     this.demandPostsOpen = 0,
     this.customerRequirementsPending = 0,
+    this.availabilityAlertsDue = 0,
+    this.viewingCalendarAttention = 0,
     this.updatedAt,
   });
 
@@ -31,6 +33,10 @@ class AdminDashboardOverview {
   final int usersTotal;
   final int demandPostsOpen;
   final int customerRequirementsPending;
+  /// ประกาศที่จะว่างภายใน 30 วัน (available_again)
+  final int availabilityAlertsDue;
+  /// งานปฏิทินที่ต้องทำ — ยังไม่ระบุคนพา / รอยืนยัน / หลังนัดดู
+  final int viewingCalendarAttention;
   final DateTime? updatedAt;
 
   int get attentionTotal =>
@@ -41,5 +47,38 @@ class AdminDashboardOverview {
       moderationImages +
       moderationFlags +
       importsPending +
-      customerRequirementsPending;
+      customerRequirementsPending +
+      availabilityAlertsDue;
+
+  /// ตัวเลขบนไอคอนปฏิทิน — ยังไม่เปิดดู หรือคำขอนัดที่รอดูแล
+  int get viewingCalendarBadge => viewingCalendarAttention > 0
+      ? viewingCalendarAttention
+      : appointmentsPending;
+
+  AdminDashboardOverview copyWith({
+    int? availabilityAlertsDue,
+    int? viewingCalendarAttention,
+  }) {
+    return AdminDashboardOverview(
+      projects: projects,
+      listingsPublished: listingsPublished,
+      listingsTotal: listingsTotal,
+      leadsTotal: leadsTotal,
+      leadsNew: leadsNew,
+      chatWaiting: chatWaiting,
+      appointmentsPending: appointmentsPending,
+      offersPending: offersPending,
+      moderationImages: moderationImages,
+      moderationFlags: moderationFlags,
+      importsPending: importsPending,
+      usersTotal: usersTotal,
+      demandPostsOpen: demandPostsOpen,
+      customerRequirementsPending: customerRequirementsPending,
+      availabilityAlertsDue:
+          availabilityAlertsDue ?? this.availabilityAlertsDue,
+      viewingCalendarAttention:
+          viewingCalendarAttention ?? this.viewingCalendarAttention,
+      updatedAt: updatedAt,
+    );
+  }
 }

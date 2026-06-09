@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'app_theme.dart';
 import 'living_bkk_brand.dart';
 
 /// สีและสไตล์หลังบ้าน — โทนสว่าง อ่านง่าย ไม่กลืน
@@ -71,32 +72,76 @@ abstract final class AdminTheme {
         border: Border.all(color: borderStrong),
       );
 
-  static ThemeData shellTheme(ThemeData base) => base.copyWith(
-        scaffoldBackgroundColor: bg,
-        appBarTheme: base.appBarTheme.copyWith(
-          backgroundColor: surface,
-          foregroundColor: text,
-          surfaceTintColor: Colors.transparent,
+  /// หลังบ้านใช้โทนสว่างเสมอ — ไม่ตามธีมมืดของแอปหลัก
+  static ThemeData shellTheme([ThemeData? _]) {
+    final base = AppTheme.lightTheme;
+    final scheme = base.colorScheme.copyWith(
+      brightness: Brightness.light,
+      surface: surface,
+      onSurface: text,
+      background: bg,
+      onBackground: text,
+    );
+    return base.copyWith(
+      brightness: Brightness.light,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: bg,
+      canvasColor: surface,
+      dialogBackgroundColor: surface,
+      appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: surface,
+        foregroundColor: text,
+        surfaceTintColor: Colors.transparent,
+        iconTheme: const IconThemeData(color: text),
+      ),
+      iconTheme: const IconThemeData(color: textMuted),
+      listTileTheme: ListTileThemeData(
+        textColor: text,
+        iconColor: textMuted,
+        selectedColor: LivingBkkBrand.purplePrimary,
+        selectedTileColor: LivingBkkBrand.purplePrimary.withOpacity(0.08),
+        tileColor: surface,
+        dense: false,
+      ),
+      tabBarTheme: base.tabBarTheme.copyWith(
+        labelColor: LivingBkkBrand.purplePrimary,
+        unselectedLabelColor: textMuted,
+        indicatorColor: LivingBkkBrand.purplePrimary,
+        labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+        unselectedLabelStyle:
+            const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 10),
+        tabAlignment: TabAlignment.start,
+      ),
+      cardTheme: base.cardTheme.copyWith(
+        color: surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: border),
         ),
-        tabBarTheme: base.tabBarTheme.copyWith(
-          labelColor: LivingBkkBrand.purplePrimary,
-          unselectedLabelColor: textMuted,
-          indicatorColor: LivingBkkBrand.purplePrimary,
-          labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-          unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w500, fontSize: 12),
-          labelPadding: const EdgeInsets.symmetric(horizontal: 10),
-          tabAlignment: TabAlignment.start,
-        ),
-        cardTheme: base.cardTheme.copyWith(
-          color: surface,
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: border),
-          ),
-        ),
-        dividerTheme: const DividerThemeData(color: border, thickness: 1),
-      );
+      ),
+      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+      bottomSheetTheme: base.bottomSheetTheme.copyWith(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+      popupMenuTheme: base.popupMenuTheme.copyWith(
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+      ),
+    );
+  }
+
+  /// ซิงค์ [AppTheme] ให้เป็นพาเลตสว่าง — ใช้ห่อ route หลังบ้าน
+  static Widget lightPaletteScope({required Widget child}) {
+    return Builder(
+      builder: (context) {
+        AppTheme.syncPalette(Brightness.light);
+        return child;
+      },
+    );
+  }
 }
 
 /// ข้อความรอง / คำอธิบายสั้น

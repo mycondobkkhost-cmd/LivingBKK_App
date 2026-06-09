@@ -6,10 +6,18 @@
 |--------|--------|----------|
 | **Admin** | `demo-admin@livingbkk.local` | `demo12345` |
 | Owner (ทดสอบลงประกาศ) | `demo-owner@livingbkk.local` | `demo12345` |
+| **เอเจ้นพานัด Agent One** | `agent-one@proppiter.local` | `demo12345` |
+| เอเจ้นพานัด Agent Two | `agent-two@proppiter.local` | `demo12345` |
+| เอเจ้นพานัด Agent Three | `agent-three@proppiter.local` | `demo12345` |
+| เอเจ้นพานัด Agent Four | `agent-four@proppiter.local` | `demo12345` |
+| เอเจ้นพานัด Agent Five | `agent-five@proppiter.local` | `demo12345` |
 
 รัน seed: `./scripts/seed-cloud.sh` หรือ SQL Editor → `supabase/seed.sql`
 
 ในแอป: **เข้าสู่ระบบ** → แท็บ **ฉัน** → **ศูนย์ Admin**
+
+**โหมดทีม (แนะนำ):** ทุกคนล็อกอิน `demo-admin@livingbkk.local` แล้วกด **สลับตัวละคร** ภายใน — ดู `docs/โหมดสลับตัวละคร.md`  
+ตัวอย่าง: `admin-01` / `admin-01`, `guide-03` / `guide-03`, `ceo-01` / `ceo-01`
 
 **ตอบแชทบนคอม (Web):** เปิด `/admin/console` — inbox + แชทในจอเดียว  
 **นำเข้าทรัพย์ LI:** Admin → แท็บ **นำเข้า** หรือ `/admin/import`  

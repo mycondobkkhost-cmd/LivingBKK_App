@@ -68,7 +68,7 @@ class HomeServiceGrid extends StatelessWidget {
         icon: Icons.campaign_outlined,
         tint: p.accent,
         bg: _ServiceBg.post,
-        onTap: () => PostListingNavigation.openCreateWithAuthGate(context),
+        onTap: () => PostListingNavigation.openManageHub(context),
       ));
     }
 
@@ -90,18 +90,7 @@ class HomeServiceGrid extends StatelessWidget {
         icon: Icons.forum_outlined,
         tint: const Color(0xFFF59E0B),
         bg: _ServiceBg.board,
-        onTap: () => DemandBoardNavigation.openBoardTab(context),
-      ));
-    }
-
-    if (PostListingMenuConfig.showsFor(roleController)) {
-      out.add(_ServiceItem(
-        id: 'manage',
-        title: s.homeQuickManageTitle,
-        icon: Icons.dashboard_customize_rounded,
-        tint: p.primary,
-        bg: _ServiceBg.manage,
-        onTap: () => PostListingNavigation.openMyListings(context),
+        onTap: () => DemandBoardNavigation.openBoardTab(context, fromHome: true),
       ));
     }
 
@@ -219,17 +208,23 @@ class _CompactServiceCard extends StatelessWidget {
           ),
         ),
       _ServiceBg.requirement => _BgStyle(
-          const LinearGradient(
+          LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFE8FBF3), Color(0xFFFFFFFF)],
+            colors: [
+              const Color(0xFF10B981).withOpacity(0.14),
+              p.surface,
+            ],
           ),
         ),
       _ServiceBg.board => _BgStyle(
-          const LinearGradient(
+          LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [Color(0xFFFFF7E8), Color(0xFFFFFFFF)],
+            colors: [
+              const Color(0xFFF59E0B).withOpacity(0.14),
+              p.surface,
+            ],
           ),
         ),
       _ServiceBg.manage => _BgStyle(
