@@ -1,9 +1,18 @@
--- แอดมินสร้างแชทแจ้งเจ้าของ + ปรับ inbox ให้รวม booking_interest
+-- Fix listing contact storage + booking-interest chat inbox.
 
-DROP POLICY IF EXISTS chat_threads_admin_insert ON public.chat_threads;
-CREATE POLICY chat_threads_admin_insert ON public.chat_threads
-  FOR INSERT TO authenticated
-  WITH CHECK (public.is_admin());
+ALTER TABLE public.listings
+  ADD COLUMN IF NOT EXISTS owner_contact_name text,
+  ADD COLUMN IF NOT EXISTS owner_contact_phone text,
+  ADD COLUMN IF NOT EXISTS owner_line_id text;
+
+COMMENT ON COLUMN public.listings.owner_contact_name IS
+  'Private poster contact name for admin operations; never selected in listings_public.';
+COMMENT ON COLUMN public.listings.owner_contact_phone IS
+  'Private poster contact phone for admin operations; never selected in listings_public.';
+COMMENT ON COLUMN public.listings.owner_line_id IS
+  'Private poster LINE ID for admin operations; never selected in listings_public.';
+
+ALTER TYPE public.chat_thread_category ADD VALUE IF NOT EXISTS 'booking_interest';
 
 DROP VIEW IF EXISTS public.chat_admin_inbox CASCADE;
 
