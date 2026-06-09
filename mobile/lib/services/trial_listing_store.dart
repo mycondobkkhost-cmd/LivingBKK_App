@@ -102,6 +102,11 @@ class TrialListingStore {
       'price_net': input.priceNet,
       'district': input.district,
       'project_name': input.projectName,
+      'description_public': input.description,
+      'owner_contact_name': input.contactName,
+      'owner_contact_phone': input.contactPhone,
+      if (input.lineId != null && input.lineId!.trim().isNotEmpty)
+        'owner_line_id': input.lineId!.trim(),
       'promo_price_net': input.promoPriceNet,
       'updated_at': now,
       'owner_exclusive_mandate': input.ownerExclusiveMandate,

@@ -113,7 +113,8 @@ class ListingPublic {
       lng: (json['lng'] as num?)?.toDouble(),
       geoZoneSlug: json['geo_zone_slug'] as String?,
       imageUrls: _parseImageUrls(json['image_urls']),
-      description: json['description'] as String?,
+      description: (json['description_public'] as String?) ??
+          (json['description'] as String?),
       descriptionEn: json['description_en'] as String?,
       updatedAt: json['updated_at'] != null
           ? DateTime.tryParse(json['updated_at'].toString())

@@ -18,6 +18,8 @@ class ListingCreateInput {
     required this.priceNet,
     required this.district,
     required this.posterRole,
+    required this.contactName,
+    required this.contactPhone,
     this.description,
     this.areaSqm,
     this.bedrooms,
@@ -67,6 +69,8 @@ class ListingCreateInput {
   final double priceNet;
   final String district;
   final ListingPosterRole posterRole;
+  final String contactName;
+  final String contactPhone;
   final String? description;
   final double? areaSqm;
   final int? bedrooms;
@@ -77,6 +81,7 @@ class ListingCreateInput {
   final double? promoPriceNet;
   final String? videoUrl;
   final String? tiktokUrl;
+
   /// ลิงก์ Google Maps — บังคับเมื่อบ้านนอกโครงการ (เก็บใน source_url)
   final String? locationLink;
   final String? externalPostUrl;
@@ -154,6 +159,10 @@ class ListingCreateRepository {
       'property_type': input.propertyType,
       'price_net': input.priceNet,
       'district': input.district,
+      'owner_contact_name': input.contactName,
+      'owner_contact_phone': input.contactPhone,
+      if (input.lineId != null && input.lineId!.trim().isNotEmpty)
+        'owner_line_id': input.lineId!.trim(),
       'description_public': input.description,
       'area_sqm': input.areaSqm,
       'bedrooms': input.bedrooms,
@@ -267,8 +276,6 @@ String _withLocalizationBlock(String desc, ListingCreateInput input) {
     ],
     if (input.agentExclusive) 'agent_exclusive: true',
     'listing_langs: ${input.listingLanguages.join(',')}',
-    if (input.lineId != null && input.lineId!.trim().isNotEmpty)
-      'poster_line_id: ${input.lineId!.trim()}',
     if (input.titleEn != null && input.titleEn!.trim().isNotEmpty)
       'title_en: ${input.titleEn!.trim()}',
     if (input.descriptionEn != null && input.descriptionEn!.trim().isNotEmpty)
