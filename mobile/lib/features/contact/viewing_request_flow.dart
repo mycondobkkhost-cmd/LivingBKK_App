@@ -75,9 +75,11 @@ Future<void> showViewingRequestFlow(BuildContext context, ChatRoom room) async {
     leadSummary: summary,
   );
 
+  var savedToDatabase = false;
+  var leadRef = viewingReq.code;
   try {
     final leadRepo = LeadRepository();
-    await leadRepo.submit(
+    final outcome = await leadRepo.submit(
       LeadSubmission(
         listingCode: persisted.listingCode,
         listingId: persisted.listingId,
@@ -90,14 +92,20 @@ Future<void> showViewingRequestFlow(BuildContext context, ChatRoom room) async {
         viewingSchedule: scheduleLabel,
       ),
     );
-  } catch (_) {}
+    savedToDatabase = outcome.savedToDatabase;
+    if (outcome.transactionRef != null && outcome.transactionRef!.isNotEmpty) {
+      leadRef = outcome.transactionRef!;
+    }
+  } catch (e) {
+    debugPrint('Lead submit failed after viewing request: $e');
+  }
 
   if (!context.mounted) return;
   await showViewingSubmittedDialog(
     context,
     profileSummary: summary,
-    savedToDatabase: true,
-    leadRef: viewingReq.code,
+    savedToDatabase: savedToDatabase,
+    leadRef: leadRef,
     chatRef: persisted.effectiveTransactionRef,
   );
 }
