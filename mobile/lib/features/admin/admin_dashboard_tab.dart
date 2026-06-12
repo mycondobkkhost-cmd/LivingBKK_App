@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../l10n/app_strings.dart';
@@ -10,6 +11,7 @@ import '../../services/chat_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/living_bkk_brand.dart';
+import '../../utils/admin_desktop.dart';
 import '../../widgets/admin_attention_badge.dart';
 import '../../widgets/admin_dashboard_bar.dart';
 import 'admin_inbox_preview.dart';
@@ -98,30 +100,87 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
         final liveMine = _queueMine;
         final liveWait = _longestWait(s);
 
+        final wide = useAdminWideShell(context);
+
         return RefreshIndicator(
           onRefresh: _load,
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+            padding: EdgeInsets.fromLTRB(wide ? 20 : 12, wide ? 16 : 8, wide ? 20 : 12, 16),
             children: [
+              _CommandCenterHeader(
+                attention: attention,
+                liveQueue: liveQueue,
+              ),
+              const SizedBox(height: 14),
+              _EnterpriseMetricsRow(
+                liveQueue: liveQueue,
+                liveMine: liveMine,
+                leadsNew: _data.leadsNew,
+                chatWaiting: _data.chatWaiting,
+                calendarBadge: _data.viewingCalendarBadge,
+                offersPending: _data.offersPending,
+                onQueue: () => context.go('/admin/console?filter=unclaimed'),
+                onInbox: () => context.go('/admin/console'),
+                onLeads: () => _open(AdminNavId.leads),
+                onCalendar: () => _open(AdminNavId.viewingCalendar),
+              ),
+              const SizedBox(height: 14),
               AdminDashboardBar(
                 data: _data,
                 onJump: _open,
               ),
-              const SizedBox(height: 8),
-              _CalendarLaunchCard(
-                badgeCount: _data.viewingCalendarBadge,
-                pending: _data.appointmentsPending,
-                onOpen: () => _open(AdminNavId.viewingCalendar),
+              const SizedBox(height: 10),
+              if (wide)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _OpsConsoleCard(
+                        queueCount: liveQueue,
+                        mineCount: liveMine,
+                        onOpen: () => context.go('/admin/console'),
+                        onOpenQueue: () =>
+                            context.go('/admin/console?filter=unclaimed'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _CalendarLaunchCard(
+                        badgeCount: _data.viewingCalendarBadge,
+                        pending: _data.appointmentsPending,
+                        onOpen: () => _open(AdminNavId.viewingCalendar),
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                _OpsConsoleCard(
+                queueCount: liveQueue,
+                mineCount: liveMine,
+                onOpen: () => context.go('/admin/console'),
+                onOpenQueue: () =>
+                    context.go('/admin/console?filter=unclaimed'),
               ),
               const SizedBox(height: 8),
+                _CalendarLaunchCard(
+                  badgeCount: _data.viewingCalendarBadge,
+                  pending: _data.appointmentsPending,
+                  onOpen: () => _open(AdminNavId.viewingCalendar),
+                ),
+              ],
+              const SizedBox(height: 10),
               if (attention > 0 || liveQueue > 0)
                 _AlertStrip(
                   text: liveQueue > 0
                       ? s.adminOverviewAlertQueue(liveQueue, attention)
                       : s.adminDashNeedsAction(attention),
-                  onTap: () => _open(
-                    liveQueue > 0 ? AdminNavId.queue : AdminNavId.leads,
-                  ),
+                  onTap: () {
+                    if (liveQueue > 0) {
+                      context.go('/admin/console?filter=unclaimed');
+                    } else {
+                      _open(AdminNavId.leads);
+                    }
+                  },
                 ),
               _Section(
                 title: s.adminOverviewSectionUrgent,
@@ -130,13 +189,13 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     label: s.adminOverviewQueueUnclaimed,
                     value: liveQueue,
                     alert: liveQueue > 0,
-                    onTap: () => _open(AdminNavId.queue),
+                    onTap: () => context.go('/admin/console?filter=unclaimed'),
                   ),
                   _Row(
                     label: s.adminOverviewQueueMine,
                     value: liveMine,
                     alert: liveMine > 0,
-                    onTap: () => _open(AdminNavId.inbox),
+                    onTap: () => context.go('/admin/console'),
                   ),
                   _Row(
                     label: s.adminDashLeads,
@@ -299,11 +358,10 @@ class _AdminDashboardTabState extends State<AdminDashboardTab> {
                     label: s.adminOpenReportsCenter,
                     onTap: () => _open(AdminNavId.reports),
                   ),
-                  if (liveQueue > 0)
-                    _LinkChip(
-                      label: s.adminOpenConsole,
-                      onTap: () => _open(AdminNavId.inbox),
-                    ),
+                  _LinkChip(
+                    label: s.adminOpenConsole,
+                    onTap: () => context.go('/admin/console'),
+                  ),
                 ],
               ),
               if (_data.updatedAt != null)
@@ -518,6 +576,322 @@ class _MiniCell extends StatelessWidget {
             style: AdminTheme.caption.copyWith(fontSize: 9),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CommandCenterHeader extends StatelessWidget {
+  const _CommandCenterHeader({
+    required this.attention,
+    required this.liveQueue,
+  });
+
+  final int attention;
+  final int liveQueue;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final urgent = liveQueue > 0 || attention > 0;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                s.adminCommandCenterTitle,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 22,
+                  color: AdminTheme.text,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                s.adminCommandCenterSubtitle,
+                style: AdminTheme.hint.copyWith(fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+        if (urgent)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppTheme.error.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: AppTheme.error.withOpacity(0.3)),
+            ),
+            child: Text(
+              liveQueue > 0
+                  ? s.adminInboxTabUnclaimed(liveQueue)
+                  : s.adminDashNeedsAction(attention),
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppTheme.error,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _EnterpriseMetricsRow extends StatelessWidget {
+  const _EnterpriseMetricsRow({
+    required this.liveQueue,
+    required this.liveMine,
+    required this.leadsNew,
+    required this.chatWaiting,
+    required this.calendarBadge,
+    required this.offersPending,
+    required this.onQueue,
+    required this.onInbox,
+    required this.onLeads,
+    required this.onCalendar,
+  });
+
+  final int liveQueue;
+  final int liveMine;
+  final int leadsNew;
+  final int chatWaiting;
+  final int calendarBadge;
+  final int offersPending;
+  final VoidCallback onQueue;
+  final VoidCallback onInbox;
+  final VoidCallback onLeads;
+  final VoidCallback onCalendar;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cols = constraints.maxWidth >= 900 ? 5 : 2;
+        final cellW = (constraints.maxWidth - (cols - 1) * 8) / cols;
+        final metrics = [
+          _MetricCell(
+            label: context.s.adminOverviewQueueUnclaimed,
+            value: liveQueue,
+            alert: liveQueue > 0,
+            icon: Icons.notification_important_outlined,
+            onTap: onQueue,
+          ),
+          _MetricCell(
+            label: context.s.adminOverviewQueueMine,
+            value: liveMine,
+            alert: liveMine > 0,
+            icon: Icons.inbox_outlined,
+            onTap: onInbox,
+          ),
+          _MetricCell(
+            label: context.s.adminDashLeads,
+            value: leadsNew,
+            alert: leadsNew > 0,
+            icon: Icons.support_agent_outlined,
+            onTap: onLeads,
+          ),
+          _MetricCell(
+            label: context.s.adminDashChat,
+            value: chatWaiting,
+            alert: chatWaiting > 0,
+            icon: Icons.forum_outlined,
+            onTap: onInbox,
+          ),
+          _MetricCell(
+            label: context.s.adminNavViewingCalendar,
+            value: calendarBadge,
+            alert: calendarBadge > 0,
+            icon: Icons.calendar_month_outlined,
+            onTap: onCalendar,
+          ),
+        ];
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: metrics
+              .map(
+                (m) => SizedBox(
+                  width: cellW.clamp(120, constraints.maxWidth),
+                  child: m,
+                ),
+              )
+              .toList(),
+        );
+      },
+    );
+  }
+}
+
+class _MetricCell extends StatelessWidget {
+  const _MetricCell({
+    required this.label,
+    required this.value,
+    required this.alert,
+    required this.icon,
+    this.onTap,
+  });
+
+  final String label;
+  final int value;
+  final bool alert;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = alert ? AppTheme.error : LivingBkkBrand.purplePrimary;
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: alert
+                  ? AppTheme.error.withOpacity(0.25)
+                  : AdminTheme.border,
+            ),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x06000000),
+                blurRadius: 8,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(icon, size: 16, color: accent),
+                    const Spacer(),
+                    Text(
+                      '$value',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 22,
+                        color: accent,
+                        height: 1,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  label,
+                  style: AdminTheme.caption.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AdminTheme.textMuted,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OpsConsoleCard extends StatelessWidget {
+  const _OpsConsoleCard({
+    required this.queueCount,
+    required this.mineCount,
+    required this.onOpen,
+    required this.onOpenQueue,
+  });
+
+  final int queueCount;
+  final int mineCount;
+  final VoidCallback onOpen;
+  final VoidCallback onOpenQueue;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final urgent = queueCount > 0;
+    return Card(
+      color: urgent
+          ? AppTheme.error.withOpacity(0.06)
+          : LivingBkkBrand.purplePrimary.withOpacity(0.06),
+      child: InkWell(
+        onTap: urgent ? onOpenQueue : onOpen,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 4, right: 10, bottom: 2),
+                child: AdminAttentionIconBadge(
+                  count: queueCount,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: (urgent ? AppTheme.error : LivingBkkBrand.purplePrimary)
+                          .withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(
+                      Icons.forum_outlined,
+                      color: urgent ? AppTheme.error : LivingBkkBrand.purplePrimary,
+                      size: 28,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.adminOpsOpenConsole,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      urgent
+                          ? s.adminInboxTabUnclaimed(queueCount)
+                          : s.adminOpsConsoleCardHint,
+                      style: AdminTheme.caption,
+                    ),
+                    if (mineCount > 0) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        s.adminInboxTabMine(mineCount),
+                        style: AdminTheme.caption.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.primary,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right,
+                color: urgent ? AppTheme.error : LivingBkkBrand.purplePrimary,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

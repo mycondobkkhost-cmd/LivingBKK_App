@@ -6,6 +6,7 @@ import 'admin_listing_public_preview_sheet.dart';
 import '../../services/auth_service.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
+import 'admin_enterprise_page.dart';
 
 class AdminModerationTab extends StatefulWidget {
   const AdminModerationTab({super.key});
@@ -62,51 +63,59 @@ class _AdminModerationTabState extends State<AdminModerationTab> {
       return const Center(child: CircularProgressIndicator());
     }
 
+    final pendingTotal =
+        _pendingListings.length + _images.length + _flags.length;
+
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: adminEnterprisePagePadding(context),
         children: [
-          Card(
-            child: ListTile(
-              title: Text(s.adminLifecycleTitle, style: AdminTheme.title),
-              subtitle: Text(s.adminLifecycleSubtitle, style: AdminTheme.hint),
-              trailing: FilledButton(
+          AdminEnterprisePageHeader(
+            title: s.adminTabModeration,
+            subtitle: s.adminModerationPageSubtitle,
+            badge: pendingTotal > 0 ? '$pendingTotal' : null,
+            badgeAlert: pendingTotal > 0,
+            actions: [
+              FilledButton.icon(
                 onPressed: _runLifecycle,
-                child: Text(s.adminRunNow),
+                icon: const Icon(Icons.play_arrow, size: 16),
+                label: Text(s.adminRunNow),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                ),
               ),
-            ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          AdminEnterpriseBanner(
+            message: s.adminLifecycleSubtitle,
+            icon: Icons.autorenew,
+            tone: AdminEnterpriseBannerTone.info,
+          ),
+          const SizedBox(height: 14),
+          AdminEnterprisePanel(
+            title: '${s.adminListingsPendingReview} (${_pendingListings.length})',
+            child: _pendingListings.isEmpty
+                ? AdminEnterpriseEmptyState(message: s.adminNoPendingListings)
+                : Column(
+                    children: _pendingListings.map(_pendingListingCard).toList(),
+                  ),
           ),
           const SizedBox(height: 12),
-          Text(
-            '${s.adminListingsPendingReview} (${_pendingListings.length})',
-            style: AdminTheme.title.copyWith(fontSize: 16),
+          AdminEnterprisePanel(
+            title: s.adminPhotosPending(_images.length),
+            child: _images.isEmpty
+                ? AdminEnterpriseEmptyState(message: s.adminNoPhotosPending)
+                : Column(children: _images.map(_imageCard).toList()),
           ),
-          const SizedBox(height: 8),
-          if (_pendingListings.isEmpty)
-            AdminHint(s.adminNoPendingListings)
-          else
-            ..._pendingListings.map(_pendingListingCard),
-          const SizedBox(height: 16),
-          Text(
-            s.adminPhotosPending(_images.length),
-            style: AdminTheme.title.copyWith(fontSize: 16),
+          AdminEnterprisePanel(
+            title: s.adminFlagsSection(_flags.length),
+            child: _flags.isEmpty
+                ? AdminEnterpriseEmptyState(message: s.adminNoFlags)
+                : Column(children: _flags.map(_flagCard).toList()),
           ),
-          const SizedBox(height: 8),
-          if (_images.isEmpty)
-            AdminHint(s.adminNoPhotosPending)
-          else
-            ..._images.map(_imageCard),
-          const SizedBox(height: 16),
-          Text(
-            s.adminFlagsSection(_flags.length),
-            style: AdminTheme.title.copyWith(fontSize: 16),
-          ),
-          const SizedBox(height: 8),
-          if (_flags.isEmpty)
-            AdminHint(s.adminNoFlags)
-          else
-            ..._flags.map(_flagCard),
         ],
       ),
     );

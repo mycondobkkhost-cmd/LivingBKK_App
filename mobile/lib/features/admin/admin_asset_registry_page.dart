@@ -11,6 +11,7 @@ import '../../theme/app_theme.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../widgets/admin_mobile_layout.dart';
 import 'admin_asset_registry_widgets.dart';
+import 'admin_enterprise_page.dart';
 
 /// คลังทรัพย์แบบตาราง — ใช้ร่วมกันระหว่างคลังลับ (CEO/SUPER) และคลังปฏิบัติการ (แอดมินทั่วไป)
 class AdminAssetRegistryPage extends StatefulWidget {
@@ -161,28 +162,15 @@ class _AdminAssetRegistryPageState extends State<AdminAssetRegistryPage> {
           child: RefreshIndicator(
             onRefresh: _load,
             child: ListView(
-              padding: AdminMobileLayout.scrollPadding(
-                context,
-                top: 12,
-                horizontal: 12,
-                fabClearance: 8,
-              ),
+              padding: adminEnterprisePagePadding(context),
               children: [
-                if (widget.showStorageInfo) const _StorageInfoCard(),
-                if (widget.showStorageInfo && _isDemoPreview) ...[
-                  const SizedBox(height: 10),
-                  _InfoBanner(message: s.adminVaultDemoBanner),
-                ],
-                if (!widget.confidential) ...[
-                  _InfoBanner(
-                    message: s.adminRegistryPublicBanner,
-                    icon: Icons.folder_shared_outlined,
-                  ),
-                  const SizedBox(height: 10),
-                ],
-                Row(
-                  children: [
-                    Expanded(child: Text(title, style: AdminTheme.section)),
+                AdminEnterprisePageHeader(
+                  title: title,
+                  subtitle: widget.confidential
+                      ? s.adminNavGroupVault
+                      : s.adminRegistryPublicBanner,
+                  badge: total > 0 ? '$total' : null,
+                  actions: [
                     if (widget.showSync)
                       _syncing
                           ? const SizedBox(
@@ -197,11 +185,28 @@ class _AdminAssetRegistryPageState extends State<AdminAssetRegistryPage> {
                             ),
                   ],
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
+                if (widget.showStorageInfo) const _StorageInfoCard(),
+                if (widget.showStorageInfo && _isDemoPreview) ...[
+                  const SizedBox(height: 10),
+                  AdminEnterpriseBanner(
+                    message: s.adminVaultDemoBanner,
+                    tone: AdminEnterpriseBannerTone.warn,
+                  ),
+                ],
+                if (!widget.confidential) ...[
+                  const SizedBox(height: 10),
+                  AdminEnterpriseBanner(
+                    message: s.adminRegistryPublicBanner,
+                    icon: Icons.folder_shared_outlined,
+                  ),
+                ],
+                const SizedBox(height: 12),
                 Wrap(
-                  spacing: 8,
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
-                    _FilterChip(
+                    AdminEnterpriseFilterChip(
                       label: s.adminVaultFilterAll,
                       selected: _filter == null,
                       onTap: () {
@@ -209,7 +214,7 @@ class _AdminAssetRegistryPageState extends State<AdminAssetRegistryPage> {
                         _load();
                       },
                     ),
-                    _FilterChip(
+                    AdminEnterpriseFilterChip(
                       label: s.adminVaultFilterImport,
                       selected: _filter == 'listing_import',
                       onTap: () {
@@ -217,7 +222,7 @@ class _AdminAssetRegistryPageState extends State<AdminAssetRegistryPage> {
                         _load();
                       },
                     ),
-                    _FilterChip(
+                    AdminEnterpriseFilterChip(
                       label: s.adminVaultFilterListing,
                       selected: _filter == 'listing',
                       onTap: () {
@@ -225,7 +230,7 @@ class _AdminAssetRegistryPageState extends State<AdminAssetRegistryPage> {
                         _load();
                       },
                     ),
-                    _FilterChip(
+                    AdminEnterpriseFilterChip(
                       label: s.adminVaultFilterProfile,
                       selected: _filter == 'profile',
                       onTap: () {

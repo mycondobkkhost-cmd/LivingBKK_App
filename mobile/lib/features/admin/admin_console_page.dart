@@ -13,15 +13,12 @@ import '../../services/in_app_notification_hub.dart';
 import '../../services/realtime_service.dart';
 import '../../services/supabase_service.dart';
 import '../../theme/admin_theme.dart';
-import '../../theme/app_theme.dart';
-import '../../state/admin_viewport_controller.dart';
 import '../../utils/admin_desktop.dart';
 import '../../utils/admin_routing.dart';
-import '../../utils/admin_sign_out.dart';
 import '../../widgets/admin_mobile_layout.dart';
-import 'admin_chat_panel.dart';
-import 'admin_chats_tab.dart';
 import 'admin_nav_model.dart';
+import 'admin_ops_workspace.dart';
+import 'admin_phone_frame_host.dart';
 import 'admin_shell_scaffold.dart';
 
 /// โหมดแอดมินบนคอม — inbox + แชทในจอเดียว (Web)
@@ -232,97 +229,18 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     }
 
     final consoleActions = [
-      const AdminViewportToggleButton(),
-      IconButton(
-        icon: const Icon(Icons.storefront_outlined),
-        tooltip: s.adminViewConsumerApp,
-        onPressed: () => goConsumerApp(context),
-      ),
       IconButton(
         icon: const Icon(Icons.refresh),
         tooltip: s.refresh,
-        onPressed: () async {
-          await _refreshInbox();
-        },
-      ),
-      IconButton(
-        icon: const Icon(Icons.logout),
-        tooltip: s.signOut,
-        onPressed: () => performAdminSignOut(context),
+        onPressed: () async => _refreshInbox(),
       ),
     ];
 
-    Widget consolePane(bool splitWide) {
-      final selected = _selectedRoomId;
+    final navSelected =
+        widget.focusQueue ? AdminNavId.queue : AdminNavId.inbox;
 
-      if (splitWide) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              width: kAdminInboxPaneWidth,
-              child: AdminChatsTab(
-                compact: true,
-                embedded: true,
-                focusQueue: widget.focusQueue,
-                selectedRoomId: selected,
-                onRoomSelected: (id) => _selectRoom(id),
-                onSearchPick: (id, {messageId}) =>
-                    _selectRoom(id, messageId: messageId),
-              ),
-            ),
-            const VerticalDivider(width: 1),
-            Expanded(
-              child: selected == null
-                  ? _EmptyChatPane(text: s.adminConsolePickChat)
-                  : AdminChatPanel(
-                      key: ValueKey('$selected-${_highlightMessageId ?? ''}'),
-                      roomId: selected,
-                      embedded: true,
-                      highlightMessageId: _highlightMessageId,
-                      onBack: _clearRoom,
-                      backTooltip: adminChatBackTooltip(_returnNav, s),
-                      onHighlightConsumed: () {
-                        if (mounted) setState(() => _highlightMessageId = null);
-                      },
-                      onResolved: () async {
-                        await _refreshInbox();
-                      },
-                    ),
-            ),
-          ],
-        );
-      }
-
-      if (selected != null) {
-        return AdminChatPanel(
-          key: ValueKey('$selected-${_highlightMessageId ?? ''}'),
-          roomId: selected,
-          embedded: true,
-          highlightMessageId: _highlightMessageId,
-          onHighlightConsumed: () {
-            if (mounted) setState(() => _highlightMessageId = null);
-          },
-          onBack: _clearRoom,
-          backTooltip: adminChatBackTooltip(_returnNav, s),
-          onResolved: () async {
-            await _refreshInbox();
-            if (mounted) _clearRoom();
-          },
-        );
-      }
-
-        return AdminChatsTab(
-          compact: true,
-          embedded: true,
-          focusQueue: widget.focusQueue,
-          onRoomSelected: (id) => _selectRoom(id),
-          onSearchPick: (id, {messageId}) =>
-              _selectRoom(id, messageId: messageId),
-        );
-    }
-
-    return PopScope(
+    return AdminPhoneFrameHost(
+      child: PopScope(
       canPop: _selectedRoomId == null,
       onPopInvoked: (didPop) {
         if (!didPop && _selectedRoomId != null) _clearRoom();
@@ -330,12 +248,32 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       child: Theme(
       data: AdminTheme.shellTheme(),
       child: AdminTheme.lightPaletteScope(
-      child: ListenableBuilder(
-        listenable: AdminViewportController.instance ?? Listenable.merge(const []),
-        builder: (context, _) {
-          final wideShell = useAdminWideShell(context);
-          final splitWide = useAdminSplitPane(context);
+      child: Builder(
+        builder: (context) {
           final navConfig = _navConfig;
+
+          final opsWorkspace = AdminOpsWorkspace(
+            navConfig: navConfig,
+            selectedNav: navSelected,
+            onSelectNav: _selectNav,
+            focusQueue: widget.focusQueue,
+            showNavRail: false,
+            selectedRoomId: _selectedRoomId,
+            highlightMessageId: _highlightMessageId,
+            onRoomSelected: (id) => _selectRoom(id),
+            onSearchPick: (id, {messageId}) =>
+                _selectRoom(id, messageId: messageId),
+            onClearRoom: _clearRoom,
+            onHighlightConsumed: () {
+              if (mounted) setState(() => _highlightMessageId = null);
+            },
+            onResolved: () async {
+              await _refreshInbox();
+            },
+            onRefresh: _refreshInbox,
+            backTooltip: adminChatBackTooltip(_returnNav, s),
+            returnNav: _returnNav,
+          );
 
           final isolatedBanner = DemoCastBootstrap.isolatedAdminTrial
               ? Container(
@@ -352,48 +290,25 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
                 )
               : null;
 
-          final pane = consolePane(splitWide);
-          final shellBody = wideShell
-              ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    AdminWideContentBar(
-                      title: s.adminConsoleTitle,
-                      actions: consoleActions,
-                    ),
-                    if (isolatedBanner != null) isolatedBanner,
-                    Expanded(child: pane),
-                  ],
-                )
-              : Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (isolatedBanner != null) isolatedBanner,
-                    Expanded(child: pane),
-                  ],
-                );
+          final shellBody = Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (isolatedBanner != null) isolatedBanner,
+              Expanded(child: opsWorkspace),
+            ],
+          );
 
           return AdminMobileLayout.scaffold(
             context: context,
-            appBar: wideShell
-                ? null
-                : AdminMobileLayout.appBar(
-                    context: context,
-                    leading: AdminNavMenuButton(
-                      config: navConfig,
-                      selected: AdminNavId.inbox,
-                      onSelect: _selectNav,
-                      compact: true,
-                    ),
-                    title: Text(s.adminConsoleTitle),
-                    actions: consoleActions,
-                  ),
             body: AdminShellScaffold(
               config: navConfig,
-              selected: widget.focusQueue ? AdminNavId.queue : AdminNavId.inbox,
+              selected: navSelected,
               onSelect: _selectNav,
               tierLabel: s.adminNavTierLabel(_adminTier),
-              actions: const [],
+              pageTitle: s.adminOpsWorkspaceTitle,
+              actions: consoleActions,
+              hideSubnav: true,
+              contentBackgroundColor: const Color(0xFFF8FAFC),
               body: shellBody,
             ),
           );
@@ -401,40 +316,9 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
       ),
     ),
     ),
+    ),
     );
   }
 }
 
-class _EmptyChatPane extends StatelessWidget {
-  const _EmptyChatPane({required this.text});
 
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return ColoredBox(
-      color: AdminTheme.surfaceMuted,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.forum_outlined, size: 56, color: AppTheme.primary.withOpacity(0.45)),
-              const SizedBox(height: 16),
-              Text(
-                text,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.45,
-                  color: AdminTheme.textMuted,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

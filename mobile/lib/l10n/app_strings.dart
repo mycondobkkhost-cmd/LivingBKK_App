@@ -100,23 +100,37 @@ class AppStrings {
   String get themeDark => t('มืด', 'Dark');
   String get themeSystem => t('ตามระบบ', 'System');
   String get adminViewportSetting => t('มุมมองการแสดงผล', 'Display view');
-  String get adminViewportDesktop => t('เมนูซ้าย (คอม)', 'Sidebar (desktop)');
-  String get adminViewportMobile => t('เมนูบน (แอป)', 'Top menu (app)');
+  String get adminViewportDesktop => t('คอมเต็มจอ', 'Full desktop');
+  String get adminViewportMobilePreview => t('จำลองมือถือ', 'Phone preview');
+  String get adminViewportMobile => adminViewportMobilePreview;
   String get adminViewportDesktopHint => t(
-        'กำลังใช้: เมนูซ้ายตลอด — เหมาะกับจอคอม',
-        'Active: persistent sidebar — for desktop',
+        'พื้นที่เต็มจอ · แถบซ้าย + เมนูย่อย — เหมาะทีมงานบนคอม',
+        'Full width · left rail + subnav — for desktop ops',
       );
-  String get adminViewportMobileHint => t(
-        'กำลังใช้: เมนู ☰ ด้านบน — เหมือนแอปมือถือ',
-        'Active: top ☰ menu — like the phone app',
+  String get adminViewportMobilePreviewHint => t(
+        'เนื้อหาแคบเหมือนมือถือ · แถบซ้ายยังอยู่ — แตะไอคอนโซนเพื่อเลือกหน้า',
+        'Narrow content like a phone · left rail stays — tap zone icons for pages',
+      );
+  String get adminViewportMobileHint => adminViewportMobilePreviewHint;
+  String get adminViewportMobilePreviewBanner => t(
+        'โหมดจำลองมือถือ — เนื้อหาแคบกลางจอ · แถบนำทางซ้าย (สีน้ำเงิน) ยังใช้ได้',
+        'Phone preview — narrow centered content · dark left rail still active',
       );
   String get adminViewportToggleToDesktop =>
-      t('สลับเป็นเมนูซ้าย (คอม)', 'Switch to sidebar (desktop)');
+      t('สลับเป็นคอมเต็มจอ', 'Switch to full desktop');
   String get adminViewportToggleToMobile =>
-      t('สลับเป็นเมนูบน (แอป)', 'Switch to top menu (app)');
+      t('สลับเป็นจำลองมือถือ', 'Switch to phone preview');
   String get adminViewportWebOnlyNote => t(
-        'ไอคอนแสดงโหมดที่ใช้อยู่ — แตะเพื่อสลับ',
-        'Icon shows the active mode — tap to switch',
+        'สลับมุมมองได้ที่แถบบน — แถบซ้ายมีทุกโหมด',
+        'Switch view on the top bar — left rail is always shown',
+      );
+  String get adminPhoneFrameOn => t(
+        'เปิดกรอบมือถือ (ทดสอบ)',
+        'Show phone frame (preview)',
+      );
+  String get adminPhoneFrameOff => t(
+        'ปิดกรอบมือถือ',
+        'Hide phone frame',
       );
   String get menuDemandBoard => t('บอร์ดส่งเสนอทรัพย์', 'Demand board');
 
@@ -2886,6 +2900,72 @@ class AppStrings {
   String adminDashUpdated(String time) => t('อัปเดต $time', 'Updated $time');
   String adminDashTrendLine(String date, int leads, int appts) =>
       t('$date · เคส $leads · นัด $appts', '$date · leads $leads · viewings $appts');
+  String get adminOpsWorkspaceTitle =>
+      t('ศูนย์แชททีมงาน', 'Team chat hub');
+  String get adminOpsInboxTitle => t('กล่องข้อความ', 'Inbox');
+  String get adminContextActionsSection => t('ดำเนินการ', 'Actions');
+  String get adminOpsOpenConsole => t('เปิดศูนย์แชท', 'Open chat hub');
+  String get adminOpsConsoleCardHint => t(
+        'ตอบลูกค้า · รับงาน · ดูรายละเอียดเคส — ในจอเดียว',
+        'Reply · claim · case details — one screen',
+      );
+  String get adminEnterpriseOpsTitle =>
+      t('RealXtate Ops', 'RealXtate Ops');
+  String get adminEnterpriseSubnavHint => t(
+        'เลือกหน้างานในโซนนี้',
+        'Pick a page in this zone',
+      );
+  String get adminEnterpriseOnline => t('ออนไลน์', 'Online');
+  String get adminZoneCommand => t('ศูนย์บัญชาการ', 'Command');
+  String get adminZoneComms => t('สื่อสาร', 'Comms');
+  String get adminZoneCalendar => t('ปฏิทินนัดชม', 'Calendar');
+  String get adminZoneOperations => t('ปฏิบัติการ', 'Operations');
+  String get adminZoneAssets => t('ทรัพย์สิน', 'Assets');
+  String get adminZoneRental => t('เช่า', 'Rental');
+  String get adminZoneSystem => t('ระบบ', 'System');
+  String get adminZoneVault => t('คลังลับ', 'Vault');
+  String get adminCommandCenterTitle =>
+      t('ศูนย์บัญชาการ', 'Command center');
+  String get adminCommandCenterSubtitle => t(
+        'ภาพรวม KPI · คิวเร่งด่วน · ทางลัดทีมงาน',
+        'KPI overview · urgent queue · team shortcuts',
+      );
+  String get adminCommandPaletteHint =>
+      t('ค้นหาหน้างาน…', 'Search pages…');
+  String get adminCommandPaletteSubtitle => t(
+        'กระโดดไปโซนและหน้างาน — คีย์ลัดสำหรับทีมใหญ่',
+        'Jump to zones and pages — shortcut for large teams',
+      );
+  String get adminCommandPaletteEmpty =>
+      t('ไม่พบหน้าที่ตรงกับคำค้น', 'No matching pages');
+  String get adminLeadsPageSubtitle => t(
+        'เคสลูกค้าใหม่ · ติดตามสถานะ · เปิดรายละเอียด',
+        'New customer cases · track status · open details',
+      );
+  String get adminModerationPageSubtitle => t(
+        'ตรวจประกาศ · รูปภาพ · รายงานผู้ใช้',
+        'Review listings · images · user reports',
+      );
+
+  String get adminContextPanelTitle =>
+      t('รายละเอียดเคส', 'Case details');
+  String get adminContextStatusSection => t('สถานะ', 'Status');
+  String get adminContextCustomerSection => t('ลูกค้า', 'Customer');
+  String get adminContextPropertySection => t('ทรัพย์', 'Property');
+  String get adminContextReferenceSection => t('อ้างอิง', 'Reference');
+  String get adminContextLeadSection => t('ลีด', 'Lead');
+  String get adminContextShortcutsSection => t('ทางลัด', 'Shortcuts');
+  String get adminContextOpenListing =>
+      t('เปิดทรัพย์', 'Open listing');
+  String get adminContextOpenLead => t('เปิดลีด', 'Open lead');
+  String get adminContextParticipant360 =>
+      t('มุมมอง 360° ผู้ใช้', 'Participant 360°');
+  String get adminContextPhoneLabel => t('เบอร์', 'Phone');
+  String adminInboxSlaWait(int minutes) => t(
+        'รอตอบ $minutes นาที',
+        'Waiting $minutes min',
+      );
+
   String get adminConsoleInboxHint => t(
         'กล่องรับงาน — เฉพาะเคสที่ต้องมีคนดูแล',
         'Inbox — human-needed cases only',
