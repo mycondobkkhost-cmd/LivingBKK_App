@@ -149,6 +149,48 @@ Deno.serve(async (req) => {
       sender_id: userId,
     });
 
+    if (Boolean(body.force_admin_handoff)) {
+      const reply = await insertMessage(
+        db,
+        thread.id,
+        "system",
+        "คำถามนี้ต้องให้เจ้าหน้าที่ตอบโดยตรง — เราแจ้งทีมแล้ว และจะติดต่อกลับในแชทนี้โดยเร็วที่สุด",
+        { requires_admin: true },
+      );
+
+      const { data: updated, error: updateError } = await db
+        .from("chat_threads")
+        .update({
+          admin_reply_done: false,
+          admin_escalated: true,
+          status: "waiting_admin",
+          category: "escalation",
+          priority: "high",
+          unclear_streak: 0,
+          last_message_at: new Date().toISOString(),
+        })
+        .eq("id", thread.id)
+        .select("*")
+        .single();
+
+      if (updateError) {
+        return jsonResponse({ error: updateError.message }, 400);
+      }
+
+      await notifyEscalation(
+        { ...thread, ...updated } as ThreadRow,
+        "property_handoff",
+        text,
+      );
+
+      return jsonResponse({
+        thread: updated,
+        user_message: userMsg,
+        replies: [reply],
+        route_source: "forced_admin_handoff",
+      });
+    }
+
     const humanOnlyCategories = new Set([
       "customer_requirement",
       "demand_offer",

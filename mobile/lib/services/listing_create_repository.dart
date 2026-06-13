@@ -241,13 +241,18 @@ class ListingCreateRepository {
       }
       return;
     }
-    await SupabaseService.client!
+    final row = await SupabaseService.client!
         .from('listings')
         .update({
           'status': 'pending_review',
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
-        .eq('id', listingId);
+        .eq('id', listingId)
+        .select('status')
+        .maybeSingle();
+    if (row?['status'] != 'pending_review') {
+      throw Exception('ส่งประกาศให้ตรวจไม่สำเร็จ กรุณาลองใหม่');
+    }
   }
 
   /// แอดมินอนุมัติแล้ว — ใช้ภายหลัง

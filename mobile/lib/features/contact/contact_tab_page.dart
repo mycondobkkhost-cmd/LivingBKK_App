@@ -32,13 +32,24 @@ class _ContactTabPageState extends State<ContactTabPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      ChatService.instance.ensureCustomerInboxRealtime();
-      await ChatService.instance.ensureParticipantHub();
-      if (mounted) _refresh();
+      try {
+        ChatService.instance.ensureCustomerInboxRealtime();
+        await ChatService.instance.ensureParticipantHub();
+        if (mounted) _refresh();
+      } catch (e) {
+        _showChatError(e);
+      }
     });
   }
 
   void _refresh() => setState(() {});
+
+  void _showChatError(Object error) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$error')),
+    );
+  }
 
   void _openRoom(ChatRoom room) {
     ChatService.instance.markThreadRead(room.id);
@@ -54,21 +65,33 @@ class _ContactTabPageState extends State<ContactTabPage> {
   }
 
   Future<void> _openAdminInquiry() async {
-    final room = await ChatService.instance.openStaffSupportRoom();
-    if (!mounted) return;
-    _openRoom(room);
+    try {
+      final room = await ChatService.instance.openStaffSupportRoom();
+      if (!mounted) return;
+      _openRoom(room);
+    } catch (e) {
+      _showChatError(e);
+    }
   }
 
   Future<void> _openDiscovery() async {
-    final room = await ChatService.instance.openDiscoveryRoom();
-    if (!mounted) return;
-    _openRoom(room);
+    try {
+      final room = await ChatService.instance.openDiscoveryRoom();
+      if (!mounted) return;
+      _openRoom(room);
+    } catch (e) {
+      _showChatError(e);
+    }
   }
 
   Future<void> _openHub() async {
-    final room = await ChatService.instance.ensureParticipantHub();
-    if (!mounted) return;
-    _openRoom(room);
+    try {
+      final room = await ChatService.instance.ensureParticipantHub();
+      if (!mounted) return;
+      _openRoom(room);
+    } catch (e) {
+      _showChatError(e);
+    }
   }
 
   @override

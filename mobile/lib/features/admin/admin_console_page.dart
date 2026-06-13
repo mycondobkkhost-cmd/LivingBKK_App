@@ -156,7 +156,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _allowed = true;
+        _allowed = false;
         _loading = false;
       });
     }
