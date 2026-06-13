@@ -851,7 +851,8 @@ class ChatService extends ChangeNotifier {
         notifyListeners();
         return room;
       } catch (e) {
-        debugPrint('openDiscoveryRoom backend fallback: $e');
+        debugPrint('openDiscoveryRoom backend: $e');
+        throw Exception('ไม่สามารถเปิดแชทได้ กรุณาลองใหม่');
       }
     }
     return _memoryOpenDiscoveryRoom();
@@ -909,7 +910,8 @@ class ChatService extends ChangeNotifier {
         notifyListeners();
         return room;
       } catch (e) {
-        debugPrint('openRoom backend fallback: $e');
+        debugPrint('openRoom backend: $e');
+        throw Exception('ไม่สามารถเปิดแชทได้ กรุณาลองใหม่');
       }
     }
 
@@ -946,6 +948,7 @@ class ChatService extends ChangeNotifier {
         active = persisted;
       } catch (e) {
         debugPrint('sendUserMessage persist: $e');
+        throw Exception('ไม่สามารถส่งข้อความได้ กรุณาลองใหม่');
       }
     }
     if (_backendActive && active.isPersisted) {
@@ -979,6 +982,7 @@ class ChatService extends ChangeNotifier {
         active = persisted;
       } catch (e) {
         debugPrint('ensurePersistedRoom: $e');
+        throw Exception('ไม่สามารถเชื่อมต่อแชทได้ กรุณาลองใหม่');
       }
     }
     return active;
@@ -1001,6 +1005,7 @@ class ChatService extends ChangeNotifier {
         return;
       } catch (e) {
         debugPrint('appendViewingSummary backend: $e');
+        throw Exception('ส่งคำขอนัดดูไม่สำเร็จ กรุณาลองใหม่');
       }
     }
     _memoryAppendViewingSummary(
@@ -1025,6 +1030,7 @@ class ChatService extends ChangeNotifier {
         await _repo.recordViewing(active, leadSummary);
       } catch (e) {
         debugPrint('submitViewingWithTags backend: $e');
+        throw Exception('ส่งคำขอนัดดูไม่สำเร็จ กรุณาลองใหม่');
       }
     }
     _memorySubmitViewingWithTags(
@@ -1230,7 +1236,10 @@ class ChatService extends ChangeNotifier {
       allowViewingRequest: true,
     );
 
-    if (_backendActive && room.isPersisted) {
+    if (_backendActive) {
+      if (!room.isPersisted) {
+        throw Exception('ไม่สามารถเชื่อมต่อแชทได้ กรุณาลองใหม่');
+      }
       try {
         await _repo.recordBookingInterest(room, summary);
         await refreshMyThreads();
@@ -1238,7 +1247,8 @@ class ChatService extends ChangeNotifier {
         _queueOpenRoom(room);
         return room;
       } catch (e) {
-        debugPrint('recordBookingInterest backend fallback: $e');
+        debugPrint('recordBookingInterest backend: $e');
+        throw Exception('ส่งความสนใจจองไม่สำเร็จ กรุณาลองใหม่');
       }
     }
 

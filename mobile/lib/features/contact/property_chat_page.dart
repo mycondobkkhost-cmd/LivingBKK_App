@@ -46,14 +46,24 @@ Future<void> _openPropertyChatAsync(
   bool allowViewingRequest = false,
   bool openViewingForm = false,
 }) async {
-  final room = await ChatService.instance.openRoom(
-    listingId: listing.id,
-    listingCode: listing.listingCode,
-    listingTitle: listing.localizedTitle(AppStrings.of(context).isEnglish),
-    projectName: listing.localizedProjectName(AppStrings.of(context).isEnglish) ??
-        listing.projectName,
-    allowViewingRequest: allowViewingRequest,
-  );
+  late final ChatRoom room;
+  try {
+    room = await ChatService.instance.openRoom(
+      listingId: listing.id,
+      listingCode: listing.listingCode,
+      listingTitle: listing.localizedTitle(AppStrings.of(context).isEnglish),
+      projectName: listing.localizedProjectName(AppStrings.of(context).isEnglish) ??
+          listing.projectName,
+      allowViewingRequest: allowViewingRequest,
+    );
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    }
+    return;
+  }
   if (!context.mounted) return;
   await Navigator.push(
     context,
@@ -115,17 +125,27 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
   }
 
   Future<void> _send() async {
-    var text = _input.text.trim();
+    final originalText = _input.text.trim();
+    var text = originalText;
     if (text.isEmpty || _sending) return;
     if (_translateEn) {
       text = '[EN] $text';
     }
     _input.clear();
     setState(() => _sending = true);
-    await ChatService.instance.sendUserMessage(_room, text);
-    if (!mounted) return;
-    setState(() => _sending = false);
-    _scrollToBottom();
+    try {
+      await ChatService.instance.sendUserMessage(_room, text);
+      if (!mounted) return;
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      _input.text = originalText;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   void _scrollToBottom() {
@@ -146,7 +166,15 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
   }
 
   Future<void> _openViewingFormFromLink() async {
-    await showViewingRequestFlow(context, _room);
+    try {
+      await showViewingRequestFlow(context, _room);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+      return;
+    }
     if (!mounted) return;
     setState(() {});
     _scrollToBottom();

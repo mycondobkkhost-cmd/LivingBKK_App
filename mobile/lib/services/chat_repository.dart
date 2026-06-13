@@ -27,28 +27,15 @@ class ChatRepository {
       'listing_title': listingTitle ?? '',
       if (projectName != null) 'project_name': projectName,
       'allow_viewing_request': allowViewingRequest,
+      if (welcomeText != null) 'welcome_text': welcomeText,
     };
 
-    try {
-      final res =
-          await client.functions.invoke('chat-open-thread', body: payload);
-      final data = res.data as Map<String, dynamic>?;
-      if (data == null || data['error'] != null) {
-        throw Exception(data?['error'] ?? 'chat-open-thread failed');
-      }
-      return _roomFromPayload(data);
-    } catch (_) {
-      return _openThreadDirect(
-        threadId: threadId,
-        roomKind: roomKind,
-        listingId: listingId,
-        listingCode: listingCode,
-        listingTitle: listingTitle ?? '',
-        projectName: projectName,
-        allowViewingRequest: allowViewingRequest,
-        welcomeText: welcomeText,
-      );
+    final res = await client.functions.invoke('chat-open-thread', body: payload);
+    final data = res.data as Map<String, dynamic>?;
+    if (data == null || data['error'] != null) {
+      throw Exception(data?['error'] ?? 'chat-open-thread failed');
     }
+    return _roomFromPayload(data);
   }
 
   Future<List<ChatRoom>> fetchMyThreads() async {
@@ -122,12 +109,6 @@ class ChatRepository {
       return;
     }
 
-    // แชททรัพย์ — เข้าคิวแอดมินทันที (ไม่ให้ chat-turn ตอบ FAQ แทน)
-    if (room.isPropertyListing) {
-      await _sendUserMessageDirect(room, trimmed);
-      return;
-    }
-
     final client = SupabaseService.client!;
     final payload = {
       'thread_id': room.id,
@@ -137,19 +118,16 @@ class ChatRepository {
       'listing_title': room.listingTitle,
       if (room.projectName != null) 'project_name': room.projectName,
       'allow_viewing_request': room.allowViewingRequest,
+      'force_admin_handoff': room.isPropertyListing,
       'text': trimmed,
     };
 
-    try {
-      final res = await client.functions.invoke('chat-turn', body: payload);
-      final data = res.data as Map<String, dynamic>?;
-      if (data == null || data['error'] != null) {
-        throw Exception(data?['error'] ?? 'chat-turn failed');
-      }
-      _mergeTurnResponse(room, data);
-    } catch (_) {
-      await _sendUserMessageDirect(room, trimmed);
+    final res = await client.functions.invoke('chat-turn', body: payload);
+    final data = res.data as Map<String, dynamic>?;
+    if (data == null || data['error'] != null) {
+      throw Exception(data?['error'] ?? 'chat-turn failed');
     }
+    _mergeTurnResponse(room, data);
   }
 
   Future<ChatRoom> recordRequirement({
@@ -464,28 +442,20 @@ class ChatRepository {
     Map<String, String> summary, {
     bool duplicatePhoneSuffix = false,
   }) async {
-    try {
-      final client = SupabaseService.client!;
-      final res = await client.functions.invoke(
-        'chat-record-viewing',
-        body: {
-          'thread_id': room.id,
-          'summary': summary,
-          'duplicate_phone_suffix': duplicatePhoneSuffix,
-        },
-      );
-      final data = res.data as Map<String, dynamic>?;
-      if (data == null || data['error'] != null) {
-        throw Exception(data?['error'] ?? 'chat-record-viewing failed');
-      }
-      _applyViewingPayload(room, data);
-    } catch (_) {
-      await _recordViewingDirect(
-        room,
-        summary,
-        duplicatePhoneSuffix: duplicatePhoneSuffix,
-      );
+    final client = SupabaseService.client!;
+    final res = await client.functions.invoke(
+      'chat-record-viewing',
+      body: {
+        'thread_id': room.id,
+        'summary': summary,
+        'duplicate_phone_suffix': duplicatePhoneSuffix,
+      },
+    );
+    final data = res.data as Map<String, dynamic>?;
+    if (data == null || data['error'] != null) {
+      throw Exception(data?['error'] ?? 'chat-record-viewing failed');
     }
+    _applyViewingPayload(room, data);
   }
 
   void _applyViewingPayload(ChatRoom room, Map<String, dynamic> data) {
@@ -512,113 +482,6 @@ class ChatRepository {
     room.status = 'waiting_admin';
     room.priority = 'high';
     room.updatedAt = DateTime.now();
-  }
-
-  Future<void> _recordViewingDirect(
-    ChatRoom room,
-    Map<String, String> summary, {
-    bool duplicatePhoneSuffix = false,
-  }) async {
-    final client = SupabaseService.client!;
-    final uid = client.auth.currentUser!.id;
-
-    final threadRow = await client
-        .from('chat_threads')
-        .select('*')
-        .eq('id', room.id)
-        .eq('user_id', uid)
-        .maybeSingle();
-    if (threadRow == null) {
-      throw Exception('Thread not found');
-    }
-    final thread = Map<String, dynamic>.from(threadRow);
-    final txnRef = thread['transaction_ref']?.toString();
-    final viewing = summary['นัดดูทรัพย์'] ?? summary['Viewing'] ?? '-';
-    final lines = summary.entries.map((e) => '• ${e.key}: ${e.value}').join('\n');
-
-    final inserts = <Map<String, dynamic>>[
-      {
-        'thread_id': room.id,
-        'role': 'system',
-        'text':
-            'ระบบได้รับคำขอของคุณแล้ว\n'
-            'ทีมงานจะติดต่อกลับหาคุณโดยเร็วที่สุด บางกรณีอาจเป็นการโทรติดต่อกลับ'
-            '${txnRef != null && txnRef.isNotEmpty ? '\nเลขอ้างอิง: $txnRef' : ''}',
-      },
-    ];
-    if (duplicatePhoneSuffix) {
-      inserts.add({
-        'thread_id': room.id,
-        'role': 'admin_notice',
-        'text':
-            '⚠️ แจ้งทีมงาน: พบ 4 ตัวท้ายเบอร์ลูกค้าซ้ำในระบบ — รอตรวจสอบ',
-      });
-    }
-    inserts.addAll([
-      {
-        'thread_id': room.id,
-        'role': 'system',
-        'text': 'สรุปโปรไฟล์ลูกค้า\n$lines',
-      },
-      {
-        'thread_id': room.id,
-        'role': 'admin_notice',
-        'text':
-            'รายละเอียดนัดดู: $viewing\n'
-            'เจ้าหน้าที่จะยืนยันนัดและประสานงานให้ครับ',
-      },
-    ]);
-
-    final rows = await client
-        .from('chat_messages')
-        .insert(inserts)
-        .select('*');
-
-    final messages = <ChatMessage>[];
-    for (final row in rows as List) {
-      if (row is Map) {
-        messages.add(ChatMessage.fromJson(Map<String, dynamic>.from(row)));
-      }
-    }
-
-    final updated = await client
-        .from('chat_threads')
-        .update({
-          'viewing_submitted': true,
-          'admin_escalated': true,
-          'admin_reply_done': false,
-          'category': 'viewing_request',
-          'status': 'waiting_admin',
-          'priority': 'high',
-        })
-        .eq('id', room.id)
-        .select('*')
-        .single();
-
-    _applyViewingPayload(room, {
-      'thread': updated,
-      'messages': messages.map((m) => {
-            'id': m.id,
-            'role': _roleToString(m.role),
-            'text': m.text,
-            'created_at': m.createdAt.toUtc().toIso8601String(),
-            'requires_admin': m.requiresAdmin,
-            'links': m.links.map((l) => l.toJson()).toList(),
-          }),
-    });
-  }
-
-  String _roleToString(ChatMessageRole role) {
-    switch (role) {
-      case ChatMessageRole.ai:
-        return 'ai';
-      case ChatMessageRole.system:
-        return 'system';
-      case ChatMessageRole.adminNotice:
-        return 'admin_notice';
-      case ChatMessageRole.user:
-        return 'user';
-    }
   }
 
   /// หาแชทที่ผูกกับ Lead (thread_id หรือ listing_code + seeker)
@@ -951,125 +814,6 @@ class ChatRepository {
     room.updatedAt = DateTime.now();
   }
 
-  Future<String?> _resolveListingUuid(String? listingCode) async {
-    if (listingCode == null || listingCode.isEmpty) return null;
-    final client = SupabaseService.client!;
-    final row = await client
-        .from('listings')
-        .select('id')
-        .eq('listing_code', listingCode)
-        .maybeSingle();
-    return row?['id'] as String?;
-  }
-
-  Future<ChatRoom> _openThreadDirect({
-    String? threadId,
-    required String roomKind,
-    String? listingId,
-    String? listingCode,
-    required String listingTitle,
-    String? projectName,
-    bool allowViewingRequest = false,
-    String? welcomeText,
-  }) async {
-    final client = SupabaseService.client!;
-    final uid = client.auth.currentUser!.id;
-
-    if (threadId != null) {
-      final existing = await client
-          .from('chat_threads')
-          .select('*')
-          .eq('id', threadId)
-          .eq('user_id', uid)
-          .maybeSingle();
-      if (existing != null) {
-        final messages = await _fetchMessages(threadId);
-        return ChatRoom.fromThreadJson(
-          Map<String, dynamic>.from(existing),
-          messages,
-        );
-      }
-    }
-
-    var backendListingId = listingIdForBackend(listingId);
-    backendListingId ??= await _resolveListingUuid(listingCode);
-    final isDiscovery = roomKind == 'property' && backendListingId == null;
-
-    var query = client.from('chat_threads').select('*').eq('user_id', uid);
-    if (roomKind == 'property' && backendListingId != null) {
-      query = query
-          .eq('listing_id', backendListingId)
-          .eq('room_kind', 'property');
-    } else if (roomKind == 'property' && listingCode != null) {
-      query = query.eq('listing_code', listingCode).eq('room_kind', 'property');
-    } else {
-      query = query.eq('room_kind', roomKind);
-    }
-
-    final existing = await query.maybeSingle();
-    if (existing != null) {
-      final id = existing['id']?.toString();
-      final messages = id == null ? <ChatMessage>[] : await _fetchMessages(id);
-      return ChatRoom.fromThreadJson(
-        Map<String, dynamic>.from(existing),
-        messages,
-      );
-    }
-
-    final allowViewing = allowViewingRequest && !isDiscovery;
-    var category = isDiscovery ? 'discovery' : 'property_faq';
-    if (roomKind == 'staff_support') category = 'staff_support';
-
-    final created = await client
-        .from('chat_threads')
-        .insert({
-          'user_id': uid,
-          'room_kind': roomKind,
-          'listing_id': backendListingId,
-          'listing_code': listingCode,
-          'listing_title': listingTitle,
-          'project_name': projectName,
-          'category': category,
-          'allow_viewing_request': allowViewing,
-          'admin_escalated': roomKind == 'staff_support',
-          'status': roomKind == 'staff_support' ? 'waiting_admin' : 'open',
-        })
-        .select('*')
-        .single();
-
-    final welcome = welcomeText ??
-        (listingTitle.isNotEmpty
-            ? 'สวัสดีครับ ผมผู้ช่วย RealXtate สำหรับ $listingTitle\n'
-                'ถามรายละเอียดทรัพย์นี้ได้เลย — หากต้องการนัดดูห้อง กด「ขอนัดดูห้อง」ด้านล่างเมื่อพร้อมครับ'
-            : 'สวัสดีครับ ผมผู้ช่วย RealXtate พร้อมช่วยเหลือครับ');
-
-    final welcomeRole = roomKind == 'staff_support' ? 'admin_notice' : 'ai';
-    await client.from('chat_messages').insert({
-      'thread_id': created['id'],
-      'role': welcomeRole,
-      'text': welcome,
-      'links': [],
-    });
-
-    final messages = await _fetchMessages(created['id']?.toString() ?? '');
-    return ChatRoom.fromThreadJson(
-      Map<String, dynamic>.from(created),
-      messages,
-    );
-  }
-
-  bool _isExplicitStaffRequest(String text) {
-    final q = text.toLowerCase();
-    const keys = [
-      'ขอคุยกับแอดมิน',
-      'ขอคุยกับเจ้าหน้าที่',
-      'คุยกับเจ้าหน้าที่',
-      'ติดต่อเจ้าหน้าที่',
-      'ขอเจ้าหน้าที่',
-    ];
-    return keys.any((k) => q.contains(k));
-  }
-
   Future<void> _sendUserMessageHumanOnly(ChatRoom room, String text) async {
     if (text.isEmpty) return;
     final client = SupabaseService.client!;
@@ -1102,92 +846,6 @@ class ChatRepository {
         .select('*')
         .single();
     _applyThreadPatch(room, Map<String, dynamic>.from(updated));
-    room.updatedAt = DateTime.now();
-  }
-
-  Future<void> _sendUserMessageDirect(ChatRoom room, String text) async {
-    if (text.isEmpty) return;
-    final client = SupabaseService.client!;
-    final uid = client.auth.currentUser!.id;
-
-    final userRow = await client
-        .from('chat_messages')
-        .insert({
-          'thread_id': room.id,
-          'role': 'user',
-          'text': text,
-          'sender_id': uid,
-        })
-        .select('*')
-        .single();
-
-    final userMsg =
-        ChatMessage.fromJson(Map<String, dynamic>.from(userRow));
-    if (!room.messages.any((m) => m.id == userMsg.id)) {
-      room.messages.add(userMsg);
-    }
-
-    final escalate = _isExplicitStaffRequest(text);
-    final unclearStreak = escalate ? 0 : room.unclearStreak + 1;
-    // ข้อความแรกของลูกค้าในแชททรัพย์ → เข้าคิวแอดมิน (ไม่รอ 2 รอบ)
-    final shouldEscalate =
-        escalate || unclearStreak >= 1 || room.isPropertyListing;
-
-    late final String replyText;
-    late final String replyRole;
-    if (shouldEscalate) {
-      replyText =
-          'คำถามนี้ต้องให้เจ้าหน้าที่ตอบโดยตรง — เราแจ้งทีมแล้ว และจะติดต่อกลับในแชทนี้โดยเร็วที่สุด';
-      replyRole = 'system';
-    } else {
-      replyText =
-          'ยังไม่แน่ใจคำถามนี้ครับ — ลองระบุงบ/ทำเล/ประเภทห้อง หรือพิมพ์「ขอคุยกับเจ้าหน้าที่」เพื่อให้ทีมงานช่วยต่อครับ';
-      replyRole = 'ai';
-    }
-
-    final replyRow = await client
-        .from('chat_messages')
-        .insert({
-          'thread_id': room.id,
-          'role': replyRole,
-          'text': replyText,
-          'requires_admin': shouldEscalate,
-        })
-        .select('*')
-        .single();
-
-    final reply =
-        ChatMessage.fromJson(Map<String, dynamic>.from(replyRow));
-    if (!room.messages.any((m) => m.id == reply.id)) {
-      room.messages.add(reply);
-    }
-
-    final patch = <String, dynamic>{
-      'admin_reply_done': false,
-      'unclear_streak': unclearStreak,
-      'last_message_at': DateTime.now().toUtc().toIso8601String(),
-      if (shouldEscalate) ...{
-        'admin_escalated': true,
-        'status': 'waiting_admin',
-        'category': 'escalation',
-        'priority': 'high',
-      },
-    };
-
-    final updated = await client
-        .from('chat_threads')
-        .update(patch)
-        .eq('id', room.id)
-        .select('*')
-        .single();
-
-    _applyThreadPatch(room, Map<String, dynamic>.from(updated));
-    if (shouldEscalate) {
-      room.category = 'escalation';
-      room.adminEscalated = true;
-      room.status = 'waiting_admin';
-      room.priority = 'high';
-    }
     room.updatedAt = DateTime.now();
   }
 

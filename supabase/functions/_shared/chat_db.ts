@@ -87,6 +87,7 @@ export async function ensureChatThread(
     throw new Error(insertError?.message ?? "Failed to create thread");
   }
 
+  const customWelcomeText = (body.welcome_text as string | undefined)?.trim();
   const welcome = welcomeMessage(
     roomKind,
     listingTitle,
@@ -96,7 +97,7 @@ export async function ensureChatThread(
   await db.from("chat_messages").insert({
     thread_id: created.id,
     role: welcome.role,
-    text: welcome.text,
+    text: customWelcomeText || welcome.text,
     links: welcome.links ?? [],
   });
 
