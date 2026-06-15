@@ -530,7 +530,13 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
                 children: [
                   _CircleIconButton(
                     icon: Icons.arrow_back,
-                    onTap: () => context.pop(),
+                    onTap: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/');
+                      }
+                    },
                   ),
                   const Spacer(),
                   _FloatingToolBar(
