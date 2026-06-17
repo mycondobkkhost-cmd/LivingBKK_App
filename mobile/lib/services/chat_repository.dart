@@ -348,8 +348,12 @@ class ChatRepository {
           'assigned_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', threadId)
+        .or('assigned_admin_id.is.null,assigned_admin_id.eq.$uid')
         .select('*')
-        .single();
+        .maybeSingle();
+    if (updated == null) {
+      throw Exception('มีคนรับงานแล้ว');
+    }
     return ChatRoom.fromThreadJson(
       Map<String, dynamic>.from(updated),
       await _fetchMessages(threadId),
@@ -604,7 +608,7 @@ class ChatRepository {
             'created_at': m.createdAt.toUtc().toIso8601String(),
             'requires_admin': m.requiresAdmin,
             'links': m.links.map((l) => l.toJson()).toList(),
-          }),
+          }).toList(),
     });
   }
 

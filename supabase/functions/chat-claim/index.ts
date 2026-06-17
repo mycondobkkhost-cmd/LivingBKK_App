@@ -59,11 +59,15 @@ Deno.serve(async (req) => {
         sla_notified_at: null,
       })
       .eq("id", thread_id)
+      .or(`assigned_admin_id.is.null,assigned_admin_id.eq.${auth.userId}`)
       .select("*")
-      .single();
+      .maybeSingle();
 
     if (updateError) {
       return jsonResponse({ error: updateError.message }, 400);
+    }
+    if (!updated) {
+      return jsonResponse({ error: "มีคนรับงานแล้ว" }, 409);
     }
 
     const { data: claimer } = await db

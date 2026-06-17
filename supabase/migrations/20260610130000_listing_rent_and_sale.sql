@@ -84,22 +84,23 @@ SELECT
     (
       SELECT json_agg(li.public_url ORDER BY li.sort_order)
       FROM public.listing_images li
-      WHERE li.listing_id = l.id AND li.is_public = true
+      WHERE li.listing_id = l.id
+        AND li.public_url IS NOT NULL
+        AND li.moderation_status IN ('approved', 'pending')
     ),
     '[]'::json
   ) AS image_urls
 FROM public.listings l
+LEFT JOIN public.property_inventory inv ON inv.id = l.inventory_id
 LEFT JOIN public.property_projects pp ON pp.id = l.project_id
 LEFT JOIN public.geo_zones gz ON gz.id = l.geo_zone_id
 LEFT JOIN public.geo_zones gz_pp ON gz_pp.id = pp.geo_zone_id
-LEFT JOIN LATERAL (
-  SELECT i.id, i.inventory_code, i.member_count
-  FROM public.property_inventory i
-  JOIN public.inventory_members im ON im.inventory_id = i.id
-  WHERE im.listing_id = l.id
-  LIMIT 1
-) inv ON true
 WHERE l.status = 'published'
-  AND l.display_contact_clean IS NOT FALSE;
+  AND l.display_contact_clean = true
+  AND (l.expires_at IS NULL OR l.expires_at > now())
+  AND (
+    l.inventory_id IS NULL
+    OR l.id = inv.display_listing_id
+  );
 
 GRANT SELECT ON public.listings_public TO anon, authenticated;

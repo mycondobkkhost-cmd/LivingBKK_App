@@ -49,9 +49,12 @@ class AuthService extends ChangeNotifier {
   String? get displayEmail =>
       _trial?.email ?? currentUser?.email ?? 'ผู้ใช้ทดสอบ (Demo)';
 
-  bool get isSignedIn => isTrialSignedIn || currentUser != null;
+  bool get isSignedIn => isTrialSignedIn || isRealSupabaseSession;
 
-  bool get isRealSupabaseSession => currentUser != null && !isTrialSignedIn;
+  bool get isRealSupabaseSession =>
+      _client?.auth.currentSession != null &&
+      currentUser != null &&
+      !isTrialSignedIn;
 
   /// ลงประกาศจริง — ต้องมีบัญชี Supabase (โหมดทดลองไม่พอ)
   bool get canCreateListing => isRealSupabaseSession;
@@ -101,17 +104,20 @@ class AuthService extends ChangeNotifier {
       throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
     }
     _trial = null;
-    await _client!.auth.signUp(
+    final res = await _client!.auth.signUp(
       email: email,
       password: password,
       data: {
         'role': 'seeker',
         if (phone != null && phone.isNotEmpty) 'phone': phone,
-        if (displayName != null && displayName.isNotEmpty) 'display_name': displayName,
+        if (displayName != null && displayName.isNotEmpty)
+          'display_name': displayName,
       },
     );
-    await _syncProfileRole();
-    await NotificationService.instance.registerIfPossible();
+    if (res.session != null || _client!.auth.currentSession != null) {
+      await _syncProfileRole();
+      await NotificationService.instance.registerIfPossible();
+    }
     notifyListeners();
   }
 
@@ -291,19 +297,13 @@ class AuthService extends ChangeNotifier {
           .maybeSingle();
       final dbRole = row?['role'] as String?;
       final dbSlug = row?['staff_slug'] as String?;
-      if (dbRole == 'admin') {
-        return (role: dbRole, staffSlug: dbSlug ?? metaSlug);
-      }
-      if (metaRole == 'admin') {
-        return (role: metaRole, staffSlug: dbSlug ?? metaSlug);
-      }
       if (dbRole != null && dbRole.isNotEmpty) {
         return (role: dbRole, staffSlug: dbSlug ?? metaSlug);
       }
     } catch (_) {
-      return (role: metaRole, staffSlug: metaSlug);
+      return (role: metaRole == 'admin' ? null : metaRole, staffSlug: metaSlug);
     }
-    return (role: metaRole, staffSlug: metaSlug);
+    return (role: metaRole == 'admin' ? null : metaRole, staffSlug: metaSlug);
   }
 
   /// เฉพาะแอดมินระบบ — มุมมองลูกค้า/เอเจนซี่/เจ้าของสลับที่หน้าแรก ไม่เขียน DB
