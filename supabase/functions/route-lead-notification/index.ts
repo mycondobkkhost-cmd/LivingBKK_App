@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
       supabase,
       assignee,
       "LivingBKK — Lead ใหม่",
-      `มี Lead สำหรับ $listingCode`,
+      `มี Lead สำหรับ ${listingCode}`,
     );
 
     return jsonResponse({

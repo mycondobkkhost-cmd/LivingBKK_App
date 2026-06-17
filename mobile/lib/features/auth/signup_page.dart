@@ -109,8 +109,21 @@ class _SignUpPageState extends State<SignUpPage> {
         email: _email.text.trim(),
         password: _password.text,
         phone: phone,
-        displayName: _displayName.text.trim().isEmpty ? null : _displayName.text.trim(),
+        displayName: _displayName.text.trim().isEmpty
+            ? null
+            : _displayName.text.trim(),
       );
+      if (!_auth.isRealSupabaseSession) {
+        if (!mounted) return;
+        _snack(
+          s.t(
+            'สมัครสำเร็จ กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ',
+            'Sign-up successful. Please confirm your email before signing in.',
+          ),
+        );
+        context.go('/login');
+        return;
+      }
       if (_avatarBytes != null) {
         try {
           await UserProfileService.instance.uploadAvatarBytes(_avatarBytes!);

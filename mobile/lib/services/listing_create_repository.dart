@@ -152,6 +152,11 @@ class ListingCreateRepository {
     final listedBy = ListingCreateRules.listedByRoleDb(input.posterRole);
     final ownerVerified = ListingCreateRules.ownerVerifiedFor(input.posterRole);
 
+    final occupancySalePrice =
+        OfferCommissionScheme.isDualListing(input.listingType)
+            ? (input.priceSaleNet ?? input.priceNet)
+            : input.priceNet;
+
     final payload = <String, dynamic>{
       'owner_id': uid,
       'created_by_id': uid,
@@ -179,7 +184,7 @@ class ListingCreateRepository {
       if (input.ownerExclusiveMandate) 'owner_exclusive_status': 'interested',
       'agent_exclusive': input.agentExclusive,
       'viewing_access': input.viewingAccess.toJson(),
-      ...input.occupancy.toDbFields(salePrice: input.priceNet),
+      ...input.occupancy.toDbFields(salePrice: occupancySalePrice),
       if (input.promoPriceNet != null && input.promoPriceNet! > 0)
         'price_internal': input.promoPriceNet,
       if (input.promoSalePriceNet != null && input.promoSalePriceNet! > 0)
