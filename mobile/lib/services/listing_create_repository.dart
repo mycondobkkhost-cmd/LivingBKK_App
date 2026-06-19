@@ -179,7 +179,9 @@ class ListingCreateRepository {
       if (input.ownerExclusiveMandate) 'owner_exclusive_status': 'interested',
       'agent_exclusive': input.agentExclusive,
       'viewing_access': input.viewingAccess.toJson(),
-      ...input.occupancy.toDbFields(salePrice: input.priceNet),
+      ...input.occupancy.toDbFields(
+        salePrice: input.priceSaleNet ?? input.priceNet,
+      ),
       if (input.promoPriceNet != null && input.promoPriceNet! > 0)
         'price_internal': input.promoPriceNet,
       if (input.promoSalePriceNet != null && input.promoSalePriceNet! > 0)

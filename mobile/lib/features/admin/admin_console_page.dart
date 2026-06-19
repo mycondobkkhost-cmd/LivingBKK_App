@@ -153,14 +153,14 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
         _loading = false;
         _adminTier = tier;
       });
+      if (ok) await _refreshInbox();
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _allowed = true;
+        _allowed = false;
         _loading = false;
       });
     }
-    await _refreshInbox();
   }
 
   void _selectRoom(String roomId, {String? messageId}) {
