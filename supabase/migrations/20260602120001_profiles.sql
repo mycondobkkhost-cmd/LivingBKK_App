@@ -29,10 +29,7 @@ BEGIN
   VALUES (
     NEW.id,
     COALESCE(NEW.raw_user_meta_data ->> 'display_name', NEW.email),
-    COALESCE(
-      (NEW.raw_user_meta_data ->> 'role')::public.user_role,
-      'seeker'::public.user_role
-    )
+    'seeker'::public.user_role
   );
   RETURN NEW;
 END;

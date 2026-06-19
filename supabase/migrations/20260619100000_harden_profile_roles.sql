@@ -1,4 +1,21 @@
--- Phase 12: ห้ามผู้ใช้ตั้ง role = admin เอง (ต้องตั้งผ่าน SQL / admin ที่มีอยู่)
+-- Harden profile roles for databases that already ran the earlier profile migrations.
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  INSERT INTO public.profiles (id, display_name, role)
+  VALUES (
+    NEW.id,
+    COALESCE(NEW.raw_user_meta_data ->> 'display_name', NEW.email),
+    'seeker'::public.user_role
+  );
+  RETURN NEW;
+END;
+$$;
 
 CREATE OR REPLACE FUNCTION public.profiles_role_guard()
 RETURNS trigger
