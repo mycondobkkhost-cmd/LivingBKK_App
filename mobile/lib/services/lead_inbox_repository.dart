@@ -32,7 +32,7 @@ class LeadInboxRepository {
       for (final e in demoInbox) {
         if (e['id'] == leadId) return e;
       }
-      return demoInbox.isNotEmpty ? demoInbox.first : null;
+      return null;
     }
 
     final row = await SupabaseService.client!

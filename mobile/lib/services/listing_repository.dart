@@ -28,7 +28,7 @@ class ListingRepository {
       return null;
     }
 
-    if (!SupabaseService.isReady) return fromDemo();
+    if (!Env.isConfigured || !SupabaseService.isReady) return fromDemo();
 
     try {
       final row = await SupabaseService.client!
@@ -38,9 +38,11 @@ class ListingRepository {
           .maybeSingle();
       final id = row?['id'] as String?;
       if (id != null && id.isNotEmpty) return id;
-    } catch (_) {}
+    } catch (_) {
+      return null;
+    }
 
-    return fromDemo();
+    return null;
   }
 
   Future<List<ListingPublic>> fetchPublished({
@@ -67,13 +69,7 @@ class ListingRepository {
         filters: filters,
       );
     } catch (_) {
-      lastFetchUsedDemo = true;
-      return _applyFilters(
-        DemoListingsFactory.cached,
-        listingType: listingType,
-        coAgentEligibleOnly: coAgentEligibleOnly,
-        filters: filters,
-      );
+      return const <ListingPublic>[];
     }
   }
 
@@ -140,15 +136,6 @@ class ListingRepository {
     list = _applyClientOnlyFilters(list, f);
     list = MetroRegion.filterListings(list);
 
-    if (list.isEmpty) {
-      lastFetchUsedDemo = true;
-      return _applyFilters(
-        DemoListingsFactory.cached,
-        listingType: listingType,
-        coAgentEligibleOnly: coAgentEligibleOnly,
-        filters: filters,
-      );
-    }
     return list;
   }
 
@@ -287,9 +274,9 @@ class ListingRepository {
         return ListingPublic.fromJson(Map<String, dynamic>.from(row));
       }
     } catch (_) {
-      return fromTrial() ?? fromDemo();
+      return null;
     }
 
-    return fromTrial() ?? fromDemo();
+    return null;
   }
 }
