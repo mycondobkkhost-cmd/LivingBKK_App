@@ -122,10 +122,21 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
     }
     _input.clear();
     setState(() => _sending = true);
-    await ChatService.instance.sendUserMessage(_room, text);
-    if (!mounted) return;
-    setState(() => _sending = false);
-    _scrollToBottom();
+    var sent = false;
+    try {
+      await ChatService.instance.sendUserMessage(_room, text);
+      sent = true;
+    } catch (_) {
+      if (!mounted) return;
+      _input.text = text;
+      _input.selection = TextSelection.collapsed(offset: _input.text.length);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ส่งข้อความไม่สำเร็จ กรุณาลองใหม่')),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+    if (sent && mounted) _scrollToBottom();
   }
 
   void _scrollToBottom() {
