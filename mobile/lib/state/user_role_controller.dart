@@ -2,12 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 
 import '../models/app_perspective.dart';
+import '../services/auth_service.dart';
 
 /// มุมมองหน้าหลัก + สิทธิ์แอดมินระบบ (แยกจากบัญชีทั่วไป)
 class UserRoleController extends ChangeNotifier {
   UserRoleController({
     AppPerspective perspective = AppPerspective.customer,
-  }) : _perspective = perspective;
+  }) : _perspective = perspective {
+    AuthService.instance.addListener(_clearBackOfficeAccessWhenSignedOut);
+  }
 
   AppPerspective _perspective;
   bool _platformAdmin = false;
@@ -63,6 +66,17 @@ class UserRoleController extends ChangeNotifier {
   void clearBackOfficeAccess() {
     setPlatformAdmin(false);
     setViewingStaff(value: false, slug: null, userId: null);
+  }
+
+  void _clearBackOfficeAccessWhenSignedOut() {
+    if (AuthService.instance.isSignedIn) return;
+    clearBackOfficeAccess();
+  }
+
+  @override
+  void dispose() {
+    AuthService.instance.removeListener(_clearBackOfficeAccessWhenSignedOut);
+    super.dispose();
   }
 
   /// ใช้กับโค้ดเดิมที่อ้าง role เป็น string
