@@ -1546,7 +1546,7 @@ class ChatService extends ChangeNotifier {
     }
 
     final room = ChatRoom(
-      id: listingId,
+      id: '__property_$listingId',
       listingId: listingId,
       listingCode: listingCode,
       listingTitle: listingTitle,
