@@ -122,10 +122,17 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
     }
     _input.clear();
     setState(() => _sending = true);
-    await ChatService.instance.sendUserMessage(_room, text);
-    if (!mounted) return;
-    setState(() => _sending = false);
-    _scrollToBottom();
+    try {
+      await ChatService.instance.sendUserMessage(_room, text);
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$e')),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   void _scrollToBottom() {
