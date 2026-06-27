@@ -920,6 +920,7 @@ class ChatService extends ChangeNotifier {
       projectName: projectName,
       allowViewingRequest: allowViewingRequest,
       participantUserId: AuthService.instance.effectiveUserId,
+      localOnly: _backendActive,
     );
   }
 
@@ -1533,6 +1534,7 @@ class ChatService extends ChangeNotifier {
     String? projectName,
     bool allowViewingRequest = false,
     String? participantUserId,
+    bool localOnly = false,
   }) {
     final existing = _rooms[listingId];
     if (existing != null) {
@@ -1545,8 +1547,9 @@ class ChatService extends ChangeNotifier {
       return existing;
     }
 
+    final roomId = localOnly ? '__local-$listingId' : listingId;
     final room = ChatRoom(
-      id: listingId,
+      id: roomId,
       listingId: listingId,
       listingCode: listingCode,
       listingTitle: listingTitle,
@@ -1567,6 +1570,9 @@ class ChatService extends ChangeNotifier {
       ],
     );
     _rooms[listingId] = room;
+    if (roomId != listingId) {
+      _rooms[roomId] = room;
+    }
     notifyListeners();
     return room;
   }

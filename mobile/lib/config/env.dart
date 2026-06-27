@@ -96,7 +96,9 @@ class Env {
 
   /// เปิดให้เข้าแอปโดยไม่ต้องรหัส (บัญชีทดลอง) — ปิดเมื่อ production พร้อม
   static bool get allowPasswordlessLogin {
-    final v = (dotenv.env['ALLOW_PASSWORDLESS_LOGIN'] ?? 'true').trim().toLowerCase();
+    final raw = dotenv.env['ALLOW_PASSWORDLESS_LOGIN'];
+    if (raw == null) return trialMode;
+    final v = raw.trim().toLowerCase();
     return trialMode || (v != 'false' && v != '0' && v != 'off' && v != 'no');
   }
 
