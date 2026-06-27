@@ -24,7 +24,9 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-  IF NEW.role IS DISTINCT FROM OLD.role AND NOT public.is_admin() THEN
+  IF NEW.role IS DISTINCT FROM OLD.role
+     AND NOT public.is_admin()
+     AND current_setting('role', true) IS DISTINCT FROM 'service_role' THEN
     RAISE EXCEPTION 'cannot_self_assign_role'
       USING HINT = 'ติดต่อทีมงานเพื่อเปลี่ยนสิทธิ์บัญชี';
   END IF;
