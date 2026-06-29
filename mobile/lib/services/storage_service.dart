@@ -21,7 +21,10 @@ class StorageService {
       throw Exception('ต้องล็อกอินและตั้งค่า Supabase');
     }
 
-    final uid = SupabaseService.client!.auth.currentUser!.id;
+    final uid = SupabaseService.client!.auth.currentUser?.id;
+    if (uid == null) {
+      throw Exception('เซสชันหมดอายุ กรุณาล็อกอินใหม่');
+    }
     final urls = <String>[];
 
     for (var i = 0; i < files.length; i++) {
@@ -76,7 +79,10 @@ class StorageService {
       throw Exception('ต้องล็อกอินและตั้งค่า Supabase');
     }
 
-    final uid = SupabaseService.client!.auth.currentUser!.id;
+    final uid = SupabaseService.client!.auth.currentUser?.id;
+    if (uid == null) {
+      throw Exception('เซสชันหมดอายุ กรุณาล็อกอินใหม่');
+    }
 
     for (var i = 0; i < files.length; i++) {
       final file = files[i];

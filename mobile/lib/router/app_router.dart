@@ -274,8 +274,15 @@ class AppRouter {
         GoRoute(
           path: '/admin/console',
           builder: (context, state) {
-            final roomId = state.uri.queryParameters['room'];
-            return AdminConsolePage(initialRoomId: roomId);
+            final q = state.uri.queryParameters;
+            return AdminConsolePage(
+              initialRoomId: q['room'],
+              initialMessageId: q['message'],
+              focusQueue: q['filter'] == 'unclaimed',
+              initialReturnNav: AdminNavId.fromQueryName(
+                q[kAdminReturnNavKey],
+              ),
+            );
           },
         ),
         GoRoute(
