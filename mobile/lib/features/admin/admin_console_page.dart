@@ -153,12 +153,14 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
         _loading = false;
         _adminTier = tier;
       });
+      if (!ok) return;
     } catch (_) {
       if (!mounted) return;
       setState(() {
         _allowed = false;
         _loading = false;
       });
+      return;
     }
     await _refreshInbox();
   }
