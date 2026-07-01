@@ -89,6 +89,7 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
   }
 
   Future<void> _refreshInbox() async {
+    if (!_allowed) return;
     await ChatService.instance.refreshAdminInbox();
     try {
       final overview = await _admin.fetchDashboardOverview();
@@ -156,11 +157,11 @@ class _AdminConsolePageState extends State<AdminConsolePage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _allowed = true;
+        _allowed = false;
         _loading = false;
       });
     }
-    await _refreshInbox();
+    if (_allowed) await _refreshInbox();
   }
 
   void _selectRoom(String roomId, {String? messageId}) {
