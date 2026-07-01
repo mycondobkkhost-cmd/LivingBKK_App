@@ -198,7 +198,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _allowed = true;
+        _allowed = false;
         _loading = false;
       });
     }
