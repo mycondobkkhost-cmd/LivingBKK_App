@@ -46,6 +46,8 @@ class ListingCreateInput {
     this.btsStation,
     this.acceptCoAgent = true,
     this.petPolicy = const ListingPetPolicyInput(),
+    this.contactName,
+    this.contactPhone,
     this.lineId,
     this.listingLanguages = const ['th'],
     this.titleEn,
@@ -100,6 +102,8 @@ class ListingCreateInput {
   final String? btsStation;
   final bool acceptCoAgent;
   final ListingPetPolicyInput petPolicy;
+  final String? contactName;
+  final String? contactPhone;
   final String? lineId;
   final List<String> listingLanguages;
   final String? titleEn;
@@ -132,6 +136,7 @@ class ListingCreateRepository {
     if (uid == null) {
       throw Exception('ต้องล็อกอินก่อนลงประกาศ');
     }
+    await _syncOwnerContact(uid, input);
 
     double lat;
     double lng;
@@ -233,6 +238,23 @@ class ListingCreateRepository {
     return row['id'] as String;
   }
 
+  Future<void> _syncOwnerContact(String uid, ListingCreateInput input) async {
+    final patch = <String, dynamic>{
+      if (input.contactName != null && input.contactName!.trim().isNotEmpty)
+        'display_name': input.contactName!.trim(),
+      if (input.contactPhone != null && input.contactPhone!.trim().isNotEmpty)
+        'phone': input.contactPhone!.trim(),
+      if (input.lineId != null && input.lineId!.trim().isNotEmpty)
+        'line_id': input.lineId!.trim(),
+    };
+    if (patch.isEmpty) return;
+
+    await SupabaseService.client!
+        .from('profiles')
+        .update(patch)
+        .eq('id', uid);
+  }
+
   /// ส่งให้หลังบ้านตรวจ — ยังไม่ขึ้นประกาศสาธารณะ
   Future<void> submitForReview(String listingId) async {
     if (AuthService.instance.trialSimulatesBackend) {
@@ -280,8 +302,6 @@ String _withLocalizationBlock(String desc, ListingCreateInput input) {
     ],
     if (input.agentExclusive) 'agent_exclusive: true',
     'listing_langs: ${input.listingLanguages.join(',')}',
-    if (input.lineId != null && input.lineId!.trim().isNotEmpty)
-      'poster_line_id: ${input.lineId!.trim()}',
     if (input.titleEn != null && input.titleEn!.trim().isNotEmpty)
       'title_en: ${input.titleEn!.trim()}',
     if (input.descriptionEn != null && input.descriptionEn!.trim().isNotEmpty)
