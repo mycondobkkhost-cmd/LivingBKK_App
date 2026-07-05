@@ -9,8 +9,8 @@ Deno.serve(async (req) => {
   try {
     const cronSecret = Deno.env.get("CRON_SECRET");
     const auth = req.headers.get("Authorization") ?? "";
-    if (cronSecret && auth !== `Bearer ${cronSecret}`) {
-      return jsonResponse({ error: "forbidden" }, 403);
+    if (!cronSecret || auth !== `Bearer ${cronSecret}`) {
+      return jsonResponse({ error: "unauthorized" }, 401);
     }
 
     const url = new URL(req.url);

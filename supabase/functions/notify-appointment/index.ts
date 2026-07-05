@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       supabase,
       assignee,
       "LivingBKK — นัดชม",
-      "$listingCode · $date · $slot",
+      `${listingCode} · ${date} · ${slot}`,
     );
 
     return jsonResponse({

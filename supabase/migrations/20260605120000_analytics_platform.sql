@@ -141,6 +141,7 @@ BEGIN
     stat_date,
     listing_impressions, listing_views, listing_shares, map_marker_taps, searches,
     chat_starts, chat_escalations, chat_claimed, chat_resolved,
+    chat_sla_breaches, chat_avg_claim_minutes,
     leads_created, leads_new, leads_accepted, leads_declined,
     e_contracts_signed,
     appointments_created, appointments_confirmed, appointments_completed, appointments_cancelled,
