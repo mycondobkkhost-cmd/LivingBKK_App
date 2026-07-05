@@ -876,14 +876,6 @@ class _CreateListingPageState extends State<CreateListingPage> {
           description =
               '${description.isEmpty ? '' : '$description\n'}${s.t('รหัสทรัพย์', 'Property ID')}: ${_propertyCode.text.trim()}';
         }
-        description =
-            '${description.isEmpty ? '' : '$description\n'}${s.offerContactNameField}: ${_contactName.text.trim()}';
-        description = '$description\n${s.offerContactPhoneField}: ${_contactPhone.text.trim()}';
-        if (_lineId.text.trim().isNotEmpty) {
-          description =
-              '$description\n${s.createListingLineIdLabel.replaceAll(' (ถ้ามี)', '').replaceAll(' (optional)', '')}: ${_lineId.text.trim()}';
-        }
-
         final project = _selectedProject;
         final coType =
             _isAgentPoster ? 'co_agent_50_50' : 'owner_direct';
@@ -959,6 +951,8 @@ class _CreateListingPageState extends State<CreateListingPage> {
               maxWeightKg: double.tryParse(_petMaxWeight.text.replaceAll(',', '')),
               maxCount: int.tryParse(_petMaxCount.text.replaceAll(',', '')),
             ),
+            contactName: _contactName.text.trim(),
+            contactPhone: _contactPhone.text.trim(),
             lineId: _lineId.text.trim().isEmpty ? null : _lineId.text.trim(),
             listingLanguages: _listingLangs.toList()..sort(),
             titleEn: _listingLangs.contains('en') ? _titleEn.text.trim() : null,
