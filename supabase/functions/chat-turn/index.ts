@@ -92,7 +92,7 @@ async function loadCurrentListing(
   const { data } = await db
     .from("listings_public")
     .select(
-      "id, listing_code, title, project_name, listing_type, price_net, property_type, district, subdistrict, description_public, pet_allowed, furnished, bedrooms, bathrooms, area_sqm, floor_range, max_distance_bts_km",
+      "id, listing_code, title, project_name, listing_type, price_net, property_type, district, subdistrict, description_public:description, pet_allowed, furnished, bedrooms, bathrooms, area_sqm, floor_range, max_distance_bts_km",
     )
     .eq("id", listingId)
     .maybeSingle();

@@ -37,23 +37,34 @@ class SearchService {
       return _demoParse(query, isEnglish: isEnglish);
     }
 
-    final res = await SupabaseService.client!.functions.invoke(
-      'smart-search-parse',
-      body: {'query': query},
-    );
+    try {
+      final res = await SupabaseService.client!.functions.invoke(
+        'smart-search-parse',
+        body: {'query': query},
+      );
 
-    final data = res.data as Map<String, dynamic>;
-    final preview = (data['preview'] as List? ?? [])
-        .map((e) => SearchPreviewItem(
-              label: e['label'] as String,
-              value: e['value'] as String,
-            ))
-        .toList();
+      final raw = res.data;
+      if (raw is! Map) return _demoParse(query, isEnglish: isEnglish);
+      final data = Map<String, dynamic>.from(raw);
+      final preview = (data['preview'] as List? ?? [])
+          .whereType<Map>()
+          .map((e) => SearchPreviewItem(
+                label: e['label']?.toString() ?? '',
+                value: e['value']?.toString() ?? '',
+              ))
+          .where((e) => e.label.isNotEmpty && e.value.isNotEmpty)
+          .toList();
+      final filters = data['filters'];
 
-    return (
-      filters: data['filters'] as Map<String, dynamic>? ?? {},
-      preview: preview,
-    );
+      return (
+        filters: filters is Map
+            ? Map<String, dynamic>.from(filters)
+            : <String, dynamic>{},
+        preview: preview,
+      );
+    } catch (_) {
+      return _demoParse(query, isEnglish: isEnglish);
+    }
   }
 
   bool _hasProjectSuggestion(
