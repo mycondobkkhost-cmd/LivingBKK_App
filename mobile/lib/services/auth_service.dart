@@ -275,14 +275,6 @@ class AuthService extends ChangeNotifier {
       return (role: null, staffSlug: null);
     }
 
-    String? metaRole;
-    final rawMeta = currentUser!.userMetadata?['role'];
-    if (rawMeta is String && rawMeta.isNotEmpty) metaRole = rawMeta;
-
-    String? metaSlug;
-    final rawSlug = currentUser!.userMetadata?['staff_slug'];
-    if (rawSlug is String && rawSlug.isNotEmpty) metaSlug = rawSlug;
-
     try {
       final row = await _client!
           .from('profiles')
@@ -291,19 +283,13 @@ class AuthService extends ChangeNotifier {
           .maybeSingle();
       final dbRole = row?['role'] as String?;
       final dbSlug = row?['staff_slug'] as String?;
-      if (dbRole == 'admin') {
-        return (role: dbRole, staffSlug: dbSlug ?? metaSlug);
-      }
-      if (metaRole == 'admin') {
-        return (role: metaRole, staffSlug: dbSlug ?? metaSlug);
-      }
       if (dbRole != null && dbRole.isNotEmpty) {
-        return (role: dbRole, staffSlug: dbSlug ?? metaSlug);
+        return (role: dbRole, staffSlug: dbSlug);
       }
     } catch (_) {
-      return (role: metaRole, staffSlug: metaSlug);
+      return (role: null, staffSlug: null);
     }
-    return (role: metaRole, staffSlug: metaSlug);
+    return (role: null, staffSlug: null);
   }
 
   /// เฉพาะแอดมินระบบ — มุมมองลูกค้า/เอเจนซี่/เจ้าของสลับที่หน้าแรก ไม่เขียน DB
