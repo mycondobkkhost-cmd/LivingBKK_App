@@ -1,20 +1,4 @@
--- ประกาศเช่า+ขายในครั้งเดียว — ปรากฏทั้งแท็บเช่าและซื้อ
-
-ALTER TYPE public.listing_type ADD VALUE IF NOT EXISTS 'rent_and_sale';
-
-ALTER TABLE public.listings
-  ADD COLUMN IF NOT EXISTS price_sale_net numeric(12, 2);
-
-COMMENT ON COLUMN public.listings.price_sale_net IS
-  'ราคาขาย Net — ใช้เมื่อ listing_type = rent_and_sale (price_net = เช่า)';
-
-ALTER TABLE public.listings
-  DROP CONSTRAINT IF EXISTS listings_price_sale_net_positive;
-
-ALTER TABLE public.listings
-  ADD CONSTRAINT listings_price_sale_net_positive CHECK (
-    price_sale_net IS NULL OR price_sale_net > 0
-  );
+-- Fix production listing browse/posting flows.
 
 DROP VIEW IF EXISTS public.listings_public CASCADE;
 
@@ -36,6 +20,7 @@ SELECT
   l.price_net,
   l.price_internal,
   l.price_sale_net,
+  l.price_sale_promo_net,
   l.co_agent_listing_type,
   l.investor_category,
   l.yield_percent,
@@ -104,4 +89,64 @@ WHERE l.status = 'published'
     OR l.id = inv.display_listing_id
   );
 
-GRANT SELECT ON public.listings_public TO anon, authenticated;
+COMMENT ON VIEW public.listings_public IS
+  'หน้าบ้าน RealXtate — ใช้เฉพาะประกาศ published/display clean และไม่พึ่ง inventory_members/is_public ที่ยังไม่มี';
+
+GRANT SELECT ON public.listings_public TO authenticated, anon;
+
+DROP POLICY IF EXISTS listings_insert ON public.listings;
+
+CREATE POLICY listings_insert ON public.listings
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    public.is_admin()
+    OR (
+      owner_id = auth.uid()
+      AND created_by_id = auth.uid()
+      AND listed_by_role IN ('owner'::public.listed_by_role, 'agent'::public.listed_by_role)
+    )
+  );
+
+CREATE OR REPLACE FUNCTION public.owner_close_listing_rent(
+  p_listing_id uuid,
+  p_available_again date
+)
+RETURNS public.listings
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  row public.listings;
+BEGIN
+  IF p_available_again IS NULL THEN
+    RAISE EXCEPTION 'available_again required';
+  END IF;
+
+  UPDATE public.listings
+  SET
+    status = 'archived',
+    closed_at = now(),
+    closed_reason = 'owner_closed_rent',
+    available_again = p_available_again,
+    updated_at = now()
+  WHERE id = p_listing_id
+    AND listing_type IN (
+      'rent'::public.listing_type,
+      'rent_and_sale'::public.listing_type
+    )
+    AND status IN ('published'::public.listing_status, 'hidden'::public.listing_status)
+    AND owner_deleted_at IS NULL
+    AND (owner_id = auth.uid() OR created_by_id = auth.uid())
+  RETURNING * INTO row;
+
+  IF row.id IS NULL THEN
+    RAISE EXCEPTION 'Listing not found or not allowed';
+  END IF;
+
+  RETURN row;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.owner_close_listing_rent(uuid, date) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.owner_close_listing_rent(uuid, date) TO authenticated;

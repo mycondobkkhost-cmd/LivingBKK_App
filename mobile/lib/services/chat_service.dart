@@ -946,6 +946,7 @@ class ChatService extends ChangeNotifier {
         active = persisted;
       } catch (e) {
         debugPrint('sendUserMessage persist: $e');
+        rethrow;
       }
     }
     if (_backendActive && active.isPersisted) {
@@ -979,6 +980,7 @@ class ChatService extends ChangeNotifier {
         active = persisted;
       } catch (e) {
         debugPrint('ensurePersistedRoom: $e');
+        rethrow;
       }
     }
     return active;
@@ -1545,13 +1547,14 @@ class ChatService extends ChangeNotifier {
       return existing;
     }
 
+    final roomId = '__local_property__$listingId';
     final room = ChatRoom(
-      id: listingId,
+      id: roomId,
       listingId: listingId,
       listingCode: listingCode,
       listingTitle: listingTitle,
       projectName: projectName,
-      transactionRef: ReferenceCodes.demoChatRef(listingId),
+      transactionRef: ReferenceCodes.demoChatRef(roomId),
       roomKind: 'property',
       allowViewingRequest: allowViewingRequest,
       participantUserId: participantUserId,
@@ -1566,7 +1569,9 @@ class ChatService extends ChangeNotifier {
         ),
       ],
     );
+    _rooms[roomId] = room;
     _rooms[listingId] = room;
+    _rooms[listingCode] = room;
     notifyListeners();
     return room;
   }

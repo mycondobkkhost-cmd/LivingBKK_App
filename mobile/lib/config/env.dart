@@ -96,8 +96,8 @@ class Env {
 
   /// เปิดให้เข้าแอปโดยไม่ต้องรหัส (บัญชีทดลอง) — ปิดเมื่อ production พร้อม
   static bool get allowPasswordlessLogin {
-    final v = (dotenv.env['ALLOW_PASSWORDLESS_LOGIN'] ?? 'true').trim().toLowerCase();
-    return trialMode || (v != 'false' && v != '0' && v != 'off' && v != 'no');
+    final v = (dotenv.env['ALLOW_PASSWORDLESS_LOGIN'] ?? '').trim().toLowerCase();
+    return trialMode || v == 'true' || v == '1' || v == 'on' || v == 'yes';
   }
 
   static bool get firebaseEnabled {

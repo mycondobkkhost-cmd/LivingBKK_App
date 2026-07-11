@@ -37,23 +37,35 @@ class SearchService {
       return _demoParse(query, isEnglish: isEnglish);
     }
 
-    final res = await SupabaseService.client!.functions.invoke(
-      'smart-search-parse',
-      body: {'query': query},
-    );
+    try {
+      final res = await SupabaseService.client!.functions.invoke(
+        'smart-search-parse',
+        body: {'query': query},
+      );
 
-    final data = res.data as Map<String, dynamic>;
-    final preview = (data['preview'] as List? ?? [])
-        .map((e) => SearchPreviewItem(
-              label: e['label'] as String,
-              value: e['value'] as String,
-            ))
-        .toList();
+      final raw = res.data;
+      if (raw is! Map) return _demoParse(query, isEnglish: isEnglish);
+      final data = Map<String, dynamic>.from(raw);
+      final preview = <SearchPreviewItem>[];
+      final rawPreview = data['preview'];
+      if (rawPreview is List) {
+        for (final item in rawPreview) {
+          if (item is! Map) continue;
+          final label = item['label']?.toString() ?? '';
+          final value = item['value']?.toString() ?? '';
+          if (label.isEmpty || value.isEmpty) continue;
+          preview.add(SearchPreviewItem(label: label, value: value));
+        }
+      }
 
-    return (
-      filters: data['filters'] as Map<String, dynamic>? ?? {},
-      preview: preview,
-    );
+      final rawFilters = data['filters'];
+      return (
+        filters: rawFilters is Map ? Map<String, dynamic>.from(rawFilters) : {},
+        preview: preview,
+      );
+    } catch (_) {
+      return _demoParse(query, isEnglish: isEnglish);
+    }
   }
 
   bool _hasProjectSuggestion(
