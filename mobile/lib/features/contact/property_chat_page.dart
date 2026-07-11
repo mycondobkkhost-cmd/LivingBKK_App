@@ -115,17 +115,28 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
   }
 
   Future<void> _send() async {
-    var text = _input.text.trim();
+    final originalText = _input.text.trim();
+    var text = originalText;
     if (text.isEmpty || _sending) return;
     if (_translateEn) {
       text = '[EN] $text';
     }
     _input.clear();
     setState(() => _sending = true);
-    await ChatService.instance.sendUserMessage(_room, text);
-    if (!mounted) return;
-    setState(() => _sending = false);
-    _scrollToBottom();
+    try {
+      await ChatService.instance.sendUserMessage(_room, text);
+      if (!mounted) return;
+      _scrollToBottom();
+    } catch (_) {
+      if (!mounted) return;
+      _input.text = originalText;
+      _input.selection = TextSelection.collapsed(offset: _input.text.length);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ส่งข้อความไม่สำเร็จ กรุณาลองใหม่')),
+      );
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
   }
 
   void _scrollToBottom() {
@@ -146,7 +157,15 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
   }
 
   Future<void> _openViewingFormFromLink() async {
-    await showViewingRequestFlow(context, _room);
+    try {
+      await showViewingRequestFlow(context, _room);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ส่งคำขอนัดดูไม่สำเร็จ กรุณาลองใหม่')),
+      );
+      return;
+    }
     if (!mounted) return;
     setState(() {});
     _scrollToBottom();

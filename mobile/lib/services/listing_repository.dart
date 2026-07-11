@@ -13,7 +13,7 @@ import 'supabase_service.dart';
 import 'trial_listing_store.dart';
 
 class ListingRepository {
-  /// true = แสดงทรัพย์ตัวอย่างในแอป (Supabase ว่างหรือยังไม่ seed)
+  /// true = แสดงทรัพย์ตัวอย่างในแอป (เฉพาะตอนยังไม่ต่อ Supabase)
   static bool lastFetchUsedDemo = false;
 
   Future<String?> resolveIdByCode(String listingCode) async {
@@ -67,13 +67,7 @@ class ListingRepository {
         filters: filters,
       );
     } catch (_) {
-      lastFetchUsedDemo = true;
-      return _applyFilters(
-        DemoListingsFactory.cached,
-        listingType: listingType,
-        coAgentEligibleOnly: coAgentEligibleOnly,
-        filters: filters,
-      );
+      return const [];
     }
   }
 
@@ -140,15 +134,6 @@ class ListingRepository {
     list = _applyClientOnlyFilters(list, f);
     list = MetroRegion.filterListings(list);
 
-    if (list.isEmpty) {
-      lastFetchUsedDemo = true;
-      return _applyFilters(
-        DemoListingsFactory.cached,
-        listingType: listingType,
-        coAgentEligibleOnly: coAgentEligibleOnly,
-        filters: filters,
-      );
-    }
     return list;
   }
 

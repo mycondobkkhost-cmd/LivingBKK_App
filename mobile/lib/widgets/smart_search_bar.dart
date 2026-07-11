@@ -74,13 +74,15 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
       if (mounted) setState(() => _suggestions = items);
     }
     if (q.length >= 3) {
-      final result = await _search.parseQuery(q, isEnglish: isEnglish);
-      if (mounted) {
-        setState(() {
-          _parsedFilters = result.filters;
-          _preview = result.preview;
-        });
-      }
+      try {
+        final result = await _search.parseQuery(q, isEnglish: isEnglish);
+        if (mounted) {
+          setState(() {
+            _parsedFilters = result.filters;
+            _preview = result.preview;
+          });
+        }
+      } catch (_) {}
     }
   }
 
@@ -160,14 +162,17 @@ class _SmartSearchBarState extends State<SmartSearchBar> {
 
     setState(() => _parsing = true);
     final isEnglish = AppStrings.of(context).isEnglish;
-    final result = await _search.parseQuery(trimmed, isEnglish: isEnglish);
-    if (!mounted) return;
-    setState(() {
-      _parsedFilters = result.filters;
-      _preview = result.preview;
-      _showNlpPreview = _focus.hasFocus && result.preview.isNotEmpty;
-      _parsing = false;
-    });
+    try {
+      final result = await _search.parseQuery(trimmed, isEnglish: isEnglish);
+      if (!mounted) return;
+      setState(() {
+        _parsedFilters = result.filters;
+        _preview = result.preview;
+        _showNlpPreview = _focus.hasFocus && result.preview.isNotEmpty;
+      });
+    } finally {
+      if (mounted) setState(() => _parsing = false);
+    }
   }
 
   void _scheduleQueryApply(String value) {
