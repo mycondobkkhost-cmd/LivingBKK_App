@@ -90,13 +90,13 @@ class Env {
   /// ตั้ง `ADMIN_DEMO_CASES=false` ก่อน production จริง
   static bool get adminDemoCases {
     if (trialMode) return true;
-    final v = (dotenv.env['ADMIN_DEMO_CASES'] ?? 'true').trim().toLowerCase();
+    final v = (dotenv.env['ADMIN_DEMO_CASES'] ?? 'false').trim().toLowerCase();
     return v != 'false' && v != '0' && v != 'off' && v != 'no';
   }
 
   /// เปิดให้เข้าแอปโดยไม่ต้องรหัส (บัญชีทดลอง) — ปิดเมื่อ production พร้อม
   static bool get allowPasswordlessLogin {
-    final v = (dotenv.env['ALLOW_PASSWORDLESS_LOGIN'] ?? 'true').trim().toLowerCase();
+    final v = (dotenv.env['ALLOW_PASSWORDLESS_LOGIN'] ?? 'false').trim().toLowerCase();
     return trialMode || (v != 'false' && v != '0' && v != 'off' && v != 'no');
   }
 
