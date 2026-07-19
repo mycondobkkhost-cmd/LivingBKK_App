@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../navigation/demand_board_navigation.dart';
@@ -26,7 +27,13 @@ class DemandPostDetailPage extends StatelessWidget {
 
     return ConsumerPageShell(
       title: post.postCode,
-      onBack: () => Navigator.of(context).maybePop(),
+      onBack: () {
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/');
+        }
+      },
       actions: [
         DemandPostFavoriteButton(post: post, showSnackBar: true),
       ],

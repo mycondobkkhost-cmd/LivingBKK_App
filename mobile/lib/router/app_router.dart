@@ -16,6 +16,7 @@ import '../features/auth/signup_page.dart';
 import '../features/legal/legal_document_page.dart';
 import '../config/legal_config.dart';
 import '../features/board/demand_post_detail_page.dart';
+import '../features/board/demand_post_route_page.dart';
 import '../features/board/saved_demand_board_page.dart';
 import '../features/board/submit_offer_page.dart';
 import '../features/listing/create_listing_page.dart';
@@ -346,11 +347,18 @@ class AppRouter {
         GoRoute(
           path: '/board/:id',
           builder: (context, state) {
-            final post = state.extra as DemandPost?;
-            if (post == null) {
+            final extra = state.extra;
+            if (extra is DemandPost) {
+              return DemandPostDetailPage(post: extra);
+            }
+            final id = state.pathParameters['id'];
+            if (id == null || id.isEmpty) {
               return NotFoundScaffold(message: (s) => s.notFoundPost);
             }
-            return DemandPostDetailPage(post: post);
+            return DemandPostRoutePage(
+              postId: id,
+              builder: (post) => DemandPostDetailPage(post: post),
+            );
           },
         ),
         GoRoute(
@@ -366,11 +374,18 @@ class AppRouter {
         GoRoute(
           path: '/board/:id/offer',
           builder: (context, state) {
-            final post = state.extra as DemandPost?;
-            if (post == null) {
+            final extra = state.extra;
+            if (extra is DemandPost) {
+              return SubmitOfferPage(post: extra);
+            }
+            final id = state.pathParameters['id'];
+            if (id == null || id.isEmpty) {
               return NotFoundScaffold(message: (s) => s.notFoundPost);
             }
-            return SubmitOfferPage(post: post);
+            return DemandPostRoutePage(
+              postId: id,
+              builder: (post) => SubmitOfferPage(post: post),
+            );
           },
         ),
       ],
