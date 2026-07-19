@@ -31,6 +31,38 @@ class DemandRepository {
     }
   }
 
+  /// โหลดประกาศบอร์ดเดียวจาก id สำหรับลิงก์ตรงและ notification
+  Future<DemandPost?> fetchById(String id) async {
+    final trimmed = id.trim();
+    if (trimmed.isEmpty) return null;
+
+    DemandPost? fromDemo() {
+      for (final post in DemandPost.demo()) {
+        if (post.id == trimmed) return post;
+      }
+      return null;
+    }
+
+    if (!Env.isConfigured || !SupabaseService.isReady) {
+      return fromDemo();
+    }
+
+    try {
+      final row = await SupabaseService.client!
+          .from('demand_posts')
+          .select()
+          .eq('id', trimmed)
+          .maybeSingle();
+      if (row != null) {
+        return DemandPost.fromJson(Map<String, dynamic>.from(row));
+      }
+    } catch (_) {
+      return fromDemo();
+    }
+
+    return fromDemo();
+  }
+
   /// @deprecated ใช้ [fetchPosts]
   Future<List<DemandPost>> fetchOpenPosts() async {
     final all = await fetchPosts();
