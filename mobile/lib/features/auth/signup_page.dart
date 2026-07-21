@@ -142,13 +142,22 @@ class _SignUpPageState extends State<SignUpPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  void _goToLogin() {
+    final redirect =
+        GoRouterState.of(context).uri.queryParameters['redirect'];
+    final route = redirect != null && redirect.isNotEmpty
+        ? '/login?redirect=${Uri.encodeComponent(redirect)}'
+        : '/login';
+    context.go(route);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
     final p = context.palette;
 
     return AuthScreenShell(
-      onBack: () => context.canPop() ? context.pop() : context.go('/login'),
+      onBack: () => context.canPop() ? context.pop() : _goToLogin(),
       heroHeight: 232,
       heroBrandSize: ProppiterBrandHeroSize.auth,
       heroBrandAlignment: const Alignment(0, -0.15),
@@ -262,7 +271,7 @@ class _SignUpPageState extends State<SignUpPage> {
               children: [
                 Text(s.authHaveAccount, style: authBodyTextStyle()),
                 TextButton(
-                  onPressed: () => context.go('/login'),
+                  onPressed: _goToLogin,
                   child: Text(
                     s.authSignInLink,
                     style: GoogleFonts.prompt(
