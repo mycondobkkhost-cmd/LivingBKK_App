@@ -384,10 +384,7 @@ class ListingImportRepository {
         'type': 'Point',
         'coordinates': [lng, lat],
       },
-      'location_public': {
-        'type': 'Point',
-        'coordinates': [lng, lat],
-      },
+      'location_public': null,
     }).eq('id', listingId);
 
     final current = await _loadImportRow(importId);
