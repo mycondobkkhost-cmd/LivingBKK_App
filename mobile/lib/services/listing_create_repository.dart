@@ -197,10 +197,6 @@ class ListingCreateRepository {
         'type': 'Point',
         'coordinates': [lng, lat],
       },
-      'location_public': {
-        'type': 'Point',
-        'coordinates': [lng, lat],
-      },
     };
 
     if (input.btsStation != null && input.btsStation!.isNotEmpty) {
