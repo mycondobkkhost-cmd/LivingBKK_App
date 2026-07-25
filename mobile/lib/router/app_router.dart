@@ -63,6 +63,18 @@ class AppRouter {
     return RegExp(r'^/board/[^/]+$').hasMatch(path);
   }
 
+  /// In-app consumer redirect after login/signup (reject external / admin paths).
+  static String? _safeConsumerRedirect(String? redirect) {
+    if (redirect == null || redirect.isEmpty) return null;
+    if (redirect.startsWith('//')) return null;
+    final uri = Uri.tryParse(redirect);
+    if (uri == null || uri.hasScheme) return null;
+    final path = uri.path.isNotEmpty ? uri.path : redirect.split('?').first;
+    if (!path.startsWith('/') || path.startsWith('//')) return null;
+    if (isAdminRoute(path)) return null;
+    return redirect;
+  }
+
   static GoRouter create({
     required UserRoleController roleController,
     required SearchSessionController searchSession,
@@ -118,6 +130,10 @@ class AppRouter {
               return adminHomePath();
             }
             if (isStaff) return viewingStaffHomePath();
+            // AuthService/SessionGate refresh runs before page-level context.go,
+            // so consumer redirects must be honored here (else always land on /).
+            final consumerRedirect = _safeConsumerRedirect(redirect);
+            if (consumerRedirect != null) return consumerRedirect;
             return '/';
           }
           if (isAdmin && path == '/' && !isConsumerPreviewUri(state.uri)) {

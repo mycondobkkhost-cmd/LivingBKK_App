@@ -89,9 +89,12 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _goAfterAuth() async {
     final redirect = _redirectTarget;
+    // Real session: resume intended in-app destination (create listing, board
+    // offer, etc.). Router also honors ?redirect= because SessionGate refresh
+    // can navigate away before this runs.
     if (redirect != null &&
         redirect.isNotEmpty &&
-        _auth.canCreateListing) {
+        _auth.isRealSupabaseSession) {
       context.go(redirect);
       return;
     }

@@ -78,9 +78,10 @@ class _SignUpPageState extends State<SignUpPage> {
       return;
     }
     final redirect = GoRouterState.of(context).uri.queryParameters['redirect'];
+    // Match login: after real signup, resume ?redirect= (router also honors it).
     if (redirect != null &&
         redirect.isNotEmpty &&
-        _auth.canCreateListing) {
+        _auth.isRealSupabaseSession) {
       context.go(redirect);
       return;
     }
