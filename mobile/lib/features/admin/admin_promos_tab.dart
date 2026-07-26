@@ -810,44 +810,70 @@ class _PromoAdminPreview extends StatelessWidget {
         const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF6B4FC4),
+            color: const Color(0xFFF5F5F5),
             borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: AppTheme.border.withOpacity(0.6)),
           ),
-          padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius:
-                      BorderRadius.circular(HomePromoCarousel.slideRadius),
-                  child: SizedBox(
-                    height: HomePromoCarousel.maxBannerHeight,
-                    child: HomePromoImage(
-                      promo: promo,
-                      fit: BoxFit.cover,
-                      memoryBytes: memoryBytes,
+          padding: const EdgeInsets.all(10),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              const gap = HomePromoCarousel.columnGap;
+              final colW = (constraints.maxWidth - gap) / 2;
+              final h = (colW / HomePromoCarousel.aspectRatio)
+                  .clamp(0.0, HomePromoCarousel.maxBannerHeight);
+              return SizedBox(
+                height: h,
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: colW,
+                      height: h,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          HomePromoCarousel.slideRadius,
+                        ),
+                        child: HomePromoImage(
+                          promo: promo,
+                          fit: BoxFit.cover,
+                          memoryBytes: memoryBytes,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Opacity(
-                opacity: 0.55,
-                child: ClipRRect(
-                  borderRadius:
-                      BorderRadius.circular(HomePromoCarousel.slideRadius),
-                  child: SizedBox(
-                    width: 36,
-                    height: HomePromoCarousel.maxBannerHeight,
-                    child: HomePromoImage(
-                      promo: promo,
-                      fit: BoxFit.cover,
-                      memoryBytes: memoryBytes,
+                    const SizedBox(width: gap),
+                    SizedBox(
+                      width: colW,
+                      height: h,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(
+                          HomePromoCarousel.slideRadius,
+                        ),
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            HomePromoImage(
+                              promo: promo,
+                              fit: BoxFit.cover,
+                              memoryBytes: memoryBytes,
+                            ),
+                            const Align(
+                              alignment: Alignment.topLeft,
+                              child: Padding(
+                                padding: EdgeInsets.all(6),
+                                child: Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ),
-            ],
+              );
+            },
           ),
         ),
         const SizedBox(height: 16),

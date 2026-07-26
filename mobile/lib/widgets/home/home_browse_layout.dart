@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 
 import '../../data/bangkok_transit_lines.dart';
 import '../../data/popular_areas.dart';
-import '../../data/property_catalog.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/listing_public.dart';
 import '../../features/notifications/notification_center_sheet.dart';
@@ -13,11 +12,9 @@ import '../../state/search_session_controller.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/li_layout.dart';
 import '../../theme/living_bkk_brand.dart';
+import '../../theme/fb_feed_chrome.dart';
 import '../home_listing_rail.dart';
-import '../../utils/listing_navigation.dart';
-import '../property_type_more_sheet.dart';
 import 'home_promo_carousel.dart';
 import 'home_quick_menu.dart';
 import 'home_sticky_search_header.dart';
@@ -74,8 +71,6 @@ class HomeBrowseLayout extends StatefulWidget {
 }
 
 class _HomeBrowseLayoutState extends State<HomeBrowseLayout> {
-  int _locationTab = 0;
-
   void _openSearchDiscovery(BuildContext context) {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -95,122 +90,178 @@ class _HomeBrowseLayoutState extends State<HomeBrowseLayout> {
     final s = AppStrings.of(context);
     final p = context.palette;
     final recommended = widget.sections.where((e) => e.id == 'recommended').toList();
+    final updatedToday =
+        widget.sections.where((e) => e.id == 'updated_today').toList();
     final latest = widget.sections.where((e) => e.id == 'latest').toList();
     final others = widget.sections
-        .where((e) => e.id != 'recommended' && e.id != 'latest')
+        .where(
+          (e) =>
+              e.id != 'recommended' &&
+              e.id != 'latest' &&
+              e.id != 'updated_today',
+        )
         .toList();
+    final showPostFab =
+        HomePostListingFab.visibleFor(widget.roleController);
 
     return ColoredBox(
-      color: LivingBkkBrand.pageBackgroundOf(context),
-      child: ScrollConfiguration(
-        behavior: const _HomeBrowseScrollBehavior(),
-        child: CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-      slivers: [
-        HomeStickySearchHeader(
-          roleController: widget.roleController,
-          localeController: widget.localeController,
-          filters: widget.filters,
-          onFiltersChanged: widget.onFiltersChanged,
-          onMapSearch: widget.onOpenMapSearch,
-          onOpenProject: widget.onOpenProject,
-          onOpenSearch: () => _openSearchDiscovery(context),
-          onOpenFilters: widget.onOpenFilters,
-          onOpenNotifications: widget.onOpenNotifications ??
-              () => NotificationCenterSheet.show(
-                    context,
+      color: FbFeedChrome.background,
+      child: Stack(
+        children: [
+          ScrollConfiguration(
+            behavior: const _HomeBrowseScrollBehavior(),
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
+              ),
+              slivers: [
+                HomeStickySearchHeader(
+                  roleController: widget.roleController,
+                  localeController: widget.localeController,
+                  filters: widget.filters,
+                  onFiltersChanged: widget.onFiltersChanged,
+                  onMapSearch: widget.onOpenMapSearch,
+                  onOpenProject: widget.onOpenProject,
+                  onOpenSearch: () => _openSearchDiscovery(context),
+                  onOpenFilters: widget.onOpenFilters,
+                  onOpenNotifications: widget.onOpenNotifications ??
+                      () => NotificationCenterSheet.show(
+                            context,
+                            roleController: widget.roleController,
+                            localeController: widget.localeController,
+                          ),
+                ),
+                // ทางลัด → โฆษณา → หมวด → ทำเล → ประกาศ
+                // (เช่า/ซื้อ/ตัวกรอง — เปิดจากไอคอนในช่องค้นหา)
+                SliverToBoxAdapter(
+                  child: HomeQuickMenu(
                     roleController: widget.roleController,
+                    searchSession: widget.searchSession,
+                    isAgent: widget.isAgentPerspective,
+                    onMapSearch: widget.onOpenMapSearch,
+                    showBoard: true,
+                    showCategories: false,
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: HomePromoCarousel(
                     localeController: widget.localeController,
                   ),
-        ),
-        SliverToBoxAdapter(
-          child: HomePromoCarousel(localeController: widget.localeController),
-        ),
-        SliverToBoxAdapter(
-          child: HomeQuickMenu(
-            roleController: widget.roleController,
-            searchSession: widget.searchSession,
-            isAgent: widget.isAgentPerspective,
-            onMapSearch: widget.onOpenMapSearch,
-          ),
-        ),
-        if (recommended.isEmpty && widget.sections.isEmpty)
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Center(
-              child: Text(s.noListings, style: TextStyle(color: p.textSecondary)),
-            ),
-          )
-        else ...[
-          for (final section in recommended)
-            SliverToBoxAdapter(
-              child: HomeListingRail(
-                title: s.isEnglish ? section.titleEn : section.titleTh,
-                items: section.items,
-                accentIndex: section.accentIndex,
-                highlightRecommended: true,
-                showCoAgentStrip: widget.isAgentPerspective,
-                onTapListing: widget.onTapListing ?? (_) {},
-                onViewAll: () => widget.onViewAllSection?.call(section),
-              ),
-            ),
-          for (final section in latest)
-            SliverToBoxAdapter(
-              child: HomeListingRail(
-                title: s.isEnglish ? section.titleEn : section.titleTh,
-                items: section.items,
-                accentIndex: section.accentIndex,
-                topInset: 0,
-                showCoAgentStrip: widget.isAgentPerspective,
-                onTapListing: widget.onTapListing ?? (_) {},
-                onViewAll: () => widget.onViewAllSection?.call(section),
-              ),
-            ),
-          SliverToBoxAdapter(
-            child: _LocationTabHeader(
-              p: p,
-              s: s,
-              selected: _locationTab,
-              onChanged: (i) => setState(() => _locationTab = i),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: _locationTab == 0
-                ? _TopAreaCarousel(
-                    p: p,
-                    s: s,
-                    selectedSlug: widget.selectedAreaSlug,
-                    onAreaTap: widget.onAreaTap,
-                  )
-                : _TransitLineCarousel(
-                    p: p,
-                    s: s,
-                    selectedSlug: widget.selectedTransitSlug,
-                    onLineTap: widget.onTransitLineTap,
+                ),
+                SliverToBoxAdapter(
+                  child: HomeQuickMenu(
+                    roleController: widget.roleController,
+                    searchSession: widget.searchSession,
+                    isAgent: widget.isAgentPerspective,
+                    onMapSearch: widget.onOpenMapSearch,
+                    showBoard: false,
+                    showCategories: true,
                   ),
+                ),
+                SliverToBoxAdapter(
+                  child: FbFeedCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: FbFeedChrome.sectionHeaderPadding,
+                          child: Text(
+                            s.homeTabPopularAreas,
+                            style: FbFeedChrome.sectionTitleStyle,
+                          ),
+                        ),
+                        _TopAreaCarousel(
+                          p: p,
+                          s: s,
+                          selectedSlug: widget.selectedAreaSlug,
+                          onAreaTap: widget.onAreaTap,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                if (recommended.isEmpty && widget.sections.isEmpty)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Text(
+                        s.noListings,
+                        style: TextStyle(color: p.textSecondary),
+                      ),
+                    ),
+                  )
+                else ...[
+                  for (final section in recommended)
+                    SliverToBoxAdapter(
+                      child: HomeListingRail(
+                        title: s.isEnglish ? section.titleEn : section.titleTh,
+                        items: section.items,
+                        accentIndex: section.accentIndex,
+                        highlightRecommended: true,
+                        showCoAgentStrip: widget.isAgentPerspective,
+                        onTapListing: widget.onTapListing ?? (_) {},
+                        onViewAll: () => widget.onViewAllSection?.call(section),
+                      ),
+                    ),
+                  for (final section in updatedToday)
+                    SliverToBoxAdapter(
+                      child: HomeListingHScroll(
+                        title: s.isEnglish ? section.titleEn : section.titleTh,
+                        items: section.items,
+                        accentIndex: section.accentIndex,
+                        onTapListing: widget.onTapListing ?? (_) {},
+                        onViewAll: () => widget.onViewAllSection?.call(section),
+                      ),
+                    ),
+                  for (final section in latest)
+                    SliverToBoxAdapter(
+                      child: HomeListingRail(
+                        title: s.isEnglish ? section.titleEn : section.titleTh,
+                        items: section.items,
+                        accentIndex: section.accentIndex,
+                        topInset: 0,
+                        showCoAgentStrip: widget.isAgentPerspective,
+                        onTapListing: widget.onTapListing ?? (_) {},
+                        onViewAll: () => widget.onViewAllSection?.call(section),
+                      ),
+                    ),
+                  for (final section in others)
+                    SliverToBoxAdapter(
+                      child: HomeListingRail(
+                        title: s.isEnglish ? section.titleEn : section.titleTh,
+                        items: section.items,
+                        accentIndex: section.accentIndex,
+                        topInset: 0,
+                        showCoAgentStrip: widget.isAgentPerspective,
+                        onTapListing: widget.onTapListing ?? (_) {},
+                        onViewAll: () => widget.onViewAllSection?.call(section),
+                      ),
+                    ),
+                ],
+                SliverToBoxAdapter(
+                  child: SizedBox(height: showPostFab ? 96 : 72),
+                ),
+              ],
+            ),
           ),
-          for (final section in others)
-            SliverToBoxAdapter(
-              child: HomeListingRail(
-                title: s.isEnglish ? section.titleEn : section.titleTh,
-                items: section.items,
-                accentIndex: section.accentIndex,
-                topInset: 0,
-                showCoAgentStrip: widget.isAgentPerspective,
-                onTapListing: widget.onTapListing ?? (_) {},
-                onViewAll: () => widget.onViewAllSection?.call(section),
+          if (showPostFab)
+            Positioned(
+              right: 16,
+              bottom: 16,
+              child: SafeArea(
+                top: false,
+                child: HomePostListingFab(
+                  roleController: widget.roleController,
+                ),
               ),
             ),
         ],
-        const SliverToBoxAdapter(child: SizedBox(height: 72)),
-      ],
-        ),
       ),
     );
   }
 }
 
-/// ซ่อน scrollbar — ไม่ให้แถบเลื่อนทับโซน header ม่วง (โดยเฉพาะบน Web)
+/// ซ่อน scrollbar — ไม่ให้แถบเลื่อนทับโซน header แดง (โดยเฉพาะบน Web)
 class _HomeBrowseScrollBehavior extends MaterialScrollBehavior {
   const _HomeBrowseScrollBehavior();
 
@@ -231,220 +282,6 @@ class _HomeBrowseScrollBehavior extends MaterialScrollBehavior {
       };
 }
 
-class _PropertyTypeCard extends StatelessWidget {
-  const _PropertyTypeCard({
-    required this.p,
-    required this.s,
-    required this.searchSession,
-    required this.isAgent,
-    this.onOpenFilters,
-  });
-
-  final AppPalette p;
-  final AppStrings s;
-  final SearchSessionController searchSession;
-  final bool isAgent;
-  final VoidCallback? onOpenFilters;
-
-  static const _displaySlugs = PropertyCatalog.homePrimarySlugs;
-
-  void _onCategoryTap(BuildContext context, String? slug) {
-    if (slug == null) {
-      PropertyTypeMoreSheet.show(
-        context,
-        searchSession: searchSession,
-        onCategoryPicked: (picked) {
-          Navigator.of(context).pop();
-          ListingNavigation.openCategory(context, slug: picked, isAgent: isAgent);
-        },
-      );
-      return;
-    }
-    ListingNavigation.openCategory(context, slug: slug, isAgent: isAgent);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: searchSession,
-      builder: (context, _) {
-        final selected = searchSession.categorySlug;
-        final items = [
-          ...PropertyCatalog.categories.where((c) => _displaySlugs.contains(c.slug)),
-          null,
-        ];
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 6, LiLayout.pagePadding, 4),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-            decoration: BoxDecoration(
-              color: p.surface,
-              borderRadius: BorderRadius.circular(AppTheme.radiusLg),
-              boxShadow: [AppTheme.cardShadowFor(p)],
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                for (final cat in items)
-                  _typeItem(
-                    p,
-                    icon: _iconFor(cat?.slug),
-                    label: cat?.label(s.isEnglish) ?? s.homePropertyOthers,
-                    tint: _tintFor(cat?.slug, p),
-                    selected: cat != null
-                        ? selected == cat.slug
-                        : PropertyTypeMoreSheet.isMoreSlug(selected),
-                    onTap: () => _onCategoryTap(context, cat?.slug),
-                  ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  IconData _iconFor(String? slug) => switch (slug) {
-        'condo' => Icons.apartment_rounded,
-        'house' => Icons.home_rounded,
-        'land' => Icons.landscape_rounded,
-        'townhome' => Icons.other_houses_rounded,
-        _ => Icons.grid_view_rounded,
-      };
-
-  Color _tintFor(String? slug, AppPalette p) => switch (slug) {
-        'condo' => p.primary,
-        'house' => const Color(0xFF4DA8FF),
-        'land' => const Color(0xFF10B981),
-        'townhome' => const Color(0xFFF59E0B),
-        _ => p.accent,
-      };
-
-  Widget _typeItem(
-    AppPalette p, {
-    required IconData icon,
-    required String label,
-    required Color tint,
-    required bool selected,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: tint.withOpacity(selected ? 0.22 : 0.12),
-                  shape: BoxShape.circle,
-                  border: selected ? Border.all(color: tint, width: 2) : null,
-                ),
-                child: Icon(icon, color: tint, size: 20),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: LiLayout.homeCardSubtitle,
-                  fontWeight: FontWeight.w600,
-                  color: p.textPrimary,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _LocationTabHeader extends StatelessWidget {
-  const _LocationTabHeader({
-    required this.p,
-    required this.s,
-    required this.selected,
-    required this.onChanged,
-  });
-
-  final AppPalette p;
-  final AppStrings s;
-  final int selected;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 4, LiLayout.pagePadding, 2),
-      child: Container(
-        padding: const EdgeInsets.all(4),
-        decoration: BoxDecoration(
-          color: p.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: _tab(
-                p,
-                s.homeTabPopularAreas,
-                selected == 0,
-                () => onChanged(0),
-              ),
-            ),
-            Expanded(
-              child: _tab(
-                p,
-                s.homeTabTransitLines,
-                selected == 1,
-                () => onChanged(1),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _tab(AppPalette p, String label, bool active, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: AppTheme.animNormal,
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          gradient: active
-              ? LinearGradient(colors: [p.primary, p.accent.withOpacity(0.85)])
-              : null,
-          color: active ? null : Colors.transparent,
-          borderRadius: BorderRadius.circular(AppTheme.radiusPill),
-          boxShadow: active
-              ? [BoxShadow(color: p.primary.withOpacity(0.25), blurRadius: 8, offset: const Offset(0, 2))]
-              : null,
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w700,
-            color: active ? Colors.white : p.textSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _TopAreaCarousel extends StatelessWidget {
   const _TopAreaCarousel({
     required this.p,
@@ -463,12 +300,12 @@ class _TopAreaCarousel extends StatelessWidget {
     final areas = PopularAreas.all.take(6).toList();
 
     return SizedBox(
-      height: 168,
+      height: 132,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 0, LiLayout.pagePadding, 8),
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
         itemCount: areas.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
         itemBuilder: (context, i) {
           final area = areas[i];
           final selected = selectedSlug == area.slug;
@@ -509,20 +346,13 @@ class _AreaTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(10),
         child: AnimatedContainer(
           duration: AppTheme.animNormal,
-          width: 148,
+          width: 118,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: selected ? Border.all(color: p.primary, width: 2.5) : null,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.1),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
+            borderRadius: BorderRadius.circular(10),
+            border: selected ? Border.all(color: p.primary, width: 2) : null,
           ),
           clipBehavior: Clip.antiAlias,
           child: Stack(
@@ -538,7 +368,10 @@ class _AreaTile extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.72)],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withOpacity(0.68),
+                    ],
                   ),
                 ),
               ),
@@ -546,160 +379,19 @@ class _AreaTile extends StatelessWidget {
                 top: 8,
                 right: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                   decoration: BoxDecoration(
-                    gradient: LivingBkkBrand.ctaGradient,
+                    color: LivingBkkBrand.brandRed,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    'Top $rank 🔥',
+                    'Top $rank',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
                       fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              Positioned(
-                left: 12,
-                right: 12,
-                bottom: 12,
-                child: Text(
-                  name,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                    height: 1.15,
-                    shadows: [Shadow(color: Colors.black45, blurRadius: 6)],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TransitLineCarousel extends StatelessWidget {
-  const _TransitLineCarousel({
-    required this.p,
-    required this.s,
-    this.selectedSlug,
-    this.onLineTap,
-  });
-
-  final AppPalette p;
-  final AppStrings s;
-  final String? selectedSlug;
-  final void Function(BangkokTransitLine line)? onLineTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final lines = BangkokTransitLines.all;
-
-    return SizedBox(
-      height: 168,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 0, LiLayout.pagePadding, 8),
-        itemCount: lines.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (context, i) {
-          final line = lines[i];
-          return _TransitLineTile(
-            line: line,
-            isEnglish: s.isEnglish,
-            selected: selectedSlug == line.slug,
-            onTap: () => onLineTap?.call(line),
-          );
-        },
-      ),
-    );
-  }
-}
-
-class _TransitLineTile extends StatelessWidget {
-  const _TransitLineTile({
-    required this.line,
-    required this.isEnglish,
-    required this.selected,
-    this.onTap,
-  });
-
-  final BangkokTransitLine line;
-  final bool isEnglish;
-  final bool selected;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final textOnLine = line.color.computeLuminance() > 0.55 ? Colors.black87 : Colors.white;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: AnimatedContainer(
-          duration: AppTheme.animNormal,
-          width: 156,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: selected ? line.color : line.color.withOpacity(0.45),
-              width: selected ? 3 : 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: line.color.withOpacity(selected ? 0.35 : 0.18),
-                blurRadius: selected ? 14 : 8,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.network(
-                'https://picsum.photos/seed/livingbkk-${line.imageSeed}/800/480',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => ColoredBox(color: line.color.withOpacity(0.35)),
-              ),
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      line.color.withOpacity(0.82),
-                      line.color.withOpacity(0.55),
-                      Colors.black.withOpacity(0.55),
-                    ],
-                  ),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.92),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    line.system(isEnglish),
-                    style: TextStyle(
-                      color: line.color,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.1,
                     ),
                   ),
                 ),
@@ -708,35 +400,17 @@ class _TransitLineTile extends StatelessWidget {
                 left: 10,
                 right: 10,
                 bottom: 10,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      line.name(isEnglish),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: textOnLine,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 14,
-                        height: 1.15,
-                        shadows: const [Shadow(color: Colors.black38, blurRadius: 4)],
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      line.stations(isEnglish),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: textOnLine.withOpacity(0.92),
-                        fontSize: 10,
-                        height: 1.25,
-                        shadows: const [Shadow(color: Colors.black38, blurRadius: 4)],
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  name,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14,
+                    height: 1.15,
+                    shadows: [Shadow(color: Colors.black45, blurRadius: 6)],
+                  ),
                 ),
               ),
             ],

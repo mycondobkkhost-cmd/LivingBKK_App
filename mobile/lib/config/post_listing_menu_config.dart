@@ -27,10 +27,10 @@ abstract final class PostListingMenuConfig {
     AppPerspective.agent,
   };
 
-  /// แสดงแถบโปรโมตบนหน้าแรก (ชวนลงประกาศ) แม้ยังเป็นมุมมองลูกค้า
-  static const showHomePromoForAllPerspectives = true;
+  /// แสดงแถบโปรโมตแบบเต็มความกว้างบนหน้าแรก (เลิกใช้ — ใช้ FAB แทน)
+  static const showHomePromoForAllPerspectives = false;
 
-  /// แสดงการ์ด「ลงประกาศฟรี」ใน Quick actions หน้าแรก
+  /// แสดงปุ่ม「ลงประกาศฟรี」แบบลอยมุมขวาล่าง
   static const showHomeQuickPostCard = true;
 
   static bool showsForPerspective(AppPerspective perspective) =>

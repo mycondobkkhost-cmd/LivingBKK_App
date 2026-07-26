@@ -88,8 +88,8 @@ export function labelsFromText(text: string | null | undefined): string[] {
 export function transitLabelsFromCoords(
   lat: number,
   lng: number,
-  maxKm = 0.85,
-  limit = 4,
+  maxKm = 1.5,
+  limit = 3,
 ): string[] {
   return STATIONS.map((s) => ({
     s,
@@ -104,8 +104,8 @@ export function transitLabelsFromCoords(
 export function nearbyStationsFromCoords(
   lat: number,
   lng: number,
-  maxKm = 0.85,
-  limit = 4,
+  maxKm = 1.5,
+  limit = 3,
 ): { station: TransitStationCoord; km: number }[] {
   return STATIONS.map((s) => ({
     station: s,

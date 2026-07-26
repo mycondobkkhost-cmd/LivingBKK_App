@@ -1,5 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { feedFromViewingSubmitted } from "../_shared/admin_ai_feed.ts";
+import { orchestrateAdminFeed } from "../_shared/admin_orchestrator.ts";
+import { notifyOwnerViewingSubmitted } from "../_shared/chat_owner_viewing_notify.ts";
 
 async function authUserId(req: Request): Promise<string | null> {
   const authHeader = req.headers.get("Authorization");
@@ -34,7 +37,7 @@ Deno.serve(async (req) => {
     }
 
     const duplicate = Boolean(body.duplicate_phone_suffix);
-    const viewing = summary["นัดดูทรัพย์"] ?? "-";
+    const viewing = summary["นัดดูทรัพย์"] ?? summary["Viewing"] ?? "-";
     const lines = Object.entries(summary)
       .map(([k, v]) => `• ${k}: ${v}`)
       .join("\n");
@@ -133,7 +136,28 @@ Deno.serve(async (req) => {
       });
     } catch (_) {}
 
-    return jsonResponse({ thread: updated, messages });
+    await orchestrateAdminFeed(
+      db,
+      "chat-record-viewing",
+      feedFromViewingSubmitted({
+        threadId: thread_id,
+        listingCode: thread.listing_code as string | null,
+        listingId: thread.listing_id as string | null,
+        preview: summary["ชื่อเล่น"] ?? summary["ชื่อ"] ?? summary["นัดดูทรัพย์"],
+        duplicatePhone: duplicate,
+      }),
+    );
+
+    const ownerNotify = await notifyOwnerViewingSubmitted(db, {
+      threadId: thread_id,
+      listingId: thread.listing_id as string | null,
+      listingCode: thread.listing_code as string | null,
+      listingTitle: thread.listing_title as string | null,
+      projectName: thread.project_name as string | null,
+      summary,
+    });
+
+    return jsonResponse({ thread: updated, messages, owner_notify: ownerNotify });
   } catch (e) {
     return jsonResponse({ error: String(e) }, 500);
   }

@@ -41,6 +41,7 @@ Deno.serve(async (req) => {
       bedrooms,
       external_url,
       external_note,
+      listing_id,
     } = body;
 
     if (!demand_post_id || !offerer_capacity || !offer_type) {
@@ -132,6 +133,7 @@ Deno.serve(async (req) => {
         bedrooms,
         external_url: external_url || null,
         external_note: mergedExternalNote,
+        listing_id: listing_id ?? null,
       })
       .select("id, status, created_at, offer_code")
       .single();

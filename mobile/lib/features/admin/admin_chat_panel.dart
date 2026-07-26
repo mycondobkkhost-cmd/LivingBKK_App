@@ -1267,6 +1267,8 @@ class _AdminBubble extends StatelessWidget {
         return s.chatRoleSystem;
       case ChatMessageRole.adminNotice:
         return s.chatRoleTeam;
+      case ChatMessageRole.adminCoach:
+        return 'Coach';
     }
   }
 
@@ -1275,6 +1277,7 @@ class _AdminBubble extends StatelessWidget {
     final s = context.s;
     final isUser = message.role == ChatMessageRole.user;
     final isStaff = message.role == ChatMessageRole.adminNotice;
+    final isCoach = message.role == ChatMessageRole.adminCoach;
     final isSystem = message.role == ChatMessageRole.system;
     final time = DateFormat('HH:mm').format(message.createdAt);
     final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.72;
@@ -1286,6 +1289,9 @@ class _AdminBubble extends StatelessWidget {
     if (isUser) {
       bg = AppTheme.primary;
       fg = Colors.white;
+    } else if (isCoach) {
+      bg = const Color(0xFFFFF3E0);
+      fg = AppTheme.textPrimary;
     } else if (isStaff) {
       bg = const Color(0xFFEDE9FE);
       fg = AppTheme.textPrimary;
@@ -1311,7 +1317,9 @@ class _AdminBubble extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: isStaff ? AppTheme.accentMid : AppTheme.textSecondary,
+                  color: isStaff || isCoach
+                      ? AppTheme.accentMid
+                      : AppTheme.textSecondary,
                 ),
               ),
               const SizedBox(width: 6),

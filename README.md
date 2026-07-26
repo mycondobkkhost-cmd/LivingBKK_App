@@ -27,6 +27,9 @@
 | 23b | [docs/phase-23-admin-layout.md](docs/phase-23-admin-layout.md) | Admin Layout — sidebar + ปักหมุดเร่งด่วน + เมนูกลุ่ม |
 | 24–26 | [docs/phase-24-26-chat-hub-tags.md](docs/phase-24-26-chat-hub-tags.md) | Hub + Threads + Profile Tags + Viewing Requests + Admin 360° |
 | 27 | [docs/phase-27-rental-management-group-chat.md](docs/phase-27-rental-management-group-chat.md) | บริหารจัดการทรัพย์ให้เช่า + แชทกลุ่ม (blind PII) |
+| 28 | [docs/phase-28-rental-ops-production.md](docs/phase-28-rental-ops-production.md) | Cron แจ้งชำระ + แนบเอกสารกลุ่มเช่า |
+| 29 | [docs/phase-29-chat-bot-training.md](docs/phase-29-chat-bot-training.md) | Admin เทรนบอท AI |
+| 30 | [docs/phase-30-production-gaps.md](docs/phase-30-production-gaps.md) | Rental upload + add member + cron docs |
 | 13 | [docs/phase-13-เปิดใช้บนมือถือ.md](docs/phase-13-เปิดใช้บนมือถือ.md) | เว็บมือถือ + ติดจอโฮม |
 | — | [docs/คู่มือ-ใช้แอปบนมือถือ.md](docs/คู่มือ-ใช้แอปบนมือถือ.md) | คู่มือภาษาไทย (ไม่ใช่โปรแกรมเมอร์) |
 | — | [docs/ROADMAP-REMAINING.md](docs/ROADMAP-REMAINING.md) | **สิ่งที่เหลือทั้งหมด** |

@@ -20,6 +20,14 @@ supabase db push
 FUNCTIONS=(
   submit-demand-offer
   smart-search-parse
+  smart-search
+  smart-search-autocomplete
+  admin-ai-feed
+  admin-orchestrator
+  admin-unified-search
+  submit-project-request
+  owner-inquiry-submit
+  owner-inquiry-reply
   moderate-listing-text
   lead-bot-turn
   route-lead-notification
@@ -30,12 +38,17 @@ FUNCTIONS=(
   chat-open-thread
   chat-turn
   chat-admin-reply
+  chat-return-to-ai
   chat-claim
   chat-assign
   chat-record-viewing
   chat-record-demand-offer
+  chat-admin-coach-reply
+  owner-lead-action
   chat-sla-cron
   listing-lifecycle-cron
+  notify-rental-payment
+  rental-payment-cron
   image-dedup-check
   listing-watermark-images
   listing-import-fetch
@@ -63,9 +76,10 @@ echo ""
 echo "ถัดไป (ครั้งเดียว):"
 echo "  1) ./scripts/sync-env.sh"
 echo "  2) ./scripts/seed-cloud.sh   # ทรัพย์ตัวอย่างใน cloud"
-echo "  3) Dashboard → Edge → Secrets: FCM_SERVER_KEY, MAKECOM_WEBHOOK_URL (ทางเลือก)"
-echo "  4) Cron: listing-lifecycle-cron รายวัน · chat-sla-cron ทุก 30 นาที"
-echo "  5) Cron: analytics-rollup-cron ทุก 1 ชม. (ดู docs/phase-21-analytics-platform.md)"
-echo "  6) Cron (แนะนำ): SELECT public.process_exclusive_auto_bumps(); รายชั่วโมง"
-echo "  7) ดู docs/PRE-PUSH-STATUS.md"
-echo "  8) ./scripts/run-app.sh"
+echo "  3) Dashboard → Edge → Secrets: OPENAI_API_KEY, OPENAI_MODEL (chat-turn / smart-search-parse)"
+echo "  4) Dashboard → Edge → Secrets: FCM_SERVER_KEY, MAKECOM_WEBHOOK_URL (ทางเลือก)"
+echo "  5) Cron: listing-lifecycle-cron รายวัน · chat-sla-cron ทุก 30 นาที · rental-payment-cron รายวัน 08:00"
+echo "  6) Cron: analytics-rollup-cron ทุก 1 ชม. (ดู docs/phase-21-analytics-platform.md)"
+echo "  7) Cron (แนะนำ): SELECT public.process_exclusive_auto_bumps(); รายชั่วโมง"
+echo "  8) ดู docs/PRE-PUSH-STATUS.md"
+echo "  9) ./scripts/run-app.sh"

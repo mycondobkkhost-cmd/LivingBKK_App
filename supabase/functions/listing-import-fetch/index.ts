@@ -12,8 +12,10 @@ import {
   fetchLiHtml,
   matchProject,
   parseLiHtml,
+  projectNamesAlign,
   type LiParsedListing,
 } from "../_shared/li_parser.ts";
+import { applyAiDraftToImport } from "../_shared/listing_import_ai_draft.ts";
 
 const MAX_IMAGES = 12;
 const PLACEHOLDER_PRICE = 1;
@@ -83,7 +85,7 @@ async function fetchAndParse(
     const html = await fetchLiHtml(sourceUrl);
     return { html, parsed: parseLiHtml(html, sourceUrl) };
   }
-  const html = await fetchPageHtml(sourceUrl);
+  const html = await fetchPageHtml(sourceUrl, platform);
   return { html, parsed: parseGenericHtml(html, sourceUrl, platform) };
 }
 
@@ -313,6 +315,9 @@ Deno.serve(async (req) => {
       }
 
       const project = await matchProject(db, parsed.projectName);
+      const matchedNameTh = project?.name_th as string | undefined;
+      const useMatchedProject = project &&
+        projectNamesAlign(parsed.projectName, matchedNameTh);
 
       if (!project && parsed.projectName?.trim()) {
         if (!parsed.flags.includes("project_not_in_registry")) {
@@ -342,8 +347,10 @@ Deno.serve(async (req) => {
         area_sqm: parsed.areaSqm,
         bedrooms: parsed.bedrooms,
         district,
-        project_name: (project?.name_th as string | undefined) ?? parsed.projectName,
-        project_id: project?.id ?? null,
+        project_name: useMatchedProject
+          ? matchedNameTh
+          : parsed.projectName,
+        project_id: useMatchedProject ? project?.id ?? null : null,
         geo_zone_id: project?.geo_zone_id ?? null,
         source_platform: platform,
         source_url: sourceUrl,
@@ -389,6 +396,13 @@ Deno.serve(async (req) => {
         contact_private: parsed.contactPrivate,
         source_meta: parsed.sourceMeta ?? null,
         html_bytes: html.length,
+        capture: {
+          source_text_original: parsed.sourceTextOriginal ?? parsed.description,
+          post_url: sourceUrl,
+          owner_profile_url: null,
+          evidence_images: [],
+          captured_at: new Date().toISOString(),
+        },
       };
 
       const { data: updated, error: updErr } = await db
@@ -399,8 +413,9 @@ Deno.serve(async (req) => {
           status,
           error_message: null,
           title_preview: parsed.title,
-          project_preview: (project?.name_th as string | undefined) ??
-            parsed.projectName,
+          project_preview: useMatchedProject
+            ? matchedNameTh
+            : parsed.projectName,
           price_preview: parsed.priceNet > 0 ? parsed.priceNet : null,
           image_count: imageCount,
           listing_id: listingId,
@@ -408,7 +423,9 @@ Deno.serve(async (req) => {
           parsed: {
             ...parsed,
             contactPrivate: undefined,
-            matched_project_id: project?.id ?? null,
+            sourceTextOriginal: undefined,
+            matched_project_id: useMatchedProject ? project?.id ?? null : null,
+            parsed_project_name: parsed.projectName,
             source_platform: platform,
             source_meta: parsed.sourceMeta ?? null,
           },
@@ -418,6 +435,37 @@ Deno.serve(async (req) => {
         .single();
 
       if (updErr) return jsonResponse({ error: updErr.message }, 400);
+
+      const shouldAiDraft = platform === "facebook" ||
+        platform === "generic" ||
+        status === "needs_fix";
+      if (shouldAiDraft && parsed.sourceTextOriginal) {
+        try {
+          await applyAiDraftToImport(
+            db,
+            rowId,
+            parsed.sourceTextOriginal,
+            {
+              platform,
+              postUrl: sourceUrl,
+              mergeRawPayload: {
+                fetched_at: rawPayload.fetched_at,
+                source_platform: platform,
+                external_id: parsed.sourceExternalId,
+                html_bytes: html.length,
+              },
+            },
+          );
+        } catch (aiErr) {
+          console.error("listing-import-fetch ai draft", aiErr);
+        }
+      }
+
+      const { data: finalRow } = await db
+        .from("listing_imports")
+        .select("*")
+        .eq("id", rowId)
+        .single();
 
       try {
         const { syncImportToVault, syncListingToVault } = await import(
@@ -430,7 +478,7 @@ Deno.serve(async (req) => {
       }
 
       return jsonResponse({
-        import: updated,
+        import: finalRow ?? updated,
         listing_id: listingId,
         image_count: imageCount,
         flags: parsed.flags,

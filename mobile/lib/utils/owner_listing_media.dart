@@ -1,4 +1,5 @@
 import '../models/listing_public.dart';
+import '../data/demo_media.dart';
 
 /// รูปหน้าปก + พรีวิวประกาศของเจ้าของ
 abstract final class OwnerListingMedia {
@@ -22,12 +23,10 @@ abstract final class OwnerListingMedia {
   }
 
   static String placeholderUrl(Map<String, dynamic> row) {
-    final seed = Uri.encodeComponent(
-      row['listing_code']?.toString() ??
-          row['id']?.toString() ??
-          'listing',
-    );
-    return 'https://picsum.photos/seed/$seed/240/180';
+    final seed = row['listing_code']?.toString() ??
+        row['id']?.toString() ??
+        'listing';
+    return DemoMedia.photo(seed, width: 240, height: 180);
   }
 
   static bool canPreviewOnline(Map<String, dynamic> row) {

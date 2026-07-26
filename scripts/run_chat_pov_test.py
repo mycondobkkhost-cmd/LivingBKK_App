@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
-"""POV chat routing test — mirrors supabase/functions/_shared chat_router logic."""
+"""POV chat routing test — loads scenarios from chat_pov_decisions.json."""
 import json
 import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 SEED = ROOT / "supabase/seed/chat_bot_training_gemini_v1.json"
+POV = ROOT / "supabase/seed/chat_pov_decisions.json"
 
 THAI_TONE = re.compile(r"[\u0e31\u0e34-\u0e3a\u0e47-\u0e4e]")
 PHONE = re.compile(r"(?:^|[^\d])(0[689]\d{8}|0[2-9]\d{7,8})(?:[^\d]|$)")
@@ -27,7 +28,7 @@ DISCOVERY_KEYS = ["หา", "แนะนำ", "ค้นห", "อยากเ�
 REPLIES = {
     "contact": "ขออภัยครับ ทางเราไม่สามารถแจ้งข้อมูลติดต่อของเจ้าของทรัพย์ได้โดยตรง รบกวนคุณลูกค้าทิ้งเบอร์โทรศัพท์และข้อซักถามไว้ แล้วทีมงานจะรีบประสานงานและติดต่อกลับเพื่อดูแลครับ",
     "owner": "เนื่องจากนโยบายความเป็นส่วนตัว (PDPA) ทางแพลตฟอร์มไม่สามารถเปิดเผยข้อมูลส่วนบุคคลของเจ้าของทรัพย์ได้ครับ หากคุณลูกค้ามีข้อสงสัยเกี่ยวกับตัวทรัพย์ สามารถสอบถามเพิ่มเติมกับทางเราได้เลยครับ",
-    "negotiate": "ในส่วนของการต่อรองราคาหรือการขอปรับเงื่อนไขสัญญา ทางเรายังไม่สามารถยืนยันให้ได้ในทันทีครับ ขออนุญาตส่งเรื่องให้ทีมงานพิจารณาร่วมกับเจ้าของ แล้วจะรีบติดต่อกลับเพื่อแจ้งรายละเอียดอีกครั้งครับ",
+    "negotiate": "ในระบบข้อมูลที่ลงราคา … เป็นราคาสุทธิแล้วค่ะ",
     "unit_privacy": "เพื่อความเป็นส่วนตัวและความปลอดภัยของทรัพย์ ทางเราขอสงวนสิทธิ์ในการแจ้งเลขห้องหรือชั้นที่แน่นอนผ่านช่องทางนี้ครับ หากท่านสนใจ สามารถนัดหมายเพื่อเข้าชมสถานที่จริงกับเจ้าหน้าที่ได้ครับ",
     "phone_ack": "ขอบคุณมากครับ ทางเราได้รับเบอร์ติดต่อและข้อมูลของท่านเรียบร้อยแล้ว ทีมงานจะรีบนำข้อมูลไปตรวจสอบและติดต่อกลับเพื่อให้บริการโดยเร็วที่สุดครับ",
     "clarify": "ยังไม่แน่ใจคำถามครับ ลองระบุทำเล · งบ · หรือรายละเอียดที่ต้องการเพิ่ม\nหรือพิมพ์「ขอคุยกับเจ้าหน้าที่」เมื่อต้องการให้ทีมช่วยโดยตรง",
@@ -175,7 +176,7 @@ def route(text: str, faq_rules: list, has_listing: bool, listing_code, unclear_s
     kind = classify_sensitive(text)
     if kind:
         reply = REPLIES[kind]
-        admin = kind in ("negotiate",) or (kind == "contact" and has_phone(text))
+        admin = kind == "contact" and has_phone(text)
         return {"reply": reply, "source": f"sensitive_{kind}", "admin": admin, "status": "waiting_admin" if admin else "open"}
 
     if has_phone(text):
@@ -251,7 +252,9 @@ def main():
         {"listing_code": "PPTR-2026-000101", "title": "คอนโด 1 นอน อโศก", "project_name": "The Address Asoke", "listing_type": "rent", "price_net": 15000, "property_type": "condo", "district": "วัฒนา"},
         {"listing_code": "PPTR-2026-000202", "title": "คอนโด ทองหล่อ", "project_name": "Rhythm Sukhumvit", "listing_type": "rent", "price_net": 14000, "property_type": "condo", "district": "วัฒนา"},
     ]
-    print("=== PROPPITER Chat POV Test (local simulation) ===\n")
+    print("=== RealXtate Chat POV Playbook Test (local simulation) ===\n")
+    pov_meta = json.loads(POV.read_text(encoding="utf-8"))["meta"]
+    print(f"Playbook: {pov_meta['total_povs']} POVs | tone: {pov_meta['tone']}")
     print(f"FAQ rules: {len(rules)} | หมายเหตุ: ไม่มี OpenAI RAG ในเทสต์นี้\n")
 
     results = []

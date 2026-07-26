@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../config/env.dart';
 import '../../config/demand_board_menu_config.dart';
@@ -16,12 +17,16 @@ import '../../state/session_gate.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/brand_assets.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../utils/admin_routing.dart';
+import '../../widgets/app_mobile_scaffold.dart';
 import '../../widgets/language_switch_button.dart';
+import '../../widgets/legal_policy_rich_text.dart';
 import 'auth_form_widgets.dart';
+import 'phone_login_sheet.dart';
 
-/// หน้าเข้าสู่ระบบ — ธีมเดียวกับ header หน้าแรก
+/// หน้าเข้าสู่ระบบ — โครงตาม mock (โทร / Google / Apple / LINE) · ธีม RealXtate
 class LoginPage extends StatefulWidget {
   const LoginPage({
     super.key,
@@ -42,6 +47,7 @@ class _LoginPageState extends State<LoginPage> {
   final _password = TextEditingController();
   bool _loading = false;
   bool _obscurePassword = true;
+  bool _showEmailForm = false;
 
   @override
   void dispose() {
@@ -50,7 +56,6 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  /// ปลายทางหลังล็อกอิน — รวม `nav` ที่หลุดจาก redirect เมื่อ URL ไม่ encode `?`
   String? get _redirectTarget {
     final uri = GoRouterState.of(context).uri;
     final redirect = uri.queryParameters['redirect'];
@@ -69,7 +74,6 @@ class _LoginPageState extends State<LoginPage> {
         target == DemandBoardMenuConfig.createRequirementRoute;
   }
 
-  /// มาจากลิงก์หลังบ้าน — ทดลองต้องเข้าเป็นผู้ดูแลระบบ ไม่ใช่คนหาบ้าน
   bool get _redirectIsAdmin {
     final target = _redirectTarget;
     if (target == null || target.isEmpty) return false;
@@ -89,9 +93,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _goAfterAuth() async {
     final redirect = _redirectTarget;
-    if (redirect != null &&
-        redirect.isNotEmpty &&
-        _auth.canCreateListing) {
+    if (redirect != null && redirect.isNotEmpty && _auth.canCreateListing) {
       context.go(redirect);
       return;
     }
@@ -162,7 +164,7 @@ class _LoginPageState extends State<LoginPage> {
 
   Future<void> _enterOwnerTrial() => _enterTrialAs('owner');
 
-  Future<void> _submit() async {
+  Future<void> _submitEmail() async {
     if (_password.text.isEmpty && Env.allowPasswordlessLogin) {
       if (_requiresRealAccount) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -216,6 +218,37 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _continueWithLine() async {
+    if (!Env.isConfigured) {
+      _showSnack(AppStrings.of(context).oauthNotConfigured);
+      return;
+    }
+    setState(() => _loading = true);
+    try {
+      final uri = await _auth.lineOAuthUri();
+      final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!ok && mounted) {
+        _showSnack(AppStrings.of(context).oauthNotConfigured);
+      }
+    } catch (e) {
+      if (mounted) _showSnack(AuthService.friendlyMessage(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openPhoneLogin() async {
+    if (!Env.isConfigured && !Env.allowPasswordlessLogin) {
+      _showSnack(AppStrings.of(context).configureSupabaseFirst);
+      return;
+    }
+    if (!Env.isConfigured) {
+      _showSnack(AppStrings.of(context).oauthNotConfigured);
+      return;
+    }
+    await PhoneLoginSheet.show(context, onVerified: _afterAuth);
+  }
+
   Future<void> _forgotPassword() async {
     final s = AppStrings.of(context);
     final email = _email.text.trim();
@@ -248,244 +281,373 @@ class _LoginPageState extends State<LoginPage> {
       listenable: widget.localeController,
       builder: (context, _) {
         final s = AppStrings.of(context);
+        final p = context.palette;
+        final mq = MediaQuery.of(context);
+        final topInset = mq.viewPadding.top > 0 ? mq.viewPadding.top : mq.padding.top;
 
-        return AuthScreenShell(
-          trailing: Padding(
-            padding: const EdgeInsets.only(right: 18),
-            child: LanguageSwitchButton(
-              controller: widget.localeController,
-              light: true,
-              hero: true,
-            ),
-          ),
-          form: AuthCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+        return AppMobileScaffold(
+          backgroundColor: p.surface,
+          body: AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle.light,
+            child: Stack(
+              fit: StackFit.expand,
               children: [
-                Text(
-                  s.authWelcome,
-                  textAlign: TextAlign.center,
-                  style: authTitleTextStyle(),
-                ),
-              if (_redirectIsAdmin && Env.allowPasswordlessLogin) ...[
-                const SizedBox(height: 12),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryLight,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: context.palette.primary.withOpacity(0.25)),
-                  ),
-                  child: Text(
-                    s.adminHintTrial,
-                    textAlign: TextAlign.center,
-                    style: authBodyTextStyle(),
-                  ),
-                ),
-              ],
-            const SizedBox(height: 20),
-            if (!Env.isConfigured && !Env.allowPasswordlessLogin)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16),
-                child: Text(
-                  s.configureSupabaseFirst,
-                  textAlign: TextAlign.center,
-                  style: authBodyTextStyle(),
-                ),
-              )
-            else ...[
-              AuthFormField(
-                controller: _email,
-                label: s.authEmailOrUsername,
-                hint: s.authEmailOrUsername,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 14),
-              AuthFormField(
-                controller: _password,
-                label: s.authPassword,
-                hint: s.authPassword,
-                obscure: _obscurePassword,
-                suffix: IconButton(
-                  icon: Icon(
-                    _obscurePassword
-                        ? Icons.visibility_off_outlined
-                        : Icons.visibility_outlined,
-                    size: 20,
-                    color: AppTheme.textSecondary,
-                  ),
-                  onPressed: () => setState(
-                    () => _obscurePassword = !_obscurePassword,
-                  ),
-                ),
-              ),
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: _loading ? null : _forgotPassword,
-                  child: Text(
-                    s.forgotPassword,
-                    style: authBodyTextStyle(),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 48,
-                child: FilledButton(
-                  onPressed: _loading ? null : _submit,
-                  style: authPrimaryButtonStyle(context),
-                  child: _loading
-                      ? const SizedBox(
-                          height: 22,
-                          width: 22,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white,
+                // โซนแดงด้านบน
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: SizedBox(
+                    height: mq.size.height * 0.34,
+                    width: double.infinity,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LivingBkkBrand.homeHeaderBlockGradientOf(context),
+                      ),
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            top: -40,
+                            right: -30,
+                            child: _orb(160, 0.14),
                           ),
-                        )
-                      : Text(s.signInTitle),
+                          Positioned(
+                            bottom: 20,
+                            left: -40,
+                            child: _orb(120, 0.1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-              if (Env.allowPasswordlessLogin) ...[
-                const SizedBox(height: 10),
-                if (!_redirectIsAdmin) ...[
-                  SizedBox(
-                    height: 46,
-                    child: OutlinedButton(
-                      onPressed: _loading ? null : _enterTrial,
-                      style: AppTheme.pillOutlined.copyWith(
-                        side: MaterialStateProperty.all(
-                          BorderSide(
-                            color: context.palette.primary.withOpacity(0.45),
+                SafeArea(
+                  bottom: false,
+                  child: Column(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(8, topInset > 0 ? 0 : 4, 12, 0),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              onPressed: () {
+                                if (context.canPop()) {
+                                  context.pop();
+                                } else {
+                                  context.go('/');
+                                }
+                              },
+                              icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                            ),
+                            const Spacer(),
+                            LanguageSwitchButton(
+                              controller: widget.localeController,
+                              light: true,
+                              hero: true,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+                          child: Column(
+                            children: [
+                              const SizedBox(height: 8),
+                              AuthCard(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Center(child: _BrandMark()),
+                                    const SizedBox(height: 14),
+                                    Text(
+                                      s.authCreateOrSignIn,
+                                      textAlign: TextAlign.center,
+                                      style: authTitleTextStyle(),
+                                    ),
+                                    if (_redirectIsAdmin && Env.allowPasswordlessLogin) ...[
+                                      const SizedBox(height: 12),
+                                      Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: p.primaryLight,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          s.adminHintTrial,
+                                          textAlign: TextAlign.center,
+                                          style: authBodyTextStyle(),
+                                        ),
+                                      ),
+                                    ],
+                                    const SizedBox(height: 22),
+                                    AuthContinueButton(
+                                      filled: true,
+                                      enabled: !_loading,
+                                      label: s.authContinueWithPhone,
+                                      leading: const PhoneLogoIcon(size: 22, color: Colors.white),
+                                      onTap: _openPhoneLogin,
+                                    ),
+                                    const SizedBox(height: 18),
+                                    _OrDivider(label: s.authOrDivider),
+                                    const SizedBox(height: 18),
+                                    AuthContinueButton(
+                                      enabled: !_loading,
+                                      label: s.authContinueWithGoogle,
+                                      leading: const GoogleLogoIcon(size: 22),
+                                      onTap: () => _oauth(_auth.signInWithGoogle),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    AuthContinueButton(
+                                      enabled: !_loading,
+                                      label: s.authContinueWithApple,
+                                      leading: const AppleLogoIcon(size: 24, color: Colors.black),
+                                      onTap: () => _oauthMaybeComplete(_auth.signInWithApple),
+                                    ),
+                                    const SizedBox(height: 10),
+                                    AuthContinueButton(
+                                      enabled: !_loading,
+                                      label: s.authContinueWithLine,
+                                      leading: const LineLogoIcon(size: 24),
+                                      onTap: _continueWithLine,
+                                    ),
+                                    if (_showEmailForm) ...[
+                                      const SizedBox(height: 20),
+                                      AuthFormField(
+                                        controller: _email,
+                                        label: s.authEmailOrUsername,
+                                        hint: s.authEmailOrUsername,
+                                        keyboardType: TextInputType.emailAddress,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      AuthFormField(
+                                        controller: _password,
+                                        label: s.authPassword,
+                                        hint: s.authPassword,
+                                        obscure: _obscurePassword,
+                                        suffix: IconButton(
+                                          icon: Icon(
+                                            _obscurePassword
+                                                ? Icons.visibility_off_outlined
+                                                : Icons.visibility_outlined,
+                                            size: 20,
+                                            color: AppTheme.textSecondary,
+                                          ),
+                                          onPressed: () => setState(
+                                            () => _obscurePassword = !_obscurePassword,
+                                          ),
+                                        ),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: _loading ? null : _forgotPassword,
+                                          child: Text(s.forgotPassword, style: authBodyTextStyle()),
+                                        ),
+                                      ),
+                                      SizedBox(
+                                        height: 48,
+                                        child: FilledButton(
+                                          onPressed: _loading ? null : _submitEmail,
+                                          style: authPrimaryButtonStyle(context),
+                                          child: _loading
+                                              ? const SizedBox(
+                                                  height: 22,
+                                                  width: 22,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    color: Colors.white,
+                                                  ),
+                                                )
+                                              : Text(s.signInTitle),
+                                        ),
+                                      ),
+                                    ] else ...[
+                                      const SizedBox(height: 14),
+                                      TextButton(
+                                        onPressed: () => setState(() => _showEmailForm = true),
+                                        child: Text(
+                                          s.authEmailSignInLink,
+                                          style: authLinkStyle(color: p.primary),
+                                        ),
+                                      ),
+                                    ],
+                                    if (Env.allowPasswordlessLogin) ...[
+                                      const SizedBox(height: 4),
+                                      if (!_redirectIsAdmin)
+                                        TextButton(
+                                          onPressed: _loading ? null : _enterTrial,
+                                          style: TextButton.styleFrom(
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.symmetric(vertical: 2),
+                                          ),
+                                          child: Text(
+                                            s.authQuickEntryFront,
+                                            style: authBodyTextStyle(
+                                              color: AppTheme.textSecondary,
+                                              weight: FontWeight.w500,
+                                            ),
+                                          ),
+                                        ),
+                                      TextButton(
+                                        onPressed: _loading ? null : _enterAdminTrial,
+                                        style: TextButton.styleFrom(
+                                          visualDensity: VisualDensity.compact,
+                                          padding: const EdgeInsets.symmetric(vertical: 2),
+                                        ),
+                                        child: Text(
+                                          s.authQuickEntryAdmin,
+                                          style: authBodyTextStyle(
+                                            color: AppTheme.textSecondary,
+                                            weight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      TextButton(
+                                        onPressed: _loading ? null : _enterOwnerTrial,
+                                        style: TextButton.styleFrom(
+                                          visualDensity: VisualDensity.compact,
+                                          padding: const EdgeInsets.symmetric(vertical: 2),
+                                        ),
+                                        child: Text(
+                                          s.authQuickEntryOwner,
+                                          style: authBodyTextStyle(
+                                            color: AppTheme.textSecondary,
+                                            weight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 20),
+                              LegalPolicyRichText(
+                                s: s,
+                                prefix: '${s.authLegalFooterPrefix} ',
+                                middle: ' ${s.signUpTermsAnd} ',
+                                suffix: s.authLegalFooterOf.isEmpty ? '' : ' ${s.authLegalFooterOf}',
+                                fontSize: 12,
+                              ),
+                              const SizedBox(height: 8),
+                              TextButton(
+                                onPressed: () {
+                                  final redirect = _redirectTarget;
+                                  if (redirect != null && redirect.isNotEmpty) {
+                                    context.push(
+                                      '/signup?redirect=${Uri.encodeComponent(redirect)}',
+                                    );
+                                  } else {
+                                    context.push('/signup');
+                                  }
+                                },
+                                child: Text(
+                                  s.authSignUpFree,
+                                  style: authLinkStyle(color: p.primary).copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    decoration: TextDecoration.none,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ),
-                      child: Text(
-                        s.authQuickEntryFront,
-                        style: GoogleFonts.prompt(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: context.palette.primary,
+                    ],
+                  ),
+                ),
+                if (_loading)
+                  const Positioned.fill(
+                    child: IgnorePointer(
+                      child: ColoredBox(
+                        color: Color(0x11000000),
+                        child: Center(
+                          child: SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(strokeWidth: 2.5),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                ],
-                SizedBox(
-                  height: 46,
-                  child: FilledButton(
-                    onPressed: _loading ? null : _enterAdminTrial,
-                    style: authPrimaryButtonStyle(context),
-                    child: Text(
-                      s.authQuickEntryAdmin,
-                      style: GoogleFonts.prompt(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: 46,
-                  child: OutlinedButton(
-                    onPressed: _loading ? null : _enterOwnerTrial,
-                    style: AppTheme.pillOutlined.copyWith(
-                      side: MaterialStateProperty.all(
-                        BorderSide(
-                          color: LivingBkkBrand.peach.withOpacity(0.85),
-                        ),
-                      ),
-                    ),
-                    child: Text(
-                      s.authQuickEntryOwner,
-                      style: GoogleFonts.prompt(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: LivingBkkBrand.peach,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 20),
-              Text(
-                s.authOrLoginWith,
-                textAlign: TextAlign.center,
-                style: authBodyTextStyle(),
-              ),
-              const SizedBox(height: 14),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  AuthSocialButton(
-                    color: Colors.black,
-                    child: const AppleLogoIcon(size: 22),
-                    onTap: _loading
-                        ? null
-                        : () => _oauthMaybeComplete(_auth.signInWithApple),
-                  ),
-                  const SizedBox(width: 16),
-                  AuthSocialButton(
-                    color: const Color(0xFF1877F2),
-                    icon: Icons.facebook,
-                    iconColor: Colors.white,
-                    onTap: _loading
-                        ? null
-                        : () => _oauth(_auth.signInWithFacebook),
-                  ),
-                  const SizedBox(width: 16),
-                  AuthSocialButton(
-                    color: context.palette.surface,
-                    border: context.palette.border,
-                    child: const GoogleLogoIcon(size: 24),
-                    onTap: _loading
-                        ? null
-                        : () => _oauth(_auth.signInWithGoogle),
-                  ),
-                ],
-              ),
-            ],
-            const SizedBox(height: 20),
-            Wrap(
-              alignment: WrapAlignment.center,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                Text(
-                  s.authNoAccountYet,
-                  style: authBodyTextStyle(),
-                ),
-                TextButton(
-                  onPressed: () {
-                    final redirect = _redirectTarget;
-                    if (redirect != null && redirect.isNotEmpty) {
-                      context.push(
-                        '/signup?redirect=${Uri.encodeComponent(redirect)}',
-                      );
-                    } else {
-                      context.push('/signup');
-                    }
-                  },
-                  child: Text(
-                    s.authSignUpFree,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: context.palette.primary,
-                      decoration: TextDecoration.underline,
-                      decorationColor: context.palette.primary,
-                    ),
-                  ),
-                ),
-              ],
-            ),
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _orb(double size, double opacity) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: RadialGradient(
+          colors: [
+            Colors.white.withOpacity(opacity),
+            Colors.transparent,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _BrandMark extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final p = context.palette;
+    return Container(
+      width: 72,
+      height: 72,
+      decoration: BoxDecoration(
+        color: p.primary,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: p.primary.withOpacity(0.28),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      padding: const EdgeInsets.all(14),
+      child: ColorFiltered(
+        colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+        child: Image.asset(
+          BrandAssets.logoMark,
+          fit: BoxFit.contain,
+          errorBuilder: (_, __, ___) => const Icon(
+            Icons.home_rounded,
+            color: Colors.white,
+            size: 36,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final line = Expanded(
+      child: Divider(color: context.palette.border, thickness: 1),
+    );
+    return Row(
+      children: [
+        line,
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Text(label, style: authBodyTextStyle()),
+        ),
+        line,
+      ],
     );
   }
 }

@@ -18,7 +18,7 @@ check() {
   fi
 }
 
-echo "=== PROPPITER / LivingBKK_App verify-ready ==="
+echo "=== RealXtate / LivingBKK_App verify-ready ==="
 echo ""
 
 check ".env.local" "test -f .env.local"
@@ -26,8 +26,8 @@ check "mobile/assets/env" "test -f mobile/assets/env"
 check "supabase CLI" "command -v supabase"
 check "flutter" "command -v flutter"
 MIG_COUNT="$(ls -1 supabase/migrations/*.sql 2>/dev/null | wc -l | tr -d ' ')"
-echo "ℹ️  migrations: ${MIG_COUNT} ไฟล์ (เป้า 45+)"
-check "migrations (40+)" "test \"${MIG_COUNT:-0}\" -ge 40"
+echo "ℹ️  migrations: ${MIG_COUNT} ไฟล์ (เป้า 95+)"
+check "migrations (90+)" "test \"${MIG_COUNT:-0}\" -ge 90"
 
 if [[ -f .env.local ]]; then
   # shellcheck disable=SC1090
@@ -54,6 +54,7 @@ ls -1 supabase/functions/*/index.ts 2>/dev/null | sed 's|supabase/functions/||;s
 echo ""
 echo "สรุป: ✅ $ok ผ่าน · ⚠️ $warn ควรแก้"
 echo "Deploy: ./scripts/deploy-all.sh"
+echo "Cron: docs/PRODUCTION-CRON-SETUP.md"
 echo "รายการเหลือ: docs/ROADMAP-REMAINING.md"
 echo "ก่อน push: docs/PRE-PUSH-STATUS.md"
 echo ""

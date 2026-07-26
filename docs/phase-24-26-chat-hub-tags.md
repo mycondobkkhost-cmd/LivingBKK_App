@@ -81,6 +81,6 @@
 1. **24a** — Tags + gate + split viewing form ✅ (this phase)
 2. **24b** — Viewing requests table UI + admin phone form
 3. **25** — Owner Hub + owner confirm/decline
-4. **26** — Full Participant 360° search + `@tag` mentions + Listing 360°
+4. **26** ✅ — Full Participant 360° search + `@tag` mentions + Listing 360°
 
 See also: [phase-14-chat-backend.md](phase-14-chat-backend.md), [phase-23-admin-vault.md](phase-23-admin-vault.md)

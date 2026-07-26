@@ -126,6 +126,7 @@ class HomePromoBannerRow {
       bulletEn: bulletEn,
       imageAsset: bundled?.imageAsset,
       imageUrl: imageUrl,
+      videoUrl: bundled?.videoUrl,
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,

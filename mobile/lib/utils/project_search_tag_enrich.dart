@@ -30,7 +30,7 @@ class ProjectSearchTagEnrichResult {
 /// A = พิกัด (สถานี ≤850m, โซนศูนย์กลาง, POI confidence=coords)
 /// B = ชื่อโครงการยืนยันด้วยพิกัด (เช่น ทรู+ทองหล่อ)
 abstract final class ProjectSearchTagEnrich {
-  static const autoTransitKm = 0.85;
+  static const autoTransitKm = 1.5;
   static const textVerifyKm = 1.5;
   static const nameTrueMaxKm = 1.5;
 
@@ -76,7 +76,7 @@ abstract final class ProjectSearchTagEnrich {
       lat,
       lng,
       maxKm: autoTransitKm,
-      limit: 4,
+      limit: 3,
     );
     for (final h in transitHits) {
       addSlug(
@@ -148,7 +148,8 @@ abstract final class ProjectSearchTagEnrich {
     }
 
     final labels = _mergeLabels(labelSet.toList());
-    final extraAliases = _extraAliases(labels);
+    // สถานีอยู่ที่ nearby_transit / bts_station เท่านั้น — ไม่ยัดเข้า aliases
+    const extraAliases = <String>[];
 
     if (slug != null && slug.isNotEmpty) {
       slugSet.add(slug);
@@ -200,16 +201,6 @@ abstract final class ProjectSearchTagEnrich {
         .toList();
     if (transit.isEmpty) return null;
     return transit.join(' · ');
-  }
-
-  static List<String> _extraAliases(List<String> labels) {
-    final out = <String>[];
-    for (final label in labels) {
-      out.add(label);
-      final stripped = label.replaceFirst(RegExp(r'^(BTS|MRT|ARL|Gold)\s+'), '');
-      if (stripped != label) out.add(stripped);
-    }
-    return out.toSet().toList();
   }
 
   static bool _coordsPlausible(double lat, double lng) {

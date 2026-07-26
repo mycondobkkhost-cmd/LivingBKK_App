@@ -170,19 +170,18 @@ class ProjectCatalog extends ChangeNotifier {
     if (q.length < 2) return [];
 
     bool matches(BangkokProject p) {
-      final fields = [
+      // ชื่อ / slug เท่านั้น — aliases มักปนสถานีหลายสายจนค้นหาแล้วเจอโครงการคนละย่าน
+      final nameHay = [
         p.nameTh.toLowerCase(),
         p.nameEn.toLowerCase(),
         p.slug.toLowerCase().replaceAll('-', ' '),
-        p.district.toLowerCase(),
-        p.bts?.toLowerCase(),
-        ...p.aliases.map((a) => a.toLowerCase()),
-      ].whereType<String>();
-
-      final hay = fields.join(' ');
-      final tokens = q.split(RegExp(r'\s+')).where((t) => t.length >= 2).toList();
-      if (tokens.isEmpty) return hay.contains(q);
-      return tokens.every(hay.contains);
+      ];
+      final tokens =
+          q.split(RegExp(r'\s+')).where((t) => t.length >= 2).toList();
+      if (tokens.isEmpty) {
+        return nameHay.any((h) => h.contains(q));
+      }
+      return tokens.every((t) => nameHay.any((h) => h.contains(t)));
     }
 
     return source.where(matches).toList();
@@ -205,7 +204,7 @@ class ProjectCatalog extends ChangeNotifier {
     final aliases = aliasesRaw is List
         ? aliasesRaw.map((e) => e.toString()).toList()
         : <String>[];
-    final mergedAliases = <String>{...aliases, ...nearby}.toList();
+    // ไม่ merge nearby_transit เข้า aliases — สถานีคนละฟิลด์
     final bts = row['bts_station']?.toString() ??
         (nearby.isEmpty ? null : nearby.join(' · '));
     return BangkokProject(
@@ -219,7 +218,7 @@ class ProjectCatalog extends ChangeNotifier {
       lng: (row['lng'] as num?)?.toDouble() ?? 100.5018,
       bts: bts,
       propertyType: row['property_type']?.toString() ?? 'condo',
-      aliases: mergedAliases,
+      aliases: aliases,
       yearBuilt: (row['year_built'] as num?)?.toInt(),
       facilities: facilitiesRaw is List
           ? facilitiesRaw.map((e) => e.toString()).toList()

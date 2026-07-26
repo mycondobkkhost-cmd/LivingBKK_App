@@ -4,12 +4,16 @@
  */
 
 import type { ListingImportPlatform } from "./listing_import_source.ts";
+import { detectListingImportPlatform } from "./listing_import_source.ts";
 import type { LiParsedListing } from "./li_parser.ts";
 import {
   extractContacts,
   sanitizePublicText,
   UA,
 } from "./li_parser.ts";
+
+const FB_MOBILE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1";
 
 function decodeHtml(s: string): string {
   return s
@@ -18,7 +22,9 @@ function decodeHtml(s: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, hex) =>
+      String.fromCodePoint(parseInt(hex, 16)))
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -28,10 +34,80 @@ function firstMatch(html: string, re: RegExp): string | null {
   return m?.[1] ? decodeHtml(m[1]) : null;
 }
 
-export async function fetchPageHtml(url: string): Promise<string> {
-  const res = await fetch(url, {
+/** Facebook www มักคืน Redirecting… — ใช้ m.facebook.com + mobile UA */
+function normalizeFacebookFetchUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    const host = u.hostname.toLowerCase();
+    if (
+      host === "facebook.com" ||
+      host === "www.facebook.com" ||
+      (host.endsWith(".facebook.com") && !host.startsWith("m."))
+    ) {
+      u.hostname = "m.facebook.com";
+    }
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
+function isJunkFetchTitle(title: string): boolean {
+  const t = title.trim().toLowerCase();
+  return (
+    t === "redirecting..." ||
+    t === "redirecting" ||
+    t === "error" ||
+    t.startsWith("sorry, something went wrong")
+  );
+}
+
+function parseFacebookOembedTitle(html: string): string | null {
+  const m =
+    html.match(
+      /<link[^>]+rel=["']alternate["'][^>]+title=["']([^"']+)["']/i,
+    ) ??
+      html.match(
+        /<link[^>]+title=["']([^"']+)["'][^>]+rel=["']alternate["']/i,
+      );
+  if (!m?.[1]) return null;
+  return decodeHtml(m[1]).replace(/\s*\|\s*Facebook.*$/i, "").trim() || null;
+}
+
+function parseFacebookCanonicalPostUrl(html: string): string | null {
+  const m =
+    html.match(
+      /<link[^>]+rel=["']alternate["'][^>]+href=["']([^"']+)["']/i,
+    ) ??
+      html.match(
+        /<link[^>]+href=["']([^"']+)["'][^>]+rel=["']alternate["']/i,
+      );
+  const href = m?.[1];
+  if (!href) return null;
+  try {
+    const u = new URL(href);
+    const postUrl = u.searchParams.get("url");
+    return postUrl ? decodeURIComponent(postUrl) : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchPageHtml(
+  url: string,
+  platform?: ListingImportPlatform,
+): Promise<string> {
+  const resolvedPlatform = platform ?? detectListingImportPlatform(url);
+  let fetchUrl = url;
+  let userAgent = UA;
+  if (resolvedPlatform === "facebook") {
+    fetchUrl = normalizeFacebookFetchUrl(url);
+    userAgent = FB_MOBILE_UA;
+  }
+
+  const res = await fetch(fetchUrl, {
     headers: {
-      "User-Agent": UA,
+      "User-Agent": userAgent,
       Accept: "text/html,application/xhtml+xml",
       "Accept-Language": "th-TH,th;q=0.9,en;q=0.8",
     },
@@ -234,11 +310,20 @@ export function parseGenericHtml(
 
   const ogTitle = metaContent(html, ["og:title", "twitter:title"]);
   const titleTag = firstMatch(html, /<title[^>]*>([^<]+)<\/title>/i);
-  let title = ogTitle ?? titleTag ?? "นำเข้าจากลิงก์ภายนอก";
-  title = title
+  const oembedTitle = platform === "facebook" ? parseFacebookOembedTitle(html) : null;
+  let title = ogTitle ?? oembedTitle ?? titleTag ?? "นำเข้าจากลิงก์ภายนอก";
+  title = decodeHtml(title)
     .replace(/\s*[-|·]\s*Facebook.*$/i, "")
     .replace(/\s*[-|·]\s*Meta.*$/i, "")
     .trim();
+
+  if (platform === "facebook" && isJunkFetchTitle(title)) {
+    flags.push("facebook_fetch_blocked");
+    const fallback = oembedTitle && !isJunkFetchTitle(oembedTitle)
+      ? oembedTitle
+      : "นำเข้าจาก Facebook (ดึงข้อมูลไม่ครบ — กรอกมือ)";
+    title = fallback;
+  }
 
   const ogDesc = metaContent(html, ["og:description", "description", "twitter:description"]) ?? "";
   const bodySnippet = firstMatch(html, /<body[^>]*>([\s\S]{0, 8000})/i) ?? "";
@@ -266,7 +351,12 @@ export function parseGenericHtml(
 
   flags.push("needs_admin_review");
 
-  const canonicalUrl = metaContent(html, ["og:url", "twitter:url"]) ?? sourceUrl;
+  const fbCanonical = platform === "facebook"
+    ? parseFacebookCanonicalPostUrl(html)
+    : null;
+  const canonicalUrl = fbCanonical ??
+    metaContent(html, ["og:url", "twitter:url"]) ??
+    sourceUrl;
   const postText = rawDescription || description || title;
   const poster = platform === "facebook" ? parseFacebookPoster(html) : { name: null, url: null };
   const postLinks = platform === "facebook"
@@ -307,5 +397,6 @@ export function parseGenericHtml(
     flags,
     contactPrivate,
     sourceMeta,
+    sourceTextOriginal: rawDescription,
   };
 }

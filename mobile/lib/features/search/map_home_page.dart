@@ -22,7 +22,6 @@ import '../../state/locale_controller.dart';
 import '../../state/search_session_controller.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/li_layout.dart';
 import '../../utils/localized_content.dart';
 import '../../utils/listing_navigation.dart';
 import '../../features/notifications/notification_center_sheet.dart';
@@ -32,9 +31,8 @@ import '../../widgets/li_home_header.dart';
 import '../../widgets/listing_card.dart';
 import '../../widgets/listing_grid.dart';
 import '../../widgets/listings_map.dart';
-import '../../widgets/map_pin_radius_bar.dart';
+import '../../widgets/map_location_picker.dart';
 import '../../widgets/search_filter_sheet.dart';
-import '../../widgets/smart_search_bar.dart';
 import '../../widgets/admin_mobile_layout.dart';
 import '../../widgets/app_mobile_scaffold.dart';
 import '../../utils/page_safe_insets.dart';
@@ -65,8 +63,10 @@ class _MapHomePageState extends State<MapHomePage> {
   List<HomeFeedSection> _sections = [];
   bool _loading = true;
   bool _mapView = false;
+  /// true = หน้าเลือกตำแหน่ง (UI อ้างอิง) · false = แสดงผลประกาศบนแผนที่
+  bool _mapPicking = true;
   bool _focusNearMeOnMap = false;
-  bool _pinPlacementMode = false;
+  String? _pickedAddress;
   HomeViewModeLi _viewMode = HomeViewModeLi.list;
   String? _selectedId;
   String? _selectedTransitSlug;
@@ -235,11 +235,30 @@ class _MapHomePageState extends State<MapHomePage> {
   void _openMapView() {
     setState(() {
       _mapView = true;
+      _mapPicking = true;
       _focusNearMeOnMap = true;
       _viewMode = HomeViewModeLi.map;
       _selectedId = null;
     });
     unawaited(_refreshNearMe());
+  }
+
+  void _onMapLocationConfirmed(double lat, double lng, String address) {
+    final radius = _filters.radiusKm ?? kSearchPinRadiusDefaultKm;
+    widget.searchSession.setFilters(
+      _filters.copyWith(
+        pinLatitude: lat,
+        pinLongitude: lng,
+        radiusKm: radius,
+      ),
+    );
+    setState(() {
+      _mapPicking = false;
+      _pickedAddress = address;
+      _selectedId = null;
+      _focusNearMeOnMap = false;
+    });
+    unawaited(_load());
   }
 
   List<ListingPublic> _mapSheetListings({ListingPublic? anchor}) {
@@ -311,18 +330,6 @@ class _MapHomePageState extends State<MapHomePage> {
     );
   }
 
-  void _onPinPlaced(double lat, double lng) {
-    final radius = _filters.radiusKm ?? kSearchPinRadiusDefaultKm;
-    _onFiltersChanged(
-      _filters.copyWith(
-        pinLatitude: lat,
-        pinLongitude: lng,
-        radiusKm: radius,
-      ),
-    );
-    setState(() => _pinPlacementMode = false);
-  }
-
   Future<void> _openFilters() async {
     final result = await showSearchFilterSheet(
       context,
@@ -369,7 +376,24 @@ class _MapHomePageState extends State<MapHomePage> {
     final selected = _selected;
     final sheetListings = _mapSheetListings(anchor: selected);
     final topInset = PageSafeInsets.top(context);
-    final mapTitle = '${s.mapSearchLabel} · ${sheetListings.length}';
+
+    if (_mapPicking) {
+      return MapLocationPicker(
+        initialLat: _filters.pinLatitude ?? _userLat,
+        initialLng: _filters.pinLongitude ?? _userLng,
+        initialAddress: _pickedAddress,
+        onBack: () => setState(() {
+          _mapView = false;
+          _mapPicking = true;
+          _focusNearMeOnMap = false;
+          _viewMode = HomeViewModeLi.list;
+          _selectedId = null;
+        }),
+        onConfirm: _onMapLocationConfirmed,
+      );
+    }
+
+    final mapTitle = s.mapPickerResultsTitle(sheetListings.length);
 
     return AppMobileScaffold(
       safeBottomBody: false,
@@ -391,8 +415,7 @@ class _MapHomePageState extends State<MapHomePage> {
                     pinLatitude: _filters.pinLatitude,
                     pinLongitude: _filters.pinLongitude,
                     radiusKm: _filters.radiusKm,
-                    pinPlacementMode: _pinPlacementMode,
-                    onPinPlaced: _onPinPlaced,
+                    pinPlacementMode: false,
                     onListingTap: (l) => setState(() => _selectedId = l.id),
                   ),
           ),
@@ -402,77 +425,58 @@ class _MapHomePageState extends State<MapHomePage> {
             top: 0,
             child: Material(
               elevation: 2,
-              color: AppTheme.headerTint,
+              color: Colors.white,
               child: Padding(
                 padding: EdgeInsets.only(top: topInset),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+                      padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
                       child: Row(
                         children: [
                           IconButton(
-                            icon: const Icon(Icons.arrow_back),
+                            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
                             onPressed: () => setState(() {
-                              _mapView = false;
-                              _focusNearMeOnMap = false;
-                              _viewMode = HomeViewModeLi.list;
+                              _mapPicking = true;
                               _selectedId = null;
                             }),
-                            tooltip: s.backToBrowse,
+                            tooltip: s.mapPickerTitle,
                           ),
                           Expanded(
                             child: Text(
                               mapTitle,
-                              maxLines: 2,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w800,
                                 fontSize: 15,
                               ),
                             ),
                           ),
-                          IconButton(
-                            onPressed: () {
-                              setState(() => _focusNearMeOnMap = true);
-                              unawaited(_refreshNearMe());
-                            },
-                            tooltip: s.searchNearByTitle,
-                            icon: const Icon(Icons.near_me_outlined, size: 22),
+                          TextButton(
+                            onPressed: () => setState(() {
+                              _mapPicking = true;
+                              _selectedId = null;
+                            }),
+                            child: Text(s.mapPickerTitle),
                           ),
                         ],
                       ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        LiLayout.pagePadding,
-                        0,
-                        LiLayout.pagePadding,
-                        4,
+                    if (_pickedAddress != null && _pickedAddress!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                        child: Text(
+                          _pickedAddress!,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey.shade700,
+                          ),
+                        ),
                       ),
-                      child: SmartSearchBar(
-                        filters: _filters,
-                        onFiltersChanged: _onFiltersChanged,
-                        style: SearchBarStyle.livingInsider,
-                        onMapSearch: null,
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        LiLayout.pagePadding,
-                        0,
-                        LiLayout.pagePadding,
-                        8,
-                      ),
-                      child: MapPinRadiusBar(
-                        filters: _filters,
-                        pinPlacementMode: _pinPlacementMode,
-                        onPinPlacementModeChanged: (v) =>
-                            setState(() => _pinPlacementMode = v),
-                        onFiltersChanged: _onFiltersChanged,
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -541,7 +545,7 @@ class _MapHomePageState extends State<MapHomePage> {
                         const Divider(height: 20),
                         Text(
                           s.t('ทรัพย์ใกล้เคียง', 'Nearby listings'),
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
                         ),
                         const SizedBox(height: 8),
                       ],

@@ -1,14 +1,22 @@
 import {
-  answerChatWithOpenAI,
-  type ListingDetail,
-} from "./chat_answer_openai.ts";
+  defaultCoachRequest,
+  routeConversationalFirst,
+  routeDiscoveryFallback,
+  routeFaqInspirationFallback,
+  routeViewingRequestGuard,
+} from "./chat_conversational_route.ts";
+import type { FaqRule, RouteContext, RouteResult } from "./chat_route_shared.ts";
+export type { FaqRule, RouteContext, RouteResult } from "./chat_route_shared.ts";
+export { matchFaqRule, findRelatedFaqRules } from "./chat_route_shared.ts";
 import {
   aiSupportReply,
   BotReply,
   classifySensitive,
   containsThaiPhone,
   escalationReply,
+  isDiscoveryIntentOnProperty,
   isExplicitStaffRequest,
+  isFindOtherRoomIntent,
   isSmallTalk,
   ListingRow,
   phoneReceivedAckReply,
@@ -16,46 +24,44 @@ import {
   type SensitiveKind,
   softClarifyReply,
   staffAckReply,
+  unitPrivacyReply,
+  wantsOtherUnitsInProject,
 } from "./chat_logic.ts";
+import { FIND_OTHER, findOtherRoomBurst } from "./find_other_room_voice.ts";
+import { projectOtherUnitsSingleReply } from "./project_other_units_voice.ts";
 import {
-  fuzzyIncludes,
-  fuzzyMatchScore,
+  appendOwnerInquiryDraft,
+  classifyOwnerInquiryIntent,
+  hasSpecificNegotiateOffer,
+  inferOwnerInquiryTypeFromDraft,
+  isNegotiateIntent,
+  isOwnerInquiryReadyToSend,
+  type OwnerInquiryType,
+} from "./owner_inquiry_intent.ts";
+import {
+  compoundListingBurst,
+  floorFacingBurst,
+  isCompoundListingQuestion,
+  isFloorFacingQuestion,
+  isUnitNumberQuestion,
+  ownerInquiryOpenBurst,
+  ownerInquiryProfileBurst,
+  priceNegotiationSalesBurst,
+  VOICE,
+} from "./owner_inquiry_voice.ts";
+import {
+  isViewingRequestIntent,
+  viewingRequestBurst,
+} from "./viewing_request_voice.ts";
+import { ensureFemaleAiTone, GREETING_REPLY_TEXT, isGreetingOnly, INTERNET_FAQ_REPLY_BURST, isInternetQuestion } from "./chat_ai_voice.ts";
+import {
+  isLocationQuestion,
+  listingToMapPin,
+  locationFaqReply,
+} from "./chat_map_link.ts";
+import {
   normalizeChatText,
 } from "./chat_text_normalize.ts";
-
-export type FaqRule = {
-  scope: string;
-  patterns: string[];
-  reply_text: string;
-  priority: number;
-  escalate?: boolean;
-};
-
-export type RouteContext = {
-  text: string;
-  isStaffRoom: boolean;
-  listingId: string | null;
-  listingCode: string | null;
-  projectName: string | null;
-  listings: ListingRow[];
-  faqRules: FaqRule[];
-  priorUserMessages: number;
-  unclearStreak: number;
-  /** Full public listing row for RAG when in property thread */
-  currentListing?: ListingDetail | null;
-};
-
-export type RouteResult = {
-  reply: BotReply;
-  category: string;
-  status: "open" | "waiting_admin";
-  priority: "normal" | "high";
-  escalate: boolean;
-  notifyAdmin: boolean;
-  escalateReason?: string;
-  source: string;
-  unclearStreak: number;
-};
 
 const DISCOVERY_KEYS = [
   "หา",
@@ -85,52 +91,9 @@ const DISCOVERY_KEYS = [
   "เปรียบ",
 ];
 
-const PROJECT_OTHER_KEYS = ["ห้องอื่น", "ตัวอื่น", "ในโครงการ", "unit อื่น"];
 
 function normalize(text: string): string {
   return normalizeChatText(text);
-}
-
-export function matchFaqRule(
-  text: string,
-  rules: FaqRule[],
-  scopes: string[],
-): FaqRule | null {
-  const eligible = rules
-    .filter((r) => scopes.includes(r.scope))
-    .sort((a, b) => a.priority - b.priority);
-
-  for (const rule of eligible) {
-    if (rule.patterns.some((p) => fuzzyIncludes(text, p))) {
-      return rule;
-    }
-  }
-  return null;
-}
-
-/** FAQ rules partially matching user text — context for RAG (not auto-reply). */
-export function findRelatedFaqRules(
-  text: string,
-  rules: FaqRule[],
-  scopes: string[],
-  limit = 6,
-): FaqRule[] {
-  const scored: { rule: FaqRule; score: number }[] = [];
-
-  for (const rule of rules) {
-    if (!scopes.includes(rule.scope)) continue;
-    let best: number | null = null;
-    for (const p of rule.patterns) {
-      const s = fuzzyMatchScore(text, p);
-      if (s !== null && (best === null || s < best)) best = s;
-    }
-    if (best !== null) {
-      scored.push({ rule, score: best + rule.priority * 0.01 });
-    }
-  }
-
-  scored.sort((a, b) => a.score - b.score);
-  return scored.slice(0, limit).map((x) => x.rule);
 }
 
 export function isDiscoveryIntent(text: string): boolean {
@@ -139,9 +102,14 @@ export function isDiscoveryIntent(text: string): boolean {
   return /\d[\d,]*\s*(?:บาท|k)?/i.test(q);
 }
 
-function wantsOtherUnitsInProject(text: string): boolean {
-  const q = normalize(text);
-  return PROJECT_OTHER_KEYS.some((k) => q.includes(k));
+function discoveryIntentForThread(
+  text: string,
+  hasListing: boolean,
+  isDiscoveryThread: boolean,
+): boolean {
+  if (isDiscoveryThread) return isDiscoveryIntent(text);
+  if (!hasListing) return isDiscoveryIntent(text);
+  return isDiscoveryIntentOnProperty(text);
 }
 
 const DISCOVERY_ON_PROPERTY_KEYS = [
@@ -199,7 +167,7 @@ function faqRouteResult(
 }
 
 function faqReply(text: string, rule: FaqRule, listingCode: string | null): BotReply {
-  let replyText = rule.reply_text;
+  let replyText = ensureFemaleAiTone(rule.reply_text);
   if (listingCode && rule.scope === "property") {
     replyText = replyText.replace("{listing_code}", listingCode);
     if (!replyText.includes(listingCode)) {
@@ -248,7 +216,6 @@ function adminResult(
 function sensitiveRouteResult(text: string, kind: SensitiveKind): RouteResult {
   const reply = sensitiveReply(kind, text);
   const notifyAdmin =
-    kind === "negotiate" ||
     kind === "commission" ||
     (kind === "contact" && containsThaiPhone(text));
 
@@ -256,6 +223,145 @@ function sensitiveRouteResult(text: string, kind: SensitiveKind): RouteResult {
     return adminResult(reply, "escalation", kind, `sensitive_${kind}`);
   }
   return autoResult(reply, "property_faq", `sensitive_${kind}`);
+}
+
+function aiBurst(texts: string[], links: BotReply["links"] = []): BotReply[] {
+  return texts.map((text, i) => ({
+    role: "ai" as const,
+    text,
+    links: i === 0 ? (links ?? []) : [],
+  }));
+}
+
+function ownerInquiryFormLink(
+  listingId: string,
+  draft: string,
+  type: OwnerInquiryType,
+) {
+  return {
+    label: VOICE.formLabel,
+    kind: "owner_inquiry_form" as const,
+    listingId,
+    projectName: draft,
+    refCode: type,
+  };
+}
+
+function ownerInquiryCollectStartReplies(
+  type: OwnerInquiryType,
+  listingId: string,
+  draft: string,
+  listing?: RouteContext["currentListing"],
+): BotReply[] {
+  return aiBurst(ownerInquiryOpenBurst(type, listing ?? null));
+}
+
+function ownerInquiryCollectContinueReplies(
+  listingId: string,
+  draft: string,
+): BotReply[] {
+  const type = inferOwnerInquiryTypeFromDraft(draft);
+  return aiBurst(
+    ownerInquiryProfileBurst(),
+    [ownerInquiryFormLink(listingId, draft, type)],
+  );
+}
+
+function ownerInquiryReadyReplies(
+  listingId: string,
+  draft: string,
+): BotReply[] {
+  const type = inferOwnerInquiryTypeFromDraft(draft);
+  return aiBurst(
+    ownerInquiryProfileBurst(),
+    [ownerInquiryFormLink(listingId, draft, type)],
+  );
+}
+
+function compoundListingReplies(
+  listingId: string,
+  draft: string,
+  listing?: RouteContext["currentListing"],
+): BotReply[] {
+  return aiBurst(compoundListingBurst(listing ?? null));
+}
+
+function floorFacingReplies(
+  listing?: RouteContext["currentListing"],
+): BotReply[] {
+  return aiBurst(floorFacingBurst(listing ?? null));
+}
+
+function ownerInquiryBurstResult(
+  replies: BotReply[],
+  collecting: boolean,
+  draft: string,
+  source: string,
+): RouteResult {
+  const last = replies[replies.length - 1];
+  return {
+    ...autoResult(last, "owner_inquiry", source),
+    replies,
+    ownerInquiryCollecting: collecting,
+    ownerInquiryDraft: draft,
+  };
+}
+
+function routeOwnerInquiryFlow(ctx: RouteContext): RouteResult | null {
+  const listingId = ctx.listingId ?? "";
+  const collecting = ctx.ownerInquiryCollecting ?? false;
+  const draft = ctx.ownerInquiryDraft ?? "";
+  const { text } = ctx;
+  const ready = isOwnerInquiryReadyToSend(text);
+  const inquiry = classifyOwnerInquiryIntent(text);
+
+  if (collecting) {
+    if (ready && draft.trim().length > 0) {
+      return ownerInquiryBurstResult(
+        ownerInquiryReadyReplies(listingId, draft.trim()),
+        false,
+        "",
+        "owner_inquiry_send",
+      );
+    }
+    const newDraft = appendOwnerInquiryDraft(draft, text);
+    if (newDraft === draft && !ready) return null;
+    return ownerInquiryBurstResult(
+      ownerInquiryCollectContinueReplies(listingId, newDraft),
+      true,
+      newDraft,
+      "owner_inquiry_collect",
+    );
+  }
+
+  if (inquiry) {
+    const newDraft = appendOwnerInquiryDraft("", text);
+    return ownerInquiryBurstResult(
+      ownerInquiryCollectStartReplies(
+        inquiry.type,
+        listingId,
+        newDraft,
+        ctx.currentListing,
+      ),
+      true,
+      newDraft,
+      "owner_inquiry_start",
+    );
+  }
+
+  return null;
+}
+
+function findOtherRoomResult(): RouteResult {
+  const replies = aiBurst(findOtherRoomBurst(), [{
+    label: FIND_OTHER.formLabel,
+    kind: "requirement_form",
+    listingId: "",
+  }]);
+  return {
+    ...autoResult(replies[replies.length - 1], "property_faq", "find_other_room"),
+    replies,
+  };
 }
 
 function softDeferResult(unclearStreak: number): RouteResult {
@@ -305,11 +411,6 @@ export async function routeChatMessage(ctx: RouteContext): Promise<RouteResult> 
     return adminResult(escalationReply(), "escalation", "staff_request", "staff_request");
   }
 
-  const sensitiveKind = classifySensitive(text);
-  if (sensitiveKind) {
-    return sensitiveRouteResult(text, sensitiveKind);
-  }
-
   if (containsThaiPhone(text)) {
     return adminResult(
       phoneReceivedAckReply(),
@@ -319,108 +420,44 @@ export async function routeChatMessage(ctx: RouteContext): Promise<RouteResult> 
     );
   }
 
-  if (isSmallTalk(text)) {
-    const rule = matchFaqRule(text, faqRules, ["global"]);
-    if (rule) {
-      return faqRouteResult(text, rule, listingCode, "property_faq", "faq_smalltalk");
-    }
+  if (isGreetingOnly(text)) {
+    const cat = hasListing ? "property_faq" : isDiscoveryThread ? "discovery" : "property_faq";
+    return autoResult(
+      { role: "ai", text: GREETING_REPLY_TEXT },
+      cat,
+      "greeting",
+    );
   }
 
-  const globalFaq = matchFaqRule(text, faqRules, ["global"]);
-  if (globalFaq) {
-    return faqRouteResult(text, globalFaq, listingCode, "property_faq", "faq_global");
+  const ownerFlow = routeOwnerInquiryFlow(ctx);
+  if (ownerFlow) return ownerFlow;
+
+  if (isFindOtherRoomIntent(text)) {
+    return findOtherRoomResult();
   }
 
-  if (hasListing) {
-    const propFaq = matchFaqRule(text, faqRules, ["property"]);
-    if (propFaq) {
-      return faqRouteResult(text, propFaq, listingCode, "property_faq", "faq_property");
-    }
+  if (hasSpecificNegotiateOffer(text)) {
+    const draft = appendOwnerInquiryDraft("", text);
+    const type = classifyOwnerInquiryIntent(text)?.type ?? "price_negotiation";
+    return ownerInquiryBurstResult(
+      ownerInquiryCollectStartReplies(type, listingId ?? "", draft, ctx.currentListing),
+      true,
+      draft,
+      "owner_inquiry_offer",
+    );
   }
 
-  const discoveryFaq = matchFaqRule(text, faqRules, ["discovery"]);
-  const discoveryOnProperty = hasListing && isDiscoveryScopedOnProperty(text);
-  if (
-    discoveryFaq &&
-    (isDiscoveryThread || isDiscoveryIntent(text) || discoveryOnProperty)
-  ) {
-    const cat = discoveryOnProperty ? "property_faq" : "discovery";
-    const src = discoveryOnProperty ? "faq_discovery_on_property" : "faq_discovery";
-    return faqRouteResult(text, discoveryFaq, listingCode, cat, src);
-  }
+  const viewingGuard = await routeViewingRequestGuard(ctx);
+  if (viewingGuard) return viewingGuard;
 
-  const shouldRunDiscovery =
-    isDiscoveryThread ||
-    isDiscoveryIntent(text) ||
-    wantsOtherUnitsInProject(text);
+  const conversational = await routeConversationalFirst(ctx);
+  if (conversational) return conversational;
 
-  let discoveryFallback: BotReply | null = null;
-  if (shouldRunDiscovery) {
-    const pool = discoveryPool(text, listings, projectName, listingId);
-    const discovery = aiSupportReply(text, pool);
-    if (discovery.links && discovery.links.length > 0) {
-      return autoResult(discovery, "discovery", "discovery_db");
-    }
-    if (isDiscoveryThread || isDiscoveryIntent(text)) {
-      discoveryFallback = discovery;
-    }
-  }
+  const discoveryFb = routeDiscoveryFallback(ctx);
+  if (discoveryFb) return discoveryFb;
 
-  const ragScopes = hasListing
-    ? ["global", "property", "discovery"]
-    : isDiscoveryThread
-    ? ["global", "discovery"]
-    : ["global"];
+  const faqFb = routeFaqInspirationFallback(ctx);
+  if (faqFb) return faqFb;
 
-  const ragPool = shouldRunDiscovery
-    ? discoveryPool(text, listings, projectName, listingId)
-    : listings;
-
-  const rag = await answerChatWithOpenAI({
-    text,
-    normalizedText: normalizeChatText(text),
-    hasListing,
-    isDiscoveryThread,
-    listingCode,
-    projectName,
-    currentListing: ctx.currentListing ?? null,
-    listings: ragPool.slice(0, 8),
-    faqHints: findRelatedFaqRules(text, faqRules, ragScopes),
-  });
-
-  if (rag) {
-    if (rag.intent === "sensitive" || rag.needs_admin) {
-      return adminResult(
-        escalationReply(),
-        "escalation",
-        rag.reason ?? "llm_rag",
-        "llm_rag_escalate",
-      );
-    }
-
-    if (rag.should_answer && rag.answer_text) {
-      const category = rag.intent === "discovery" ? "discovery" : "property_faq";
-      let reply: BotReply = { role: "ai", text: rag.answer_text };
-
-      if (rag.intent === "discovery") {
-        const discovery = aiSupportReply(text, ragPool);
-        if (discovery.links && discovery.links.length > 0) {
-          reply = { role: "ai", text: rag.answer_text, links: discovery.links };
-        }
-      }
-
-      return autoResult(reply, category, "llm_rag");
-    }
-  }
-
-  if (discoveryFallback) {
-    return autoResult(discoveryFallback, "discovery", "discovery_empty");
-  }
-
-  // Lean: first unclear → bot asks to clarify; second → admin
-  if (unclearStreak < 1) {
-    return softDeferResult(unclearStreak);
-  }
-
-  return adminResult(escalationReply(), "escalation", "repeated_unclear", "fallback_admin");
+  return defaultCoachRequest(ctx);
 }

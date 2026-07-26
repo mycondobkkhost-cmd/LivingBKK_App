@@ -49,6 +49,22 @@ class AuthService extends ChangeNotifier {
   String? get displayEmail =>
       _trial?.email ?? currentUser?.email ?? 'ผู้ใช้ทดสอบ (Demo)';
 
+  /// ชื่อที่โชว์ใน UI (ยินดีต้อนรับ · โปรไฟล์)
+  String get displayName {
+    final trial = trialDisplayName?.trim();
+    if (trial != null && trial.isNotEmpty) return trial;
+    final meta = currentUser?.userMetadata?['display_name']?.toString().trim();
+    if (meta != null && meta.isNotEmpty) return meta;
+    final full = currentUser?.userMetadata?['full_name']?.toString().trim();
+    if (full != null && full.isNotEmpty) return full;
+    final email = displayEmail?.trim();
+    if (email != null && email.contains('@')) {
+      return email.split('@').first;
+    }
+    if (email != null && email.isNotEmpty) return email;
+    return 'Guest';
+  }
+
   bool get isSignedIn => isTrialSignedIn || currentUser != null;
 
   bool get isRealSupabaseSession => currentUser != null && !isTrialSignedIn;
@@ -115,15 +131,44 @@ class AuthService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// แปลงเบอร์ไทยเป็น E.164 (+66…)
+  static String normalizePhoneE164(String phone) {
+    final cleaned = phone.trim().replaceAll(RegExp(r'[\s\-]'), '');
+    if (cleaned.startsWith('+')) return cleaned;
+    if (cleaned.startsWith('66')) return '+$cleaned';
+    final local = cleaned.replaceFirst(RegExp(r'^0'), '');
+    return '+66$local';
+  }
+
   /// OTP เบอร์โทร — ต้องเปิด Phone provider ใน Supabase + SMS (Twilio ฯลฯ)
-  Future<void> requestPhoneOtp(String phone) async {
+  Future<String> requestPhoneOtp(String phone) async {
     if (_client == null) {
       throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
     }
-    final normalized = phone.startsWith('+')
-        ? phone.replaceAll(' ', '')
-        : '+66${phone.replaceFirst(RegExp(r'^0'), '').replaceAll(' ', '')}';
+    final normalized = normalizePhoneE164(phone);
     await _client!.auth.signInWithOtp(phone: normalized);
+    return normalized;
+  }
+
+  /// ยืนยัน OTP SMS — คืน `true` เมื่อได้ session
+  Future<bool> verifyPhoneOtp({
+    required String phone,
+    required String token,
+  }) async {
+    if (_client == null) {
+      throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
+    }
+    _trial = null;
+    final normalized = normalizePhoneE164(phone);
+    await _client!.auth.verifyOTP(
+      type: OtpType.sms,
+      phone: normalized,
+      token: token.trim(),
+    );
+    await _syncProfileRole();
+    await NotificationService.instance.registerIfPossible();
+    notifyListeners();
+    return true;
   }
 
   String get _oauthRedirect {
@@ -131,6 +176,23 @@ class AuthService extends ChangeNotifier {
     if (base.isNotEmpty) return base;
     if (kIsWeb) return Uri.base.origin;
     return 'com.livingbkk.livingbkk://login-callback/';
+  }
+
+  /// LINE Login ผ่าน Supabase authorize URL
+  /// (gotrue เวอร์ชันนี้ยังไม่มี `OAuthProvider.line`)
+  /// คืน `false` เพราะ session มาหลัง redirect — caller ต้องเปิด URL
+  Future<Uri> lineOAuthUri() async {
+    if (_client == null) {
+      throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
+    }
+    _trial = null;
+    final base = Env.supabaseUrl.replaceAll(RegExp(r'/+$'), '');
+    return Uri.parse('$base/auth/v1/authorize').replace(
+      queryParameters: {
+        'provider': 'line',
+        'redirect_to': _oauthRedirect,
+      },
+    );
   }
 
   Future<void> signInWithGoogle() async {

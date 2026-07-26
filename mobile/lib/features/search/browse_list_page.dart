@@ -20,8 +20,8 @@ import '../../utils/page_safe_insets.dart';
 import '../../widgets/consumer/consumer_page_shell.dart';
 import '../../utils/listing_browse_sorter.dart';
 import '../../utils/listing_navigation.dart';
-import '../../widgets/browse_listing_list.dart';
 import '../../widgets/app_mobile_scaffold.dart';
+import '../../widgets/listing_grid.dart';
 import '../../widgets/listings_map.dart';
 import '../../widgets/map_pin_radius_bar.dart';
 import '../../widgets/search_filter_chips.dart';
@@ -788,9 +788,11 @@ class _BrowseListPageState extends State<BrowseListPage> {
                       ),
                     )
                   else
-                    BrowseListingList(
+                    ListingGrid(
                       items: items,
                       browseFilter: _searchFilters.listingType,
+                      showCoAgentStrip: widget.extra.isAgent ||
+                          _searchFilters.coAgentEligibleOnly == true,
                       highlightRecommendedIds: highlightIds,
                       onTapListing: (item) => ListingNavigation.openListing(
                         context,

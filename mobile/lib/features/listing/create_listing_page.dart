@@ -9,6 +9,7 @@ import '../../config/create_listing_wizard_config.dart';
 import '../../config/env.dart';
 import '../../config/post_listing_menu_config.dart';
 import '../../data/bangkok_projects.dart';
+import '../../data/demo_media.dart';
 import '../../data/listing_form_options.dart';
 import '../../data/property_catalog.dart';
 import '../../models/listing_transaction_types.dart';
@@ -835,7 +836,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
       petPolicy: _petPolicy,
       imageUrls: _images.isEmpty
           ? const []
-          : ['https://picsum.photos/seed/create-preview/800/520'],
+          : [DemoMedia.photo('create-preview', width: 800, height: 520)],
       description: description.isEmpty ? null : description,
       descriptionEn: _listingLangs.contains('en') && _descEn.text.trim().isNotEmpty
           ? _descEn.text.trim()

@@ -3,6 +3,52 @@ import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { enrichProjectTags } from "../_shared/project_search_tag_enrich.ts";
 import { createServiceClient } from "../_shared/supabase_env.ts";
 
+/** เก็บเฉพาะ alias ชื่อโครงการ — ไม่เก็บชื่อสถานี (สถานีอยู่ที่ nearby_transit) */
+function rebuildNameAliases(
+  row: Record<string, unknown>,
+  nearbyTransit: string[],
+): string[] {
+  const transitTokens = new Set<string>();
+  for (const label of nearbyTransit) {
+    transitTokens.add(label);
+    transitTokens.add(label.replace(/^(BTS|MRT|ARL|Gold)\s+/, ""));
+  }
+  // common station names that must never stay in aliases unless we re-add via coords elsewhere
+  const banned = [
+    "อ่อนนุช", "อโศก", "อารีย์", "นานา", "สยาม", "ทองหล่อ", "เอกมัย",
+    "พร้อมพงษ์", "บางจาก", "สุขุมวิท", "สีลม", "ลาดพร้าว", "ห้วยขวาง",
+    "On Nut", "Asok", "Ari", "Nana", "Siam", "Thong Lo", "Ekkamai",
+  ];
+  for (const b of banned) transitTokens.add(b);
+
+  const isTransit = (v: string) => {
+    const t = v.trim();
+    if (!t) return true;
+    if (/^(BTS|MRT|ARL|Gold)\s+/i.test(t)) return true;
+    if (transitTokens.has(t)) return true;
+    return false;
+  };
+
+  const out: string[] = [];
+  const add = (v: unknown) => {
+    if (typeof v !== "string") return;
+    const s = v.trim();
+    if (!s || isTransit(s) || out.includes(s)) return;
+    out.push(s);
+  };
+
+  add(row.name_th);
+  add(row.name_en);
+  if (typeof row.slug === "string") {
+    add(row.slug);
+    add(row.slug.replace(/-/g, " "));
+  }
+  for (const a of (row.aliases as string[]) ?? []) {
+    add(a);
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -63,12 +109,7 @@ Deno.serve(async (req) => {
       const geoSlug = enriched.primary_geo_zone_slug;
       const geoZoneId = geoSlug ? zoneBySlug.get(geoSlug) ?? row.geo_zone_id : row.geo_zone_id;
 
-      const aliases = [
-        ...new Set([
-          ...((row.aliases as string[]) ?? []),
-          ...enriched.aliases_extra,
-        ]),
-      ];
+      const cleanedAliases = rebuildNameAliases(row, enriched.nearby_transit);
 
       const { error: updErr } = await db
         .from("property_projects")
@@ -76,7 +117,7 @@ Deno.serve(async (req) => {
           search_tag_slugs: enriched.search_tag_slugs,
           nearby_transit: enriched.nearby_transit,
           bts_station: enriched.bts_station,
-          aliases,
+          aliases: cleanedAliases,
           geo_zone_id: geoZoneId,
           tag_enrich_status: enriched.tag_enrich_status,
           tag_enrich_meta: enriched.tag_enrich_meta,

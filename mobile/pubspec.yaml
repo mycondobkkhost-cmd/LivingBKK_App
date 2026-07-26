@@ -31,6 +31,8 @@ dependencies:
   firebase_core: ^2.32.0
   firebase_messaging: ^14.9.4
   shared_preferences: ^2.2.3
+  video_player: ^2.9.2
+  flutter_svg: ^2.0.10+1
 
 dev_dependencies:
   flutter_test:
@@ -45,6 +47,7 @@ flutter:
   assets:
     - assets/env
     - assets/brand/
+    - assets/brand/auth/
     - assets/promo/
     - assets/home_services/
     - assets/data/search_display_index.json

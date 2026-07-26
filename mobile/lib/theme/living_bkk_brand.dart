@@ -28,7 +28,7 @@ class LivingBkkBrand {
   static const String loginSubSloganLineTh = taglineTh;
   static const String loginSubSloganLineEn = taglineEn;
 
-  static const Color loginSubSloganColor = Color(0xFFE84393);
+  static const Color loginSubSloganColor = brandRedLight;
 
   static String loginSubSloganLine(Locale locale) =>
       locale.languageCode == 'th' ? loginSubSloganLineTh : loginSubSloganLineEn;
@@ -36,42 +36,55 @@ class LivingBkkBrand {
   static String loginMainSlogan(Locale locale) =>
       locale.languageCode == 'th' ? loginMainSloganTh : loginMainSloganEn;
 
-  // ── Robinhood TH–inspired palette (PROP purple · PITER orange/yellow) ──
-  static const Color propPurple = Color(0xFF4E2A84);
-  static const Color piterOrange = Color(0xFFFF6B00);
-  static const Color accentYellow = Color(0xFFFFCB05);
-  static const Color accentOrange = Color(0xFFFF8A00);
-  static const Color propNavy = Color(0xFF1A1B41);
-  static const Color piterPink = piterOrange;
-  static const Color pageBackground = Color(0xFFF8F9FA);
+  // ── RealXtate red palette (mock 2026 — สีอย่างเดียว) ──
+  static const Color brandRed = Color(0xFFEE4D2D);
+  static const Color brandRedDark = Color(0xFFD73211);
+  static const Color brandRedMid = Color(0xFFE83822);
+  static const Color brandRedLight = Color(0xFFFF6B4A);
+  static const Color brandRedTint = Color(0xFFFFF0EB);
 
-  static const Color robinhoodPurple = propPurple;
-  static const Color robinhoodPurpleDark = Color(0xFF3A1F66);
-  static const Color robinhoodPurpleMid = Color(0xFF6B3FA0);
-  static const Color robinhoodPurpleLight = Color(0xFFF3E8FF);
+  /// ปุ่มบริการหน้าแรก (mock)
+  static const Color servicePurple = Color(0xFF8A59D1);
+  static const Color serviceGreen = Color(0xFF47B38D);
+  static const Color serviceYellow = Color(0xFFF7D154);
+
+  static const Color propPurple = brandRed;
+  static const Color piterOrange = Color(0xFFF58220);
+  static const Color accentYellow = serviceYellow;
+  static const Color accentOrange = Color(0xFFF58220);
+  static const Color propNavy = Color(0xFF333333);
+  static const Color piterPink = brandRed;
+  static const Color pageBackground = Color(0xFFF0F2F5);
+
+  static const Color robinhoodPurple = brandRed;
+  static const Color robinhoodPurpleDark = brandRedDark;
+  static const Color robinhoodPurpleMid = brandRedMid;
+  static const Color robinhoodPurpleLight = brandRedTint;
 
   // ── RealXtate palette (brand brief 2026) ──
   static const Color purplePrimary = propNavy;
-  static const Color purpleLight = Color(0xFF9B6DFF);
-  static const Color purpleMid = Color(0xFF7B5CE8);
-  static const Color pink = piterPink;
+  static const Color purpleLight = brandRedLight;
+  static const Color purpleMid = brandRedMid;
+  static const Color pink = brandRed;
   static const Color navy = propNavy;
   static const Color offWhite = Color(0xFFFFFFFF);
   static const Color surfaceWhite = Color(0xFFFFFFFF);
-  static const Color sidebarTint = Color(0xFFFAF9FF);
+  static const Color sidebarTint = Color(0xFFFFFAF8);
 
   static const Map<String, String> colorTokens = {
-    'purple': '#4E2A84',
-    'purple_light': '#9B6DFF',
-    'yellow': '#FFCB05',
-    'orange': '#FF6B00',
-    'navy': '#1A1B41',
-    'off_white': '#F8F9FA',
+    'primary_red': '#EE4D2D',
+    'primary_red_dark': '#D73211',
+    'orange_cta': '#F58220',
+    'service_purple': '#8A59D1',
+    'service_green': '#47B38D',
+    'service_yellow': '#F7D154',
+    'navy': '#333333',
+    'off_white': '#F5F5F5',
   };
 
-  /// Robinhood header — solid purple
-  static const Color headerGradientStart = robinhoodPurple;
-  static const Color headerGradientEnd = robinhoodPurpleDark;
+  /// Header — solid red (mock)
+  static const Color headerGradientStart = brandRed;
+  static const Color headerGradientEnd = brandRedDark;
 
   // ── Dark UI surfaces (RealXtate brief) ──
   static const Color navyMid = Color(0xFF16142A);
@@ -101,69 +114,71 @@ class LivingBkkBrand {
   static const LinearGradient logoGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [propPurple, purpleLight, accentYellow, accentOrange],
+    colors: [brandRed, brandRedLight, accentYellow, accentOrange],
     stops: [0.0, 0.4, 0.72, 1.0],
   );
 
   static const LinearGradient robinhoodHeaderGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [robinhoodPurple, robinhoodPurpleMid, accentOrange],
+    colors: [brandRed, brandRedMid, accentOrange],
     stops: [0.0, 0.55, 1.0],
   );
 
-  /// บล็อก header หน้าแรก — ม่วงสว่าง ไล่เฉดนุ่ม (safe area → ค้นหา)
-  static const Color homeHeaderBlockColor = Color(0xFF6E4EC4);
+  /// บล็อก header หน้าแรก — แดง → ส้มอุ่น (depth ไม่ flat)
+  static const Color homeHeaderBlockColor = brandRed;
 
   static const LinearGradient homeHeaderBlockGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF5E42B0),
-      Color(0xFF7254C8),
-      Color(0xFF9178E0),
-      Color(0xFFA888F0),
+      brandRedLight,
+      brandRed,
+      brandRedMid,
+      brandRedDark,
+      Color(0xFFC42A0E),
     ],
-    stops: [0.0, 0.38, 0.72, 1.0],
+    stops: [0.0, 0.28, 0.55, 0.82, 1.0],
   );
 
-  /// หัวม่วง dark — deep purple 4-stop (ไม่มีขาว)
+  /// หัวแดง dark
   static const LinearGradient homeHeaderBlockGradientDark = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     colors: [
-      Color(0xFF2A1548),
-      Color(0xFF3A1F66),
-      Color(0xFF4E2A84),
-      Color(0xFF5E42B0),
+      Color(0xFF8A2410),
+      Color(0xFFB52E18),
+      brandRedDark,
+      brandRed,
+      accentOrange,
     ],
-    stops: [0.0, 0.32, 0.68, 1.0],
+    stops: [0.0, 0.28, 0.55, 0.82, 1.0],
   );
 
-  /// หน้าแรก — deep purple → orange fade (Robinhood delivery feel)
+  /// หน้าแรก — red → warm wash → page background
   static const LinearGradient homeHeaderGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
-      robinhoodPurple,
-      robinhoodPurpleMid,
-      Color(0xFFB85CE8),
-      accentOrange,
+      brandRed,
+      brandRedMid,
+      brandRedLight,
+      brandRedTint,
       pageBackground,
       Color(0xFFFFFFFF),
     ],
-    stops: [0.0, 0.28, 0.48, 0.68, 0.9, 1.0],
+    stops: [0.0, 0.22, 0.42, 0.62, 0.88, 1.0],
   );
 
-  /// หน้าแรก dark — purple → darkBg fade
+  /// หน้าแรก dark — red → darkBg
   static const LinearGradient homeHeaderGradientDark = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
-      Color(0xFF2A1548),
-      Color(0xFF3A1F66),
-      Color(0xFF4E2A84),
-      Color(0xFF352A6B),
+      Color(0xFF8A2410),
+      brandRedDark,
+      brandRed,
+      Color(0xFF3D2018),
       darkBg,
       darkBg,
     ],
@@ -203,10 +218,25 @@ class LivingBkkBrand {
   );
 
   static const LinearGradient ctaGradient = LinearGradient(
-    colors: [pink, purpleLight],
+    colors: [brandRed, brandRedLight, accentOrange],
+    stops: [0.0, 0.55, 1.0],
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
   );
+
+  /// เงาอุ่นใต้การ์ด/แคปซูลค้นหา — ไม่ใช้ม่วง
+  static List<BoxShadow> warmCardShadow({double opacity = 0.10}) => [
+        BoxShadow(
+          color: Color.fromRGBO(215, 50, 17, opacity),
+          blurRadius: 18,
+          offset: const Offset(0, 6),
+        ),
+        BoxShadow(
+          color: Color.fromRGBO(0, 0, 0, opacity * 0.45),
+          blurRadius: 8,
+          offset: const Offset(0, 2),
+        ),
+      ];
 
   static const LinearGradient screenBackground = LinearGradient(
     begin: Alignment.topCenter,
@@ -240,7 +270,7 @@ class LivingBkkBrand {
   static const LinearGradient promoGradientLight = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFEDE9FE), Color(0xFFFFFFFF)],
+    colors: [brandRedTint, Color(0xFFFFFFFF)],
   );
 
   static String tagline(Locale locale) =>

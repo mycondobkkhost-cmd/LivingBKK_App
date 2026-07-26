@@ -5,13 +5,13 @@
 ## Backend
 
 - [ ] `.env.local` มี `SUPABASE_URL` + `SUPABASE_ANON_KEY` (จาก Connect)
-- [ ] `supabase db push` — **45 migrations** รวม `pending_review`, `sale_installment`, **PPTR inventory**, **exclusive**, **viewing_access** (ดู [PRE-PUSH-STATUS.md](PRE-PUSH-STATUS.md))
+- [ ] `supabase db push` — **101+ migrations** รวม rental · chat bot training (ดู [PRODUCTION-CRON-SETUP.md](PRODUCTION-CRON-SETUP.md))
 - [ ] `source scripts/dev-path.sh && ./scripts/deploy-all.sh`
 - [ ] `./scripts/seed-cloud.sh` หรือรัน SQL ใน Dashboard
 - [ ] Auth → Email → ปิด Confirm email (ช่วงทดสอบ)
 - [ ] Admin: `demo-admin@livingbkk.local` / `demo12345` (หลัง seed) หรือดู [บัญชี-admin.md](บัญชี-admin.md)
 - [ ] Edge secrets: `FCM_SERVER_KEY`, `MAKECOM_WEBHOOK_URL` (ทางเลือก)
-- [ ] Cron รายวัน → `listing-lifecycle-cron`
+- [ ] Cron รายวัน → `listing-lifecycle-cron` + `rental-payment-cron` (ดู [PRODUCTION-CRON-SETUP.md](PRODUCTION-CRON-SETUP.md))
 - [ ] Cron (แนะนำ) → `SELECT public.process_exclusive_auto_bumps();` รายชั่วโมง
 
 ## Mobile / Web

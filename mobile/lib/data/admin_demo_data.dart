@@ -1,4 +1,5 @@
 import '../config/env.dart';
+import '../data/demo_media.dart';
 import '../models/customer_requirement.dart';
 
 /// เคสตัวอย่างหลังบ้าน — `TRIAL_MODE` หรือ `ADMIN_DEMO_CASES` เมื่อ DB ว่าง
@@ -300,7 +301,7 @@ class AdminDemoData {
         {
           'id': 'demo-img-1',
           'listing_id': 'trial-listing-pending',
-          'public_url': 'https://picsum.photos/seed/mod-pending-1/400/300',
+          'public_url': DemoMedia.photo('mod-pending-1', width: 400, height: 300),
           'moderation_status': 'pending',
           'perceptual_hash': 'a1b2c3d4',
           'listings': {
@@ -311,7 +312,7 @@ class AdminDemoData {
         {
           'id': 'demo-img-2',
           'listing_id': 'trial-listing-pending',
-          'public_url': 'https://picsum.photos/seed/mod-pending-2/400/300',
+          'public_url': DemoMedia.photo('mod-pending-2', width: 400, height: 300),
           'moderation_status': 'pending',
           'perceptual_hash': 'e5f6g7h8',
           'listings': {

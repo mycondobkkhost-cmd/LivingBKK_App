@@ -8,16 +8,18 @@ import '../utils/reference_codes.dart';
 import 'bangkok_projects.dart';
 import 'demo_cast_listing_pins.dart';
 import 'demo_category_listings.dart';
+import 'demo_media.dart';
 
 /// สร้างทรัพย์ตัวอย่างจำนวนมากจากฐานโครงการกรุงเทพ
 class DemoListingsFactory {
   static final _rng = Random(42);
 
-  static List<String> _imagesFor(String slug, int unit) {
+  static List<String> _imagesFor(String slug, int unit, String propertyType) {
     final count = 5 + (unit % 3);
-    return List.generate(
-      count,
-      (i) => 'https://picsum.photos/seed/$slug-$unit-$i/800/600',
+    return DemoMedia.gallery(
+      '$slug-$unit',
+      count: count,
+      propertyType: propertyType,
     );
   }
 
@@ -29,14 +31,14 @@ class DemoListingsFactory {
     ('ชั้น 8-10', 'Floor 8-10'),
   ];
 
-  static List<ListingPublic> generate({int targetCount = 72}) {
+  static List<ListingPublic> generate({int targetCount = 280}) {
     final out = <ListingPublic>[];
     var codeSeq = 1;
 
     for (final project in MetroRegion.filterProjects(BangkokProjects.all)) {
       final unitsPerProject = project.propertyType == 'condo'
-          ? 2 + _rng.nextInt(3)
-          : 1 + _rng.nextInt(2);
+          ? 3 + _rng.nextInt(4)
+          : 2 + _rng.nextInt(2);
 
       for (var u = 0; u < unitsPerProject; u++) {
         if (out.length >= targetCount) break;
@@ -135,7 +137,7 @@ class DemoListingsFactory {
             lat: lat,
             lng: lng,
             geoZoneSlug: _geoZoneFor(project),
-            imageUrls: _imagesFor(project.slug, u),
+            imageUrls: _imagesFor(project.slug, u, project.propertyType),
             description: desc,
             descriptionEn: descEn,
             ownerExclusiveMandate: codeSeq == 1 && isRent,
@@ -153,7 +155,7 @@ class DemoListingsFactory {
     return out;
   }
 
-  static const _cacheVersion = 3;
+  static const _cacheVersion = 7;
 
   static List<ListingPublic> get cached {
     if (_cache == null || _cacheVersion != _builtCacheVersion) {

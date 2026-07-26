@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../services/chat_service.dart';
 import '../../theme/admin_theme.dart';
-import '../../theme/app_theme.dart';
 import 'admin_command_palette.dart';
-import 'admin_enterprise_zone.dart';
 import 'admin_nav_model.dart';
 import 'admin_phone_frame_host.dart';
 import 'admin_template_responsive.dart';
@@ -133,14 +132,23 @@ class _TemplateHeader extends StatelessWidget {
   final bool showMenuButton;
   final VoidCallback onMenu;
 
+  String _dateLabel(AppStrings s) {
+    final now = DateTime.now();
+    final locale = s.isEnglish ? 'en_US' : 'th_TH';
+    return DateFormat.yMMMMEEEEd(locale).format(now);
+  }
+
   @override
   Widget build(BuildContext context) {
     final s = context.s;
+    final isMobile = AdminTemplateResponsive.isMobile(context);
+    final subtitle = selected == AdminNavId.dashboard
+        ? s.adminDashPageSubtitle
+        : s.adminEnterpriseOpsTitle;
 
     return ListenableBuilder(
       listenable: ChatService.instance,
       builder: (context, _) {
-        final kpis = adminEnterpriseKpis(config, s);
         return Material(
           color: Colors.white,
           child: DecoratedBox(
@@ -148,8 +156,8 @@ class _TemplateHeader extends StatelessWidget {
               border: Border(bottom: BorderSide(color: AdminTheme.border)),
               boxShadow: const [
                 BoxShadow(
-                  color: Color(0x08000000),
-                  blurRadius: 8,
+                  color: Color(0x06000000),
+                  blurRadius: 10,
                   offset: Offset(0, 2),
                 ),
               ],
@@ -157,52 +165,65 @@ class _TemplateHeader extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(
                 horizontal: AdminTemplateTheme.defaultPadding,
-                vertical: 10,
+                vertical: 12,
               ),
               child: Row(
                 children: [
                   if (showMenuButton) ...[
                     IconButton(
-                      icon: const Icon(Icons.menu),
+                      icon: const Icon(Icons.menu_rounded),
                       tooltip: s.adminNavMenu,
                       onPressed: onMenu,
                     ),
                     const SizedBox(width: 4),
                   ],
                   Expanded(
+                    flex: isMobile ? 2 : 3,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          s.adminEnterpriseOpsTitle,
-                          style: AdminTemplateTheme.pageSubtitle(),
-                        ),
                         Text(
                           pageTitle,
                           style: AdminTemplateTheme.pageTitle(context),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
+                          style: AdminTemplateTheme.pageSubtitle(),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ],
                     ),
                   ),
-                  if (!AdminTemplateResponsive.isMobile(context))
-                    ...kpis.take(3).map(
-                          (k) => Padding(
-                            padding: const EdgeInsets.only(right: 8),
-                            child: _KpiChip(kpi: k),
-                          ),
+                  if (!isMobile) ...[
+                    Expanded(
+                      flex: 2,
+                      child: _HeaderSearchField(
+                        hint: s.adminCommandPaletteHint,
+                        onTap: () => showAdminCommandPalette(
+                          context: context,
+                          config: config,
+                          current: selected,
                         ),
-                  const AdminPhoneFrameToggleButton(),
-                  IconButton(
-                    icon: const Icon(Icons.search, size: 22),
-                    tooltip: s.adminCommandPaletteHint,
-                    onPressed: () => showAdminCommandPalette(
-                      context: context,
-                      config: config,
-                      current: selected,
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 10),
+                    _DateChip(label: _dateLabel(s)),
+                    const SizedBox(width: 8),
+                  ] else
+                    IconButton(
+                      icon: const Icon(Icons.search_rounded, size: 22),
+                      tooltip: s.adminCommandPaletteHint,
+                      onPressed: () => showAdminCommandPalette(
+                        context: context,
+                        config: config,
+                        current: selected,
+                      ),
+                    ),
+                  const AdminPhoneFrameToggleButton(),
                   ...actions,
                 ],
               ),
@@ -214,34 +235,74 @@ class _TemplateHeader extends StatelessWidget {
   }
 }
 
-class _KpiChip extends StatelessWidget {
-  const _KpiChip({required this.kpi});
+class _HeaderSearchField extends StatelessWidget {
+  const _HeaderSearchField({required this.hint, required this.onTap});
 
-  final AdminEnterpriseKpi kpi;
+  final String hint;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = kpi.alert ? AppTheme.error : const Color(0xFF6B7280);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: kpi.alert
-            ? AppTheme.error.withOpacity(0.08)
-            : AdminTemplateTheme.secondaryColor.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: kpi.alert
-              ? AppTheme.error.withOpacity(0.25)
-              : AdminTheme.border,
+    return Material(
+      color: AdminTemplateTheme.contentBg,
+      borderRadius: BorderRadius.circular(999),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          child: Row(
+            children: [
+              Icon(Icons.search_rounded, size: 18, color: AdminTheme.textFaint),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hint,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AdminTheme.textFaint,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
-      child: Text(
-        '${kpi.label} ${kpi.value}',
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
+    );
+  }
+}
+
+class _DateChip extends StatelessWidget {
+  const _DateChip({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: AdminTemplateTheme.contentBg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AdminTheme.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.calendar_today_outlined,
+              size: 14, color: AdminTemplateTheme.primaryColor),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: AdminTemplateTheme.textPrimary,
+            ),
+          ),
+        ],
       ),
     );
   }

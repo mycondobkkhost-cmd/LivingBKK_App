@@ -16,20 +16,20 @@ void main() {
 
   test('RealXtate brand constants', () {
     expect(LivingBkkBrand.name, 'RealXtate');
-    expect(LivingBkkBrand.tagline(const Locale('th')), contains('โพสต์ฟรี'));
-    expect(LivingBkkBrand.tagline(const Locale('en')), contains('Post for free'));
-    expect(LivingBkkBrand.purplePrimary, const Color(0xFF583AD6));
-    expect(LivingBkkBrand.pink, const Color(0xFFDB3D76));
+    expect(LivingBkkBrand.tagline(const Locale('th')), contains('ลงประกาศฟรี'));
+    expect(LivingBkkBrand.tagline(const Locale('en')), contains('Free to post'));
+    expect(LivingBkkBrand.purplePrimary, LivingBkkBrand.propNavy);
+    expect(LivingBkkBrand.pink, LivingBkkBrand.piterOrange);
   });
 
   test('listing share URL uses WEB_BASE_URL when set', () {
     expect(
       Env.listingShareUrl('abc-123'),
-      'https://quiet-kangaroo-ab6073.netlify.app/listing/abc-123',
+      'https://realxtateth.com/listing/abc-123',
     );
   });
 
-  testWidgets('RealXtate logo composes mark and wordmark', (WidgetTester tester) async {
+  testWidgets('RealXtate logo composes lockup and tagline', (WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         locale: Locale('th'),
@@ -48,7 +48,6 @@ void main() {
 
     expect(find.byType(LivingBkkLogo), findsOneWidget);
     expect(find.byType(Image), findsOneWidget);
-    expect(find.textContaining('RealXtate'), findsOneWidget);
-    expect(find.textContaining('โพสต์ฟรี'), findsOneWidget);
+    expect(find.textContaining('ลงประกาศฟรี'), findsOneWidget);
   });
 }

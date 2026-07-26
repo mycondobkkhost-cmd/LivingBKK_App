@@ -1,6 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { postMakeComWebhook, sendFcmToUser } from "../_shared/notify.ts";
+import {
+  feedFromAppointment,
+} from "../_shared/admin_ai_feed.ts";
+import { orchestrateAdminFeed } from "../_shared/admin_orchestrator.ts";
 
 /**
  * Notify assignee + Make.com when an appointment is scheduled or updated.
@@ -25,7 +29,7 @@ Deno.serve(async (req) => {
     const { data: appt, error } = await supabase
       .from("appointments")
       .select(
-        "id, lead_id, listing_code, status, scheduled_date, time_slot, seeker_nickname, assigned_to",
+        "id, lead_id, listing_code, status, scheduled_date, time_slot, seeker_nickname, assigned_to, transaction_ref",
       )
       .eq("id", appointment_id)
       .single();
@@ -39,6 +43,16 @@ Deno.serve(async (req) => {
     const slot = (appt.time_slot as string) ?? "";
     const status = (appt.status as string) ?? "pending";
     const assignee = appt.assigned_to as string | null;
+
+    let threadId: string | null = null;
+    if (appt.lead_id) {
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("thread_id")
+        .eq("id", appt.lead_id as string)
+        .maybeSingle();
+      threadId = lead?.thread_id as string | null ?? null;
+    }
 
     await postMakeComWebhook({
       event: "appointment_scheduled",
@@ -56,6 +70,21 @@ Deno.serve(async (req) => {
       assignee,
       "LivingBKK — นัดชม",
       "$listingCode · $date · $slot",
+    );
+
+    await orchestrateAdminFeed(
+      supabase,
+      "notify-appointment",
+      feedFromAppointment({
+        appointmentId: appointment_id,
+        leadId: appt.lead_id as string | null,
+        threadId,
+        listingCode,
+        scheduledDate: date,
+        timeSlot: slot,
+        seekerNickname: appt.seeker_nickname as string | null,
+        transactionRef: appt.transaction_ref as string | null,
+      }),
     );
 
     return jsonResponse({

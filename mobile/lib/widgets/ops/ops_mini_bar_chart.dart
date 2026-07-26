@@ -35,8 +35,10 @@ class OpsMiniBarChart extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-        const SizedBox(height: 10),
+        if (title.trim().isNotEmpty) ...[
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(height: 10),
+        ],
         if (points.isEmpty)
           Text(
             emptyHint ?? '—',

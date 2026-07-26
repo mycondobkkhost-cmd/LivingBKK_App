@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
+import '../../services/auth_service.dart';
+import '../../services/chat_service.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/living_bkk_brand.dart';
 import '../../utils/admin_routing.dart';
 import '../../utils/admin_sign_out.dart';
 import '../../widgets/admin_attention_badge.dart';
 import 'admin_enterprise_zone.dart';
 import 'admin_nav_model.dart';
 import 'admin_template_theme.dart';
-import '../../services/chat_service.dart';
 
-/// Sidebar มืดแบบ template — รวมทุกโซนเมนูหลังบ้าน
+/// Sidebar มืดแบบแดชบอร์ดสะอาด — RealXtate Ops
 class AdminTemplateSideMenu extends StatelessWidget {
   const AdminTemplateSideMenu({
     super.key,
@@ -40,12 +42,15 @@ class AdminTemplateSideMenu extends StatelessWidget {
     return Material(
       color: AdminTemplateTheme.sidebarBg,
       child: ListenableBuilder(
-        listenable: ChatService.instance,
+        listenable: Listenable.merge([
+          ChatService.instance,
+          AuthService.instance,
+        ]),
         builder: (context, _) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Header(tierLabel: tierLabel),
+              _Header(tierLabel: tierLabel, s: s),
               Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(vertical: 8),
@@ -61,7 +66,7 @@ class AdminTemplateSideMenu extends StatelessWidget {
                     const SizedBox(height: 8),
                     for (final zone in adminVisibleZones(config)) ...[
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 12, 16, 4),
+                        padding: const EdgeInsets.fromLTRB(20, 14, 16, 6),
                         child: Text(
                           adminZoneLabel(zone, s).toUpperCase(),
                           style: AdminTemplateTheme.menuLabel(
@@ -85,6 +90,7 @@ class AdminTemplateSideMenu extends StatelessWidget {
                 ),
               ),
               const Divider(height: 1, color: Colors.white12),
+              _UserFooter(tierLabel: tierLabel, s: s),
               _FooterLink(
                 icon: Icons.storefront_outlined,
                 label: s.adminViewConsumerApp,
@@ -101,7 +107,7 @@ class AdminTemplateSideMenu extends StatelessWidget {
                   performAdminSignOut(context);
                 },
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
             ],
           );
         },
@@ -148,26 +154,34 @@ List<Widget> _menuTilesForItem(
 }
 
 class _Header extends StatelessWidget {
-  const _Header({this.tierLabel});
+  const _Header({this.tierLabel, required this.s});
 
   final String? tierLabel;
+  final AppStrings s;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 24, 16, 20),
+      padding: const EdgeInsets.fromLTRB(18, 22, 16, 18),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: Colors.white12)),
       ),
       child: Row(
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 44,
+            height: 44,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: AdminTemplateTheme.primaryColor,
-              borderRadius: BorderRadius.circular(10),
+              gradient: LivingBkkBrand.ctaGradient,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: LivingBkkBrand.brandRed.withOpacity(0.35),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
             child: const Text(
               'RX',
@@ -184,18 +198,25 @@ class _Header extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'RealXtate Ops',
+                  LivingBkkBrand.name,
                   style: AdminTemplateTheme.menuLabel(selected: true).copyWith(
-                    fontSize: 14,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                   ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  s.adminOpsSidebarSubtitle,
+                  style: AdminTemplateTheme.menuSubtitle(selected: false),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 if (tierLabel != null) ...[
                   const SizedBox(height: 2),
                   Text(
                     tierLabel!,
-                    style: AdminTemplateTheme.menuLabel(selected: false)
-                        .copyWith(fontSize: 11),
+                    style: AdminTemplateTheme.menuSubtitle(selected: false)
+                        .copyWith(fontSize: 9),
                   ),
                 ],
               ],
@@ -229,7 +250,7 @@ class _MenuTile extends StatelessWidget {
     Widget leading = Icon(
       item.icon,
       size: 18,
-      color: selected ? accent : Colors.white54,
+      color: selected ? Colors.white : Colors.white54,
     );
 
     if (item.badgeCount > 0 &&
@@ -241,35 +262,69 @@ class _MenuTile extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 1),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
       child: Material(
         color: selected
-            ? AdminTemplateTheme.secondaryColor
+            ? Colors.white.withOpacity(0.08)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(12),
+        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Row(
-              children: [
-                leading,
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    item.label(isEn),
-                    style: AdminTemplateTheme.menuLabel(selected: selected),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+          borderRadius: BorderRadius.circular(12),
+          child: Stack(
+            children: [
+              if (selected)
+                Positioned(
+                  left: 0,
+                  top: 8,
+                  bottom: 8,
+                  child: Container(
+                    width: 3,
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
                   ),
                 ),
-                if (item.badgeCount > 0 &&
-                    !item.urgent &&
-                    item.id != AdminNavId.viewingCalendar)
-                  _CountBadge(count: item.badgeCount, urgent: item.urgent),
-              ],
-            ),
+              Padding(
+                padding:
+                    const EdgeInsets.fromLTRB(14, 10, 12, 10),
+                child: Row(
+                  children: [
+                    leading,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isEn ? item.labelEn : item.labelTh,
+                            style: AdminTemplateTheme.menuLabel(
+                              selected: selected,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            isEn ? item.labelTh : item.labelEn,
+                            style: AdminTemplateTheme.menuSubtitle(
+                              selected: selected,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (item.badgeCount > 0 &&
+                        !item.urgent &&
+                        item.id != AdminNavId.viewingCalendar)
+                      _CountBadge(count: item.badgeCount, urgent: item.urgent),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -290,7 +345,7 @@ class _CountBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
+        color: color.withOpacity(0.22),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -300,6 +355,63 @@ class _CountBadge extends StatelessWidget {
           fontWeight: FontWeight.w800,
           color: color,
         ),
+      ),
+    );
+  }
+}
+
+class _UserFooter extends StatelessWidget {
+  const _UserFooter({this.tierLabel, required this.s});
+
+  final String? tierLabel;
+  final AppStrings s;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = AuthService.instance.displayName;
+    final role = tierLabel ?? s.adminOpsRoleFallback;
+    final initial = name.trim().isNotEmpty
+        ? name.trim().substring(0, 1).toUpperCase()
+        : 'A';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 18,
+            backgroundColor: LivingBkkBrand.brandRed.withOpacity(0.85),
+            child: Text(
+              initial,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                fontSize: 14,
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: AdminTemplateTheme.menuLabel(selected: true)
+                      .copyWith(fontSize: 12),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  role,
+                  style: AdminTemplateTheme.menuSubtitle(selected: false),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

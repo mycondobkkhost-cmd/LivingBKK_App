@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# รีสตาร์ท Flutter web สำหรับ Cursor Simple Browser (ไม่เปิด Chrome ภายนอก)
-# ใช้หลังแก้ mobile/ ทุกครั้ง — ค่าเริ่มต้นพอร์ต 7357
+# เริ่ม Flutter web สำหรับ Cursor Simple Browser (live preview)
+# รันครั้งเดียวต่อเซสชัน — แก้ UI แล้ว Save → hot reload อัตโนมัติ (.vscode/settings.json)
+# รีสตาร์ทใหม่เฉพาะเมื่อ hot reload ไม่พอ หรือเปลี่ยน pubspec/env/route ใหม่
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/scripts/dev-path.sh"
@@ -19,13 +20,14 @@ fi
 
 echo ""
 echo "============================================"
-echo "  PROPPITER — dev server (Cursor)"
+echo "  RealXtate — dev server (Cursor)"
 echo "============================================"
 echo "  แอปลูกค้า:  ${BASE}/"
 echo "  Admin:       ${BASE}/admin"
 echo ""
-echo "  Cursor: Cmd+Shift+P → Simple Browser: Show"
-echo "  Hot restart หลังแก้โค้ด: กด R ในเทอร์มินัลนี้"
+echo "  Cursor: Cmd+Shift+P → Simple Browser: Show → เปิดลิงก์แล้วค้างไว้"
+echo "  แก้ UI: Save ไฟล์ → hot reload อัตโนมัติ (ดูในแท็บเดิม)"
+echo "  ถ้าไม่ขึ้น: refresh แท็บ หรือกด R (hot restart) ในเทอร์มินัลนี้"
 echo "============================================"
 echo ""
 

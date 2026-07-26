@@ -5,11 +5,15 @@ import 'app_theme.dart';
 
 /// Layout tokens — v2 design system
 abstract final class LiLayout {
-  static const double pagePadding = 16;
+  /// ช่องว่างขอบหน้า — กะทัดรัดแบบฟีดมือถือ (Facebook)
+  static const double pagePadding = 12;
   static const double headerHeight = 52;
   static const double searchHeight = 48;
   static const double txnTabHeight = 40;
   static const double feedImageAspect = 16 / 9;
+
+  /// อัตราส่วนรูปการ์ด spotlight / โปรโม (legacy alias)
+  static const double homePromoAspect = feedImageAspect;
 
   static Color get searchFill => AppTheme.inputFill;
   static Color get tabInactiveBg => AppTheme.backgroundAlt;

@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../config/env.dart';
 import '../data/admin_demo_data.dart';
+import '../data/demo_media.dart';
 import '../models/property_care_owner_data_input.dart';
 import '../models/property_care_right.dart';
 import '../models/property_care_summary.dart';
@@ -412,8 +413,7 @@ class PropertyCareRepository extends ChangeNotifier {
                 .add(const Duration(days: 22))
                 .toUtc()
                 .toIso8601String(),
-            'cover_image_url':
-                'https://picsum.photos/seed/${Uri.encodeComponent(code)}/240/180',
+            'cover_image_url': DemoMedia.photo(code, width: 240, height: 180),
             if (overlay != null) ...overlay,
             'owner_data_pending': needsData,
             'owner_data_complete': !needsData,

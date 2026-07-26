@@ -38,6 +38,13 @@ class Env {
   static bool get hasMapsKey =>
       googleMapsApiKey.isNotEmpty && !googleMapsApiKey.contains('YOUR_');
 
+  /// บังคับใช้ OSM บน Web แม้มี Google key (debug / จำกัด quota)
+  static bool get preferOsmWebMap {
+    final v =
+        (dotenv.env['GOOGLE_MAPS_WEB_USE_OSM'] ?? 'false').trim().toLowerCase();
+    return v == 'true' || v == '1' || v == 'yes' || v == 'on';
+  }
+
   /// URL หลักของเว็บแอป (ใช้ในลิงก์แชร์) — ไม่มี trailing slash
   /// ตัวอย่าง: https://realxtateth.com
   static String get webBaseUrl {

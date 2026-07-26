@@ -5,7 +5,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../config/env.dart';
 import '../l10n/app_strings.dart';
 import '../models/listing_public.dart';
-import '../theme/app_theme.dart';
+import '../theme/google_map_clean_style.dart';
+import '../utils/google_maps_web_auth.dart';
 import '../utils/map_cluster_helper.dart';
 import 'map_price_marker.dart';
 import 'osm_interactive_map.dart';
@@ -54,13 +55,23 @@ class _ListingsMapState extends State<ListingsMap> {
   Set<Marker> _markers = {};
   int _markerGen = 0;
   double _zoom = 12;
+  bool _webMapsBlocked = isGoogleMapsWebBlocked;
 
   bool get showPriceOnMarker => widget.showPriceOnMarker;
+
+  bool get _useOsmFallback =>
+      !Env.hasMapsKey ||
+      Env.preferOsmWebMap ||
+      _webMapsBlocked;
 
   @override
   void initState() {
     super.initState();
     _rebuildMarkers();
+    listenGoogleMapsWebAuthFailure(() {
+      if (!mounted || _webMapsBlocked) return;
+      setState(() => _webMapsBlocked = true);
+    });
   }
 
   @override
@@ -96,7 +107,8 @@ class _ListingsMapState extends State<ListingsMap> {
           Marker(
             markerId: MarkerId('cluster-${cluster.center.latitude}-${cluster.center.longitude}'),
             position: LatLng(cluster.center.latitude, cluster.center.longitude),
-            icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+            icon: await MapPriceMarker.clusterIcon(cluster.count),
+            anchor: const Offset(0.5, 0.5),
             infoWindow: InfoWindow(
               title: s.mapListingsCount(cluster.count),
               snippet: s.mapTapToZoom,
@@ -122,10 +134,10 @@ class _ListingsMapState extends State<ListingsMap> {
       } else {
         icon = BitmapDescriptor.defaultMarkerWithHue(
           isSelected
-              ? BitmapDescriptor.hueViolet
+              ? BitmapDescriptor.hueRed
               : isCoAgent
-                  ? BitmapDescriptor.hueMagenta
-                  : BitmapDescriptor.hueViolet,
+                  ? BitmapDescriptor.hueOrange
+                  : BitmapDescriptor.hueRed,
         );
       }
 
@@ -249,8 +261,8 @@ class _ListingsMapState extends State<ListingsMap> {
         circleId: const CircleId('search_pin_radius'),
         center: LatLng(lat, lng),
         radius: km * 1000,
-        fillColor: AppTheme.primary.withOpacity(0.12),
-        strokeColor: AppTheme.primary,
+        fillColor: const Color(0xFF1A73E8).withOpacity(0.12),
+        strokeColor: const Color(0xFF1A73E8),
         strokeWidth: 2,
       ),
     };
@@ -272,7 +284,7 @@ class _ListingsMapState extends State<ListingsMap> {
 
   @override
   Widget build(BuildContext context) {
-    if (!Env.hasMapsKey) {
+    if (_useOsmFallback) {
       return OsmListingsMap(
         listings: widget.listings,
         selectedId: widget.selectedId,
@@ -300,12 +312,24 @@ class _ListingsMapState extends State<ListingsMap> {
               target: kBangkokCenter,
               zoom: 12,
             ),
+            style: GoogleMapCleanStyle.json,
             markers: {..._markers, ..._pinMarkers},
             circles: _searchCircles,
+            mapType: MapType.normal,
+            myLocationEnabled: true,
             myLocationButtonEnabled: false,
             zoomControlsEnabled: false,
-            onMapCreated: (c) {
+            compassEnabled: false,
+            mapToolbarEnabled: false,
+            indoorViewEnabled: false,
+            trafficEnabled: false,
+            buildingsEnabled: true,
+            onMapCreated: (c) async {
               _controller = c;
+              // Web: บังคับ apply สไตล์อีกครั้งหลัง create (กัน style หลุด)
+              try {
+                await c.setMapStyle(GoogleMapCleanStyle.json);
+              } catch (_) {}
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (widget.focusUserOnStart) {
                   _goToMyLocation();
@@ -321,13 +345,26 @@ class _ListingsMapState extends State<ListingsMap> {
           ),
         ),
         Positioned(
-          right: 12,
+          right: 14,
           bottom: widget.fabBottomPadding,
-          child: FloatingActionButton.small(
-            heroTag: 'near_me',
-            onPressed: _goToMyLocation,
-            tooltip: AppStrings.of(context).searchNearByTitle,
-            child: const Icon(Icons.my_location),
+          child: Material(
+            color: Colors.white,
+            elevation: 3,
+            shadowColor: Colors.black26,
+            shape: const CircleBorder(),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: _goToMyLocation,
+              child: const SizedBox(
+                width: 44,
+                height: 44,
+                child: Icon(
+                  Icons.my_location_rounded,
+                  color: Color(0xFF1A73E8),
+                  size: 22,
+                ),
+              ),
+            ),
           ),
         ),
       ],

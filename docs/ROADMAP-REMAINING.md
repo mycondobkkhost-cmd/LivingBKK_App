@@ -1,6 +1,6 @@
 # LivingBKK — สิ่งที่ทำแล้ว vs เหลืออยู่
 
-อัปเดตหลัง **Phase 21 + PPTR inventory** (2026-06-04) — ดู [PRE-PUSH-STATUS.md](PRE-PUSH-STATUS.md)
+อัปเดตหลัง **Phase 30** (2026-06-17) — rental upload · add member · bot training · cron docs
 
 ---
 
@@ -31,7 +31,7 @@
 | 2 | **Google Maps key** | `.env.local` → `sync-env.sh` (ไม่มี = OSM) |
 | 3 | **Firebase FCM** | `FIREBASE_*` + `FCM_SERVER_KEY` (ไม่บังคับ) |
 | 4 | **Make.com → Sheets** | [MAKECOM.md](MAKECOM.md) |
-| 5 | **Cron lifecycle** | เรียก `listing-lifecycle-cron` รายวัน |
+| 5 | **Cron lifecycle + rental payment** | [PRODUCTION-CRON-SETUP.md](PRODUCTION-CRON-SETUP.md) |
 | 6 | **ทดสอบ E2E** | [PRODUCTION-CHECKLIST.md](PRODUCTION-CHECKLIST.md) |
 
 ---
@@ -48,7 +48,9 @@
 | **17** | ทะเบียนโครงการ + ฟอร์มลงประกาศ LI-style | ✅ [phase-17-property-projects.md](phase-17-property-projects.md) |
 | **20** | PPTR ทะเบียนทรัพย์รวม (dedupe + เจ้าของลำดับ 1) | ✅ [phase-20-property-inventory.md](phase-20-property-inventory.md) |
 | **20b** | Exclusive เจ้าของ/เอเจ้นท์ + auto bump | ✅ [phase-20-exclusive-listings.md](phase-20-exclusive-listings.md) |
-| **21** | เปิดห้องนัดดู (`viewing_access`) | ✅ [phase-21-viewing-access.md](phase-21-viewing-access.md) |
+| **28** | Cron แจ้งชำระ + แนบเอกสารกลุ่มเช่า | ✅ [phase-28-rental-ops-production.md](phase-28-rental-ops-production.md) |
+| **29** | Admin เทรนบอท AI (FAQ · memory · logic) | ✅ [phase-29-chat-bot-training.md](phase-29-chat-bot-training.md) |
+| **30** | Rental upload จริง + เพิ่มสมาชิกกลุ่ม + cron docs | ✅ [phase-30-production-gaps.md](phase-30-production-gaps.md) |
 | 17 | E-Contract ผู้ให้บริการจริง (ลายเซ็นดิจิทัล) | UI มี · vendor ยังไม่เลือก |
 | 18 | Lead Bot สนทนาเต็มรูปแบบ | มีแชททรัพย์ · ฟอร์มลีดยังต่อ |
 | — | FlutterFlow export | คู่มือ [flutterflow-setup.md](flutterflow-setup.md) เท่านั้น |
