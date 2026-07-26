@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../data/bangkok_geo_zone_tags.dart';
 import '../data/bangkok_projects.dart';
 import '../data/bangkok_transit_station_coords.dart';
+import '../data/bangkok_transit_stations.dart';
 import '../data/popular_areas.dart';
 import '../models/search_zone_catalog_entry.dart';
 import 'project_catalog.dart';
@@ -79,7 +80,10 @@ class SearchZoneCatalog extends ChangeNotifier {
         lat: z.centerLat,
         lng: z.centerLng,
         matchRadiusKm: z.maxKmFromZoneCenter,
-        aliases: z.stationNamesTh,
+        aliases: [
+          ...z.stationNamesTh,
+          ...z.aliases,
+        ],
       ));
     }
     for (final a in PopularAreas.all) {
@@ -99,17 +103,23 @@ class SearchZoneCatalog extends ChangeNotifier {
   }
 
   void _seedTransit() {
+    final aliasByLabel = <String, List<String>>{
+      for (final s in BangkokTransitStations.all)
+        s.nameTh: s.aliases,
+    };
     for (final st in BangkokTransitStationCoords.all) {
       final id = _transitId(st.system, st.nameEn);
+      final labelTh = st.labelTh;
       _entries.add(SearchZoneCatalogEntry(
         id: id,
         category: 'transit',
-        titleTh: st.labelTh,
+        titleTh: labelTh,
         titleEn: st.labelEn,
         geoZoneSlugs: st.geoZoneSlugs,
         lat: st.lat,
         lng: st.lng,
         matchRadiusKm: 1.2,
+        aliases: aliasByLabel[labelTh] ?? const [],
       ));
     }
   }
@@ -251,14 +261,23 @@ class SearchZoneCatalog extends ChangeNotifier {
   }
 
   bool _entryMatchesQuery(SearchZoneCatalogEntry e, String q) {
-    // โครงการ: จับเฉพาะชื่อ/slug — ไม่ใช้ aliases (มักปนสถานีใกล้เคียงผิดๆ)
+    bool transitLike(String a) {
+      final s = a.toLowerCase().trim();
+      return s.startsWith('bts ') ||
+          s.startsWith('mrt ') ||
+          s.startsWith('arl ') ||
+          s.startsWith('gold ');
+    }
+
     if (e.category == 'project') {
+      // ชื่อ / slug + aliases ชื่อโครงการ (ไม่ใช้ alias แบบสถานี)
       final hay = [
         e.titleTh.toLowerCase(),
         e.titleEn.toLowerCase(),
         e.id.toLowerCase().replaceAll('-', ' '),
         if (e.projectSlug != null)
           e.projectSlug!.toLowerCase().replaceAll('-', ' '),
+        ...e.aliases.where((a) => !transitLike(a)).map((a) => a.toLowerCase()),
       ];
       return hay.any((h) => h.isNotEmpty && h.contains(q));
     }

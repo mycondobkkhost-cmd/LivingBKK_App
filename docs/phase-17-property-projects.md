@@ -43,8 +43,14 @@ cd mobile && dart run tool/export_projects_sql.dart
 
 ---
 
+## Pantip catalog (2026-07)
+
+ขยายสมุดโครงการจาก Pantip hub (~2k) — ดู `docs/PANTIP-PROJECT-CATALOG.md`  
+ETL: `scripts/import-pantip-projects.py` → `data/pantip_import/` + migrations `20260726170*`
+
 ## อนาคต
 
 - Admin CRUD โครงการในแอป
-- Import CSV / LI scrape pipeline
+- Geocode โครงการที่ `coords_source=transit_approx` / null
+- Import CSV / LI scrape pipeline (คนละ pipeline กับ Pantip catalog)
 - หน้า Project Hub แยก (ไม่ใช่แค่ list ห้องในโครงเดียวกัน)

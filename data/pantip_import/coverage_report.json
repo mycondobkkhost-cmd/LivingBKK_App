@@ -1,0 +1,22 @@
+{
+  "source_root": "/tmp/pantip-property-hub",
+  "source_projects": 2234,
+  "seed_projects": 2081,
+  "with_nearby_transit": 2038,
+  "with_nearby_transit_pct": 97.93,
+  "with_rx_transit_map": 1860,
+  "with_rx_transit_map_pct": 89.38,
+  "with_coords": 1860,
+  "with_coords_pct": 89.38,
+  "coords_source_counts": {
+    "transit_approx": 1840,
+    "none": 221,
+    "bootstrap": 20
+  },
+  "bootstrap_matched": 20,
+  "notes": [
+    "source_platform=pantip_curated",
+    "coords null/transit_approx until Places geocode pass",
+    "does not include properties.json / Living cache"
+  ]
+}
