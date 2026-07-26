@@ -12,6 +12,7 @@ import '../../theme/living_bkk_brand.dart';
 import 'admin_chat_rename_sheet.dart';
 import 'admin_inbox_preview.dart';
 import 'admin_inbox_search.dart';
+import 'admin_inbox_sla.dart';
 
 /// กล่องแชทรอทีมงาน — รับงาน / งานของฉัน / ปิดแล้ว
 class AdminChatsTab extends StatefulWidget {
@@ -23,10 +24,14 @@ class AdminChatsTab extends StatefulWidget {
     this.onRoomSelected,
     this.onSearchPick,
     this.focusQueue = false,
+    this.opsLayout = false,
   });
 
   /// ซ่อน intro ยาว — ใช้ใน console บนคอม
   final bool compact;
+
+  /// UI หลังบ้านใหม่ — segment + รายการกระชับ
+  final bool opsLayout;
 
   /// ไม่ push หน้าใหม่ — ใช้ callback เลือกห้อง
   final bool embedded;
@@ -139,6 +144,26 @@ class _AdminChatsTabState extends State<AdminChatsTab>
         final unclaimed = chat.listAdminInbox(bucket: AdminInboxBucket.unclaimed);
         final mine = chat.listAdminInbox(bucket: AdminInboxBucket.mine);
         final resolved = chat.listAdminInbox(bucket: AdminInboxBucket.resolved);
+
+        if (widget.opsLayout) {
+          return _OpsInboxBody(
+            tabs: _tabs,
+            unclaimed: unclaimed,
+            mine: mine,
+            resolved: resolved,
+            sort: _inboxSort,
+            filter: _inboxFilter,
+            onSortChanged: (v) => setState(() => _inboxSort = v),
+            onFilterChanged: (f) => setState(() => _inboxFilter = f),
+            onRefresh: _refresh,
+            onSearch: _openSearch,
+            selectedRoomId: widget.selectedRoomId,
+            embedded: widget.embedded,
+            onRoomSelected: widget.onRoomSelected,
+            onRename: _renameRoom,
+            accentFor: _inboxColor,
+          );
+        }
 
         return Column(
           children: [
@@ -318,6 +343,440 @@ class _AdminChatsTabState extends State<AdminChatsTab>
           ],
         );
       },
+    );
+  }
+}
+
+/// Inbox โหมด Ops — segment ชัด + รายการอ่านง่าย
+class _OpsInboxBody extends StatelessWidget {
+  const _OpsInboxBody({
+    required this.tabs,
+    required this.unclaimed,
+    required this.mine,
+    required this.resolved,
+    required this.sort,
+    required this.filter,
+    required this.onSortChanged,
+    required this.onFilterChanged,
+    required this.onRefresh,
+    required this.onSearch,
+    this.selectedRoomId,
+    this.embedded = false,
+    this.onRoomSelected,
+    this.onRename,
+    required this.accentFor,
+  });
+
+  final TabController tabs;
+  final List<ChatRoom> unclaimed;
+  final List<ChatRoom> mine;
+  final List<ChatRoom> resolved;
+  final AdminInboxSort sort;
+  final AdminInboxFilterTag filter;
+  final ValueChanged<AdminInboxSort> onSortChanged;
+  final ValueChanged<AdminInboxFilterTag> onFilterChanged;
+  final VoidCallback onRefresh;
+  final VoidCallback onSearch;
+  final String? selectedRoomId;
+  final bool embedded;
+  final ValueChanged<String>? onRoomSelected;
+  final Future<void> Function(ChatRoom room)? onRename;
+  final Color Function(ChatRoom) accentFor;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 8, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  s.adminOpsInboxTitle,
+                  style: AdminTheme.title.copyWith(fontSize: 14),
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.search, size: 20),
+                tooltip: s.adminChatSearchTitle,
+                onPressed: onSearch,
+                visualDensity: VisualDensity.compact,
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, size: 20),
+                tooltip: s.refresh,
+                onPressed: onRefresh,
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+          child: _OpsSegmentBar(controller: tabs, s: s),
+        ),
+        if (tabs.index == 0)
+          _InboxFilterBar(
+            filter: filter,
+            onFilterChanged: onFilterChanged,
+          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+          child: _InboxSortBar(
+            sort: sort,
+            onSortChanged: onSortChanged,
+            onRefresh: onRefresh,
+            onSearch: onSearch,
+          ),
+        ),
+        Expanded(
+          child: TabBarView(
+            controller: tabs,
+            children: [
+              _OpsInboxList(
+                rooms: unclaimed,
+                sort: sort,
+                filter: filter,
+                emptyText: s.adminInboxEmptyUnclaimed,
+                accentFor: accentFor,
+                showClaimHint: true,
+                selectedRoomId: selectedRoomId,
+                embedded: embedded,
+                onRoomSelected: onRoomSelected,
+                onRename: onRename,
+              ),
+              _OpsInboxList(
+                rooms: mine,
+                sort: sort,
+                emptyText: s.adminInboxEmptyMine,
+                accentFor: accentFor,
+                showAssignee: true,
+                selectedRoomId: selectedRoomId,
+                embedded: embedded,
+                onRoomSelected: onRoomSelected,
+                onRename: onRename,
+              ),
+              _OpsInboxList(
+                rooms: resolved,
+                sort: sort,
+                emptyText: s.adminInboxEmptyResolved,
+                accentFor: (_) => AppTheme.textSecondary,
+                pending: false,
+                selectedRoomId: selectedRoomId,
+                embedded: embedded,
+                onRoomSelected: onRoomSelected,
+                onRename: onRename,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _OpsSegmentBar extends StatelessWidget {
+  const _OpsSegmentBar({required this.controller, required this.s});
+
+  final TabController controller;
+  final AppStrings s;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: controller,
+      builder: (context, _) {
+        final chat = ChatService.instance;
+        final unclaimed =
+            chat.listAdminInbox(bucket: AdminInboxBucket.unclaimed).length;
+        final mine = chat.listAdminInbox(bucket: AdminInboxBucket.mine).length;
+        final resolved =
+            chat.listAdminInbox(bucket: AdminInboxBucket.resolved).length;
+        final labels = [
+          s.adminInboxTabUnclaimed(unclaimed),
+          s.adminInboxTabMine(mine),
+          s.adminInboxTabResolved(resolved),
+        ];
+        return Container(
+          decoration: BoxDecoration(
+            color: AdminTheme.surfaceMuted,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          padding: const EdgeInsets.all(3),
+          child: Row(
+            children: List.generate(3, (i) {
+              final selected = controller.index == i;
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => controller.animateTo(i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected ? AdminTheme.surface : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                      boxShadow: selected
+                          ? const [
+                              BoxShadow(
+                                color: Color(0x12000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 1),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Text(
+                      labels[i],
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight:
+                            selected ? FontWeight.w800 : FontWeight.w600,
+                        color: selected
+                            ? LivingBkkBrand.purplePrimary
+                            : AdminTheme.textMuted,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _OpsInboxList extends StatelessWidget {
+  const _OpsInboxList({
+    required this.rooms,
+    required this.sort,
+    required this.emptyText,
+    required this.accentFor,
+    this.filter = AdminInboxFilterTag.all,
+    this.pending = true,
+    this.showClaimHint = false,
+    this.showAssignee = false,
+    this.selectedRoomId,
+    this.embedded = false,
+    this.onRoomSelected,
+    this.onRename,
+  });
+
+  final List<ChatRoom> rooms;
+  final AdminInboxSort sort;
+  final AdminInboxFilterTag filter;
+  final String emptyText;
+  final Color Function(ChatRoom) accentFor;
+  final bool pending;
+  final bool showClaimHint;
+  final bool showAssignee;
+  final String? selectedRoomId;
+  final bool embedded;
+  final ValueChanged<String>? onRoomSelected;
+  final Future<void> Function(ChatRoom room)? onRename;
+
+  void _openRoom(BuildContext context, ChatRoom room) {
+    ChatService.instance.markAdminThreadRead(room.id);
+    if (embedded && onRoomSelected != null) {
+      onRoomSelected!(room.id);
+      return;
+    }
+    context.push('/admin/chat/${room.id}');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    if (rooms.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(emptyText, textAlign: TextAlign.center, style: AdminTheme.hint),
+        ),
+      );
+    }
+    final filtered = AdminInboxPreview.filterRooms(rooms, filter, s);
+    if (filtered.isEmpty) {
+      return Center(
+        child: Text(s.adminInboxEmptyFiltered(rooms.length), style: AdminTheme.hint),
+      );
+    }
+    final sorted = AdminInboxPreview.sortRooms(filtered, sort);
+    return ListView.builder(
+      padding: const EdgeInsets.only(bottom: 8),
+      itemCount: sorted.length,
+      itemBuilder: (context, i) {
+        final room = sorted[i];
+        final preview = AdminInboxPreview.fromRoom(room, s);
+        return _OpsInboxTile(
+          room: room,
+          preview: preview,
+          accent: accentFor(room),
+          pending: pending,
+          selected: selectedRoomId == room.id,
+          showSla: pending,
+          onTap: () => _openRoom(context, room),
+          onRename: onRename == null ? null : () => onRename!(room),
+        );
+      },
+    );
+  }
+}
+
+class _OpsInboxTile extends StatelessWidget {
+  const _OpsInboxTile({
+    required this.room,
+    required this.preview,
+    required this.accent,
+    required this.pending,
+    required this.onTap,
+    this.selected = false,
+    this.showSla = true,
+    this.onRename,
+  });
+
+  final ChatRoom room;
+  final AdminInboxPreview preview;
+  final Color accent;
+  final bool pending;
+  final VoidCallback onTap;
+  final bool selected;
+  final bool showSla;
+  final VoidCallback? onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final chat = ChatService.instance;
+    final isUnread = chat.isAdminThreadUnread(room);
+    final needsAttention = chat.needsAdminReply(room);
+    final sla = showSla && pending
+        ? AdminInboxSla.forRoom(room, needsAttention: needsAttention)
+        : null;
+    final sentAt =
+        AdminInboxPreview.formatMessageSentAt(preview.previewMessageAt, s);
+
+    return Material(
+      color: selected
+          ? LivingBkkBrand.purplePrimary.withOpacity(0.07)
+          : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        onLongPress: onRename,
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: selected
+                    ? LivingBkkBrand.purplePrimary
+                    : (sla?.color ?? accent).withOpacity(
+                        selected ? 1 : 0.35,
+                      ),
+                width: selected ? 3 : 2,
+              ),
+              bottom: BorderSide(color: AdminTheme.border.withOpacity(0.7)),
+            ),
+          ),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            preview.titleLine,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight:
+                                  isUnread ? FontWeight.w800 : FontWeight.w600,
+                              fontSize: 14,
+                              color: AdminTheme.text,
+                            ),
+                          ),
+                        ),
+                        Text(
+                          sentAt,
+                          style: AdminTheme.caption.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: isUnread
+                                ? LivingBkkBrand.purplePrimary
+                                : AdminTheme.textFaint,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      preview.intentLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: accent,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      preview.previewText,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12,
+                        height: 1.35,
+                        color: isUnread
+                            ? AdminTheme.textMuted
+                            : AdminTheme.textFaint,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (sla != null) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: sla.color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    '${sla.waitMinutes}m',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: sla.color,
+                    ),
+                  ),
+                ),
+              ] else if (isUnread) ...[
+                const SizedBox(width: 8),
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(top: 4),
+                  decoration: const BoxDecoration(
+                    color: LivingBkkBrand.purplePrimary,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -574,7 +1033,10 @@ class _InboxTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = context.s;
-    final isUnread = ChatService.instance.isAdminThreadUnread(room);
+    final chat = ChatService.instance;
+    final isUnread = chat.isAdminThreadUnread(room);
+    final needsAttention = chat.needsAdminReply(room);
+    final sla = AdminInboxSla.forRoom(room, needsAttention: needsAttention);
     final sentAt =
         AdminInboxPreview.formatMessageSentAt(preview.previewMessageAt, s);
     final initials = AdminInboxPreview.initials(preview.titleLine);
@@ -664,6 +1126,8 @@ class _InboxTile extends StatelessWidget {
                           _Chip(label: s.adminPriorityHigh, color: AppTheme.error),
                         if (pending && room.isUnclaimed)
                           _Chip(label: s.adminAwaitingReply, color: AppTheme.error),
+                        if (sla != null)
+                          _Chip(label: sla.label(s), color: sla.color),
                         if (showClaimHint && room.isUnclaimed)
                           _Chip(label: s.adminNeedsClaim, color: AppTheme.accentMid),
                         if (continuityHint != null)

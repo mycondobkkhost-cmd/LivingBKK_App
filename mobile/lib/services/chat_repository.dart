@@ -122,17 +122,12 @@ class ChatRepository {
       return;
     }
 
-    // แชททรัพย์ — เข้าคิวแอดมินทันที (ไม่ให้ chat-turn ตอบ FAQ แทน)
-    if (room.isPropertyListing) {
-      await _sendUserMessageDirect(room, trimmed);
-      return;
-    }
-
     final client = SupabaseService.client!;
+    final backendListingId = listingIdForBackend(room.listingId);
     final payload = {
       'thread_id': room.id,
       'room_kind': room.roomKind ?? 'property',
-      'listing_id': null,
+      if (backendListingId != null) 'listing_id': backendListingId,
       'listing_code': room.listingCode,
       'listing_title': room.listingTitle,
       if (room.projectName != null) 'project_name': room.projectName,
@@ -616,6 +611,8 @@ class ChatRepository {
         return 'system';
       case ChatMessageRole.adminNotice:
         return 'admin_notice';
+      case ChatMessageRole.adminCoach:
+        return 'admin_coach';
       case ChatMessageRole.user:
         return 'user';
     }
@@ -920,6 +917,8 @@ class ChatRepository {
         return ChatMessageRole.system;
       case 'admin_notice':
         return ChatMessageRole.adminNotice;
+      case 'admin_coach':
+        return ChatMessageRole.adminCoach;
       default:
         return ChatMessageRole.user;
     }
@@ -938,6 +937,8 @@ class ChatRepository {
       for (final r in replies) {
         if (r is Map) {
           final parsed = ChatMessage.fromJson(Map<String, dynamic>.from(r));
+          // admin_coach เป็นเลนแอดมินเท่านั้น — อย่าใส่ใน state ฝั่งลูกค้า
+          if (parsed.isCustomerHidden) continue;
           if (!room.messages.any((m) => m.id == parsed.id)) {
             room.messages.add(parsed);
           }
@@ -1128,20 +1129,20 @@ class ChatRepository {
     }
 
     final escalate = _isExplicitStaffRequest(text);
+    // Fallback เมื่อ chat-turn ล้ม — ไม่ซี้ซั้วส่งแอดมินทุกข้อความในแชททรัพย์
     final unclearStreak = escalate ? 0 : room.unclearStreak + 1;
-    // ข้อความแรกของลูกค้าในแชททรัพย์ → เข้าคิวแอดมิน (ไม่รอ 2 รอบ)
-    final shouldEscalate =
-        escalate || unclearStreak >= 1 || room.isPropertyListing;
+    final shouldEscalate = escalate || unclearStreak >= 2;
 
     late final String replyText;
     late final String replyRole;
     if (shouldEscalate) {
       replyText =
-          'คำถามนี้ต้องให้เจ้าหน้าที่ตอบโดยตรง — เราแจ้งทีมแล้ว และจะติดต่อกลับในแชทนี้โดยเร็วที่สุด';
+          'คำถามนี้ต้องให้เจ้าหน้าที่ตอบโดยตรงค่ะ — ทีมงานได้รับแจ้งแล้ว และจะติดต่อกลับในแชทนี้โดยเร็วที่สุดค่ะ';
       replyRole = 'system';
     } else {
       replyText =
-          'ยังไม่แน่ใจคำถามนี้ครับ — ลองระบุงบ/ทำเล/ประเภทห้อง หรือพิมพ์「ขอคุยกับเจ้าหน้าที่」เพื่อให้ทีมงานช่วยต่อครับ';
+          'ยังไม่แน่ใจคำถามค่ะ ลองระบุงบ / ทำเล / หรือรายละเอียดที่ต้องการเพิ่มนะคะ\n'
+          'หรือพิมพ์「ขอคุยกับเจ้าหน้าที่」เมื่อต้องการให้ทีมช่วยโดยตรงค่ะ';
       replyRole = 'ai';
     }
 

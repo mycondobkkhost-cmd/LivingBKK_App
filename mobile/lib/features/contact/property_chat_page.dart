@@ -18,8 +18,10 @@ import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../navigation/demand_board_navigation.dart';
+import '../../utils/chat_human_playback.dart';
 import '../../utils/chat_room_display.dart';
 import '../../widgets/chat_copyable_text.dart';
+import '../../widgets/chat_typing_indicator_bubble.dart';
 import '../../widgets/viewing_guide_notice_message_body.dart';
 import '../../widgets/reference_code_chip.dart';
 import 'chat_link_detail_sheets.dart';
@@ -84,6 +86,7 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
   final _input = TextEditingController();
   final _scroll = ScrollController();
   final _listingRepo = ListingRepository();
+  final _playback = ChatHumanPlaybackController();
   bool _sending = false;
   bool _translateEn = false;
   RealtimeChannel? _realtimeChannel;
@@ -100,32 +103,87 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
       _room.allowViewingRequest &&
       !_room.isStaffSupport;
 
+  bool get _inputLocked => _sending || _playback.isActive;
+
   @override
   void initState() {
     super.initState();
     ChatService.instance.markThreadRead(_room.id);
     ChatService.instance.ensureCustomerInboxRealtime();
     _realtimeChannel = ChatService.instance.subscribeToThread(_room, () {
-      if (mounted) setState(() {});
-      _scrollToBottom();
+      if (!mounted) return;
+      _onRealtimeMessage();
     });
     if (widget.openViewingFormOnStart) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _openViewingForm());
     }
   }
 
+  void _onRealtimeMessage() {
+    // ระหว่าง playback อย่ารีเฟรชจนโชว์ AI ก่อนเวลา — onTick ของ playback จัดการเอง
+    if (_playback.isActive) {
+      setState(() {});
+      return;
+    }
+    setState(() {});
+    _scrollToBottom();
+  }
+
   Future<void> _send() async {
     var text = _input.text.trim();
-    if (text.isEmpty || _sending) return;
+    if (text.isEmpty || _inputLocked) return;
     if (_translateEn) {
       text = '[EN] $text';
     }
     _input.clear();
+
+    final beforeIds = _room.messages.map((m) => m.id).toSet();
+    final started = DateTime.now();
+    _playback.showWaitingForReply();
     setState(() => _sending = true);
-    await ChatService.instance.sendUserMessage(_room, text);
+    _scrollToBottom();
+
+    try {
+      await ChatService.instance.sendUserMessage(_room, text);
+    } catch (_) {
+      if (mounted) {
+        _playback.reset();
+        setState(() => _sending = false);
+      }
+      return;
+    }
     if (!mounted) return;
     setState(() => _sending = false);
-    _scrollToBottom();
+
+    final newAi = _room.messages
+        .where(
+          (m) =>
+              !beforeIds.contains(m.id) &&
+              m.role == ChatMessageRole.ai &&
+              m.text.trim().isNotEmpty,
+        )
+        .toList();
+
+    if (newAi.isEmpty) {
+      _playback.reset();
+      setState(() {});
+      _scrollToBottom();
+      return;
+    }
+
+    // ซ่อนคำตอบ AI ทันทีก่อนเฟรมถัดไป — ไม่ให้โผล่ทั้งก้อน
+    _playback.stashReplies(newAi);
+    setState(() {});
+
+    final elapsed = DateTime.now().difference(started);
+    await _playback.playReplies(
+      newAi,
+      elapsedBeforePlayback: elapsed,
+      onTick: () {
+        if (mounted) setState(() {});
+      },
+      onScroll: _scrollToBottom,
+    );
   }
 
   void _scrollToBottom() {
@@ -223,6 +281,7 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
 
   @override
   void dispose() {
+    _playback.reset();
     if (_realtimeChannel != null) {
       ChatRepository().unsubscribe(_realtimeChannel);
     }
@@ -294,16 +353,33 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
               ),
             ),
           Expanded(
-            child: ListView.builder(
-              controller: _scroll,
-              padding: const EdgeInsets.all(16),
-              itemCount: room.messages.length,
-              itemBuilder: (context, i) => _Bubble(
-                message: room.messages[i],
-                onLinkTap: _openLink,
-                onAskListing: _askListing,
-                onActionLinkTap: _handleActionLink,
-              ),
+            child: Builder(
+              builder: (context) {
+                final visible = room.messages
+                    .where(
+                      (m) =>
+                          !m.isCustomerHidden &&
+                          !_playback.shouldHideMessage(m),
+                    )
+                    .toList(growable: false);
+                final showTyping = _playback.isTyping;
+                return ListView.builder(
+                  controller: _scroll,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: visible.length + (showTyping ? 1 : 0),
+                  itemBuilder: (context, i) {
+                    if (showTyping && i == visible.length) {
+                      return const ChatTypingIndicatorBubble();
+                    }
+                    return _Bubble(
+                      message: visible[i],
+                      onLinkTap: _openLink,
+                      onAskListing: _askListing,
+                      onActionLinkTap: _handleActionLink,
+                    );
+                  },
+                );
+              },
             ),
           ),
           SafeArea(
@@ -329,10 +405,12 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
                             padding: const EdgeInsets.only(right: 6),
                             child: ActionChip(
                               label: Text(q, style: TextStyle(fontSize: 11)),
-                              onPressed: () {
-                                _input.text = q;
-                                _send();
-                              },
+                              onPressed: _inputLocked
+                                  ? null
+                                  : () {
+                                      _input.text = q;
+                                      _send();
+                                    },
                               visualDensity: VisualDensity.compact,
                             ),
                           ),
@@ -356,7 +434,7 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
                       ),
                       const SizedBox(width: 8),
                       IconButton.filled(
-                        onPressed: _sending ? null : _send,
+                        onPressed: _inputLocked ? null : _send,
                         icon: _sending
                             ? const SizedBox(
                                 width: 18,

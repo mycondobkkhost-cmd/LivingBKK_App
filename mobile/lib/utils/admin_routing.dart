@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:go_router/go_router.dart';
 
@@ -61,6 +62,30 @@ String consumerPreviewLocation({String path = '/'}) => Uri(
 
 void goConsumerApp(BuildContext context, {String path = '/'}) {
   context.go(consumerPreviewLocation(path: path));
+}
+
+/// เลือกเมนูหลังบ้าน — บนเว็บ route พิเศษไป console/dashboard
+void selectAdminNav(
+  BuildContext context,
+  AdminNavId id,
+  ValueChanged<AdminNavId> onSelect,
+) {
+  if (kIsWeb) {
+    switch (id) {
+      case AdminNavId.dashboard:
+        context.go('/admin');
+        return;
+      case AdminNavId.inbox:
+        context.go('/admin/console');
+        return;
+      case AdminNavId.queue:
+        context.go('/admin/console?filter=unclaimed');
+        return;
+      default:
+        break;
+    }
+  }
+  onSelect(id);
 }
 
 /// ข้อความปุ่มย้อนกลับเมื่อเปิดแชทจากเมนูอื่น (เช่น ปฏิทิน)

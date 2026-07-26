@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../data/demo_media.dart';
 import '../theme/living_bkk_brand.dart';
 
 /// โปรโมชั่นหน้าแรก — เพิ่มรายการใหม่ได้ที่นี่ (รองรับอนาคต)
@@ -16,6 +17,7 @@ class HomePromoItem {
     required this.bulletEn,
     this.imageAsset,
     this.imageUrl,
+    this.videoUrl,
     required this.gradient,
     required this.accentColor,
     this.badgeTh,
@@ -33,10 +35,13 @@ class HomePromoItem {
   final List<String> bulletEn;
   final String? imageAsset;
   final String? imageUrl;
+  /// ถ้ามี = ใช้ในช่องวิดีโอสั้นฝั่งขวา
+  final String? videoUrl;
   final Gradient gradient;
 
   bool get hasNetworkImage => imageUrl?.isNotEmpty == true;
   bool get hasBundledImage => imageAsset?.isNotEmpty == true;
+  bool get hasVideo => videoUrl?.isNotEmpty == true;
   final Color accentColor;
   final String? badgeTh;
   final String? badgeEn;
@@ -54,10 +59,10 @@ class HomePromoItem {
 abstract final class HomePromoConfig {
   static const assetDir = 'assets/promo/';
 
-  /// ขนาดรูปที่แนะนำตามกรอบ carousel ปัจจุบัน (21:9, สูงไม่เกิน 124pt)
-  static const int imageWidthPx = 1260;
-  static const int imageHeightPx = 540;
-  static const double imageAspectRatio = 21 / 9;
+  /// ขนาดรูปสไลด์ซ้าย / โปสเตอร์วิดีโอขวา — กรอบ 3:4 เท่ากัน
+  static const int imageWidthPx = 750;
+  static const int imageHeightPx = 1000;
+  static const double imageAspectRatio = 3 / 4;
 
   static const exclusiveRent = HomePromoItem(
     id: 'exclusive_rent',
@@ -82,6 +87,7 @@ abstract final class HomePromoConfig {
       'Our team promotes and screens tenants for you',
     ],
     imageAsset: '${assetDir}promo_exclusive_rent.png',
+    imageUrl: DemoMedia.promoExclusiveRent,
     gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -90,43 +96,12 @@ abstract final class HomePromoConfig {
     accentColor: Color(0xFFFFD54F),
   );
 
-  static const agentPartner = HomePromoItem(
-    id: 'agent_partner',
-    titleTh: 'รับสมัครพาร์ทเนอร์นายหน้า',
-    titleEn: 'Agent partner program',
-    subtitleTh: 'ทั้งขายและเช่า · มีงานรองรับตลอด',
-    subtitleEn: 'Sales & rent · Steady deal flow',
-    detailTh:
-        'เข้าร่วมเครือข่ายนายหน้า RealXtate — รับงานขายและเช่าจากแพลตฟอร์ม พร้อมทีมแอดมินช่วยประสาน',
-    detailEn:
-        'Join RealXtate agent partners — sales and rental leads from the platform with admin support.',
-    bulletTh: [
-      'รับงานทั้งขายและเช่าในพื้นที่ กทม.และปริมณฑล',
-      'มีลีดและนัดชมจากระบบแมตช์',
-      'Blind intermediation ตามกฎแพลตฟอร์ม',
-      'รายได้จาก Success Fee เมื่อปิดดีล',
-    ],
-    bulletEn: [
-      'Sales and rental deals in Bangkok metro',
-      'Leads and viewings from our matching engine',
-      'Blind intermediation per platform rules',
-      'Success Fee on closed deals',
-    ],
-    imageAsset: '${assetDir}promo_agent_partner.png',
-    gradient: LinearGradient(
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [LivingBkkBrand.propNavy, Color(0xFF7C3AED)],
-    ),
-    accentColor: Color(0xFFFF8A65),
-  );
-
   static const roomService = HomePromoItem(
     id: 'room_service',
     titleTh: 'บริการตรวจรับห้องคืน',
     titleEn: 'Move-out room services',
-    subtitleTh: 'เริ่มต้นที่ 1,500 บาท · แม่บ้าน · ซ่อม · รีโนเวท',
-    subtitleEn: 'From ฿1,500 · cleaning · repairs · renovation',
+    subtitleTh: 'ขั้นต่ำ 1,500 บาท',
+    subtitleEn: 'From ฿1,500',
     detailTh:
         'บริการตรวจรับห้องคืน เริ่มต้นที่ 1,500 บาท — จ้างแม่บ้าน ซ่อมแซมและรีโนเวทในราคาพิเศษเมื่อจองผ่านทีมงาน RealXtate',
     detailEn:
@@ -144,6 +119,7 @@ abstract final class HomePromoConfig {
       'Repairs and renovation before re-listing',
     ],
     imageAsset: '${assetDir}promo_room_service.png',
+    imageUrl: DemoMedia.promoRoomService,
     gradient: LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
@@ -152,16 +128,49 @@ abstract final class HomePromoConfig {
     accentColor: Color(0xFF4DD0E1),
   );
 
-  /// รายการทั้งหมด — fallback เมื่อยังไม่มีข้อมูลจากหลังบ้าน
+  /// ช่องขวา — วิดีโอสั้น (โปสเตอร์ + เล่นลูป)
+  static const shortVideo = HomePromoItem(
+    id: 'home_short_video',
+    titleTh: 'พาร์ทเนอร์นายหน้า RealXtate',
+    titleEn: 'RealXtate agent partners',
+    subtitleTh: 'รับงานขาย·เช่า',
+    subtitleEn: 'Sales & rent deals',
+    detailTh:
+        'คลิปสั้นทัวร์ห้องตัวอย่าง — เครือข่ายนายหน้า RealXtate รับงานขายและเช่า พร้อมทีมแอดมินช่วยประสาน',
+    detailEn:
+        'Short condo tour clip — join RealXtate agent partners for sales and rental deals with admin support.',
+    bulletTh: [
+      'รับงานทั้งขายและเช่าในพื้นที่ กทม.และปริมณฑล',
+      'มีลีดและนัดชมจากระบบแมตช์',
+    ],
+    bulletEn: [
+      'Sales and rental deals in Bangkok metro',
+      'Leads and viewings from matching',
+    ],
+    imageAsset: '${assetDir}promo_agent_partner.png',
+    imageUrl: DemoMedia.promoAgentPartner,
+    videoUrl: DemoMedia.sampleTourVideoUrl,
+    gradient: LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [LivingBkkBrand.propNavy, Color(0xFF7C3AED)],
+    ),
+    accentColor: Color(0xFFFF8A65),
+    badgeTh: 'คลิปสั้น',
+    badgeEn: 'Short',
+  );
+
+  /// รายการทั้งหมด — ซ้ายสไลด์รูป / ขวาวิดีโอสั้น
   static const List<HomePromoItem> items = [
     exclusiveRent,
-    agentPartner,
     roomService,
+    shortVideo,
   ];
 
   static const Map<String, HomePromoItem> assetBySlug = {
     'exclusive_rent': exclusiveRent,
-    'agent_partner': agentPartner,
     'room_service': roomService,
+    'home_short_video': shortVideo,
+    'agent_partner': shortVideo,
   };
 }

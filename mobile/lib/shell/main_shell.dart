@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/board/demand_board_page.dart';
+import '../features/board/demand_board_hub_page.dart';
 import '../features/contact/contact_tab_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/search/map_home_page.dart';
@@ -19,6 +19,7 @@ import '../config/env.dart';
 import '../config/demand_board_menu_config.dart';
 import '../config/post_listing_menu_config.dart';
 import '../l10n/app_strings.dart';
+import '../models/demand_board_hub_section.dart';
 import '../state/locale_controller.dart';
 import '../state/search_session_controller.dart';
 import '../state/theme_controller.dart';
@@ -54,6 +55,7 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _index = 0;
   bool _boardFromHomeEntry = false;
+  DemandBoardHubSection _boardSection = DemandBoardHubSection.landing;
   final _realtime = RealtimeService();
   final _notifHub = InAppNotificationHub.instance;
   StreamSubscription<String>? _notifSub;
@@ -176,13 +178,18 @@ class _MainShellState extends State<MainShell> {
     });
   }
 
-  void _selectTab(int index, {bool boardFromHome = false}) {
+  void _selectTab(
+    int index, {
+    bool boardFromHome = false,
+    DemandBoardHubSection? boardSection,
+  }) {
     if (index == _tabContact) {
       _notifHub.clearUnread();
       ChatService.instance.clearAllUnread();
     }
     if (index == DemandBoardMenuConfig.boardTabIndex) {
       _boardFromHomeEntry = boardFromHome;
+      _boardSection = boardSection ?? DemandBoardHubSection.landing;
     }
     ShellTabNavigation.currentIndex = index;
     setState(() => _index = index);
@@ -223,9 +230,11 @@ class _MainShellState extends State<MainShell> {
             roleController: widget.roleController,
             localeController: widget.localeController,
           ),
-          DemandBoardPage(
+          DemandBoardHubPage(
+            key: ValueKey('board-hub-$_boardSection-$_boardFromHomeEntry'),
             isShellTab: true,
             fromHomeEntry: _boardFromHomeEntry,
+            initialSection: _boardSection,
           ),
           ContactTabPage(isAgent: isAgent, canManageLeads: canManageLeads),
           ProfilePage(

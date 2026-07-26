@@ -100,4 +100,31 @@ class PlacesService {
       );
     }).toList();
   }
+
+  /// แปลงพิกัด → ที่อยู่ (Geocoding API)
+  Future<String?> reverseGeocode(double lat, double lng) async {
+    if (!Env.hasMapsKey) return null;
+    try {
+      final uri = Uri.https(
+        'maps.googleapis.com',
+        '/maps/api/geocode/json',
+        {
+          'latlng': '$lat,$lng',
+          'key': Env.googleMapsApiKey,
+          'language': 'th',
+          'region': 'th',
+          'result_type': 'street_address|route|premise|plus_code',
+        },
+      );
+      final res = await http.get(uri);
+      if (res.statusCode != 200) return null;
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      if (body['status'] != 'OK') return null;
+      final results = body['results'] as List? ?? [];
+      if (results.isEmpty) return null;
+      return (results.first as Map)['formatted_address'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 }

@@ -1,3 +1,5 @@
+import 'demo_media.dart';
+
 /// ทำเลยอดฮิตบนหน้าแรก — slug ตรง geo_zone ในระบบค้นหา
 class PopularArea {
   const PopularArea({
@@ -41,7 +43,7 @@ abstract final class PopularAreas {
       nameEn: 'Thong Lo',
       subtitleTh: 'BTS ทองหล่อ · เอกมัย',
       subtitleEn: 'BTS Thong Lo · Ekkamai',
-      imageUrl: 'https://picsum.photos/seed/livingbkk-thonglor/800/480',
+      imageUrl: DemoMedia.areaThonglor,
     ),
     PopularArea(
       slug: 'asok',
@@ -49,7 +51,7 @@ abstract final class PopularAreas {
       nameEn: 'Asok',
       subtitleTh: 'BTS อโศก · MRT สุขุมวิท',
       subtitleEn: 'BTS Asok · MRT Sukhumvit',
-      imageUrl: 'https://picsum.photos/seed/livingbkk-asok/800/480',
+      imageUrl: DemoMedia.areaAsok,
     ),
     PopularArea(
       slug: 'sukhumvit',
@@ -57,7 +59,7 @@ abstract final class PopularAreas {
       nameEn: 'Sukhumvit',
       subtitleTh: 'พร้อมพงษ์ · ทองหล่อ · อารีย์',
       subtitleEn: 'Phrom Phong · Thong Lo · Ari',
-      imageUrl: 'https://picsum.photos/seed/livingbkk-sukhumvit/800/480',
+      imageUrl: DemoMedia.areaSukhumvit,
     ),
     PopularArea(
       slug: 'bangna',
@@ -65,7 +67,7 @@ abstract final class PopularAreas {
       nameEn: 'Bang Na',
       subtitleTh: 'BTS บางนา · อุดมสุข',
       subtitleEn: 'BTS Bang Na · Udom Suk',
-      imageUrl: 'https://picsum.photos/seed/livingbkk-bangna/800/480',
+      imageUrl: DemoMedia.areaBangna,
     ),
     PopularArea(
       slug: 'ari',
@@ -73,7 +75,7 @@ abstract final class PopularAreas {
       nameEn: 'Ari',
       subtitleTh: 'BTS อารีย์ · ห้วยขวาง',
       subtitleEn: 'BTS Ari · Huai Khwang',
-      imageUrl: 'https://picsum.photos/seed/livingbkk-ari/800/480',
+      imageUrl: DemoMedia.areaAri,
     ),
     PopularArea(
       slug: 'silom',
@@ -81,7 +83,7 @@ abstract final class PopularAreas {
       nameEn: 'Silom–Sathorn',
       subtitleTh: 'BTS ศาลาแดง · Sathorn',
       subtitleEn: 'BTS Sala Daeng · Sathorn',
-      imageUrl: 'https://picsum.photos/seed/livingbkk-silom/800/480',
+      imageUrl: DemoMedia.areaSilom,
     ),
     PopularArea(
       slug: 'ladprao',
@@ -89,7 +91,7 @@ abstract final class PopularAreas {
       nameEn: 'Lat Phrao',
       subtitleTh: 'MRT ลาดพร้าว · รัชโยธิน',
       subtitleEn: 'MRT Lat Phrao · Ratchadaphisek',
-      imageUrl: 'https://picsum.photos/seed/livingbkk-ladprao/800/480',
+      imageUrl: DemoMedia.areaLadprao,
     ),
     PopularArea(
       slug: 'nonthaburi',
@@ -97,7 +99,7 @@ abstract final class PopularAreas {
       nameEn: 'Nonthaburi',
       subtitleTh: 'Purple Line · ปากเกร็ด',
       subtitleEn: 'MRT Purple · Pak Kret',
-      imageUrl: 'https://picsum.photos/seed/livingbkk-nonthaburi/800/480',
+      imageUrl: DemoMedia.areaNonthaburi,
     ),
   ];
 

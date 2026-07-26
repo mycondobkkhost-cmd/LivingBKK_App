@@ -50,8 +50,13 @@
 
 ```bash
 source scripts/dev-path.sh
+supabase db push
 supabase functions deploy smart-search-parse
+supabase functions deploy smart-search
+supabase functions deploy smart-search-autocomplete
 ```
+
+Secrets: `OPENAI_API_KEY`, `GOOGLE_MAPS_API_KEY`, `OPENAI_MODEL` (optional)
 
 ---
 

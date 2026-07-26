@@ -2,50 +2,39 @@ import 'package:flutter/foundation.dart';
 
 import '../services/local_prefs_service.dart';
 
-/// มุมมองหลังบ้านบนเว็บ (สลับได้เฉพาะ [kIsWeb])
+/// กรอบจำลองมือถือบนเว็บ — สำหรับทดสอบ UI หลังบ้าน
 ///
-/// - [desktop] — ใช้งานบนคอมเต็มจอจริง (sidebar + แผงเนื้อหา)
-/// - [mobile] — เลย์เอาต์แบบมือถือ (เมนู ☰ ไม่มี sidebar)
-///
-/// แอปติดตั้งบนโทรศัพท์ใช้เลย์เอาต์แอปเสมอ ไม่มีสวิตช์นี้
-enum AdminViewportMode {
-  desktop,
-  mobile,
-}
-
+/// Layout จริงอิงอุปกรณ์ผ่าน [useAdminDesktopLayout] ใน `admin_desktop.dart`
+/// ค่านี้เปิดเฉพาะกรอบ iPhone กลางจอเมื่อทดสอบบนคอม
 class AdminViewportController extends ChangeNotifier {
-  static const _prefsKey = 'admin_viewport_mode';
+  static const _prefsKey = 'admin_phone_frame_preview';
 
   static AdminViewportController? instance;
 
-  AdminViewportMode _mode = AdminViewportMode.desktop;
+  bool _phoneFramePreview = false;
 
-  AdminViewportMode get mode => _mode;
-
-  bool get isDesktop => _mode == AdminViewportMode.desktop;
+  bool get phoneFramePreview => _phoneFramePreview;
 
   Future<void> load() async {
     final raw = await LocalPrefsService.instance.getString(_prefsKey);
-    _mode = switch (raw) {
-      'mobile' => AdminViewportMode.mobile,
-      'desktop' => AdminViewportMode.desktop,
-      _ => AdminViewportMode.desktop,
-    };
+    _phoneFramePreview = raw == '1';
     notifyListeners();
   }
 
-  Future<void> setMode(AdminViewportMode mode) async {
-    if (_mode == mode) return;
-    _mode = mode;
+  Future<void> setPhoneFramePreview(bool enabled) async {
+    if (_phoneFramePreview == enabled) return;
+    _phoneFramePreview = enabled;
     notifyListeners();
     await LocalPrefsService.instance.setString(
       _prefsKey,
-      mode == AdminViewportMode.mobile ? 'mobile' : 'desktop',
+      enabled ? '1' : '0',
     );
   }
 
-  String label(bool isEnglish) => switch (_mode) {
-        AdminViewportMode.desktop => isEnglish ? 'Full desktop' : 'คอมเต็มจอ',
-        AdminViewportMode.mobile => isEnglish ? 'App view' : 'แบบแอป',
-      };
+  Future<void> togglePhoneFramePreview() =>
+      setPhoneFramePreview(!_phoneFramePreview);
+
+  String label(bool isEnglish) => _phoneFramePreview
+      ? (isEnglish ? 'Phone frame on' : 'กรอบมือถือเปิด')
+      : (isEnglish ? 'Phone frame off' : 'กรอบมือถือปิด');
 }

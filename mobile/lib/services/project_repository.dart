@@ -18,6 +18,27 @@ class ProjectImportResult {
   final bool updated;
 }
 
+/// ผลค้นหาพิกัดโครงการจาก Google Places
+class ProjectGeocodeHit {
+  const ProjectGeocodeHit({
+    required this.lat,
+    required this.lng,
+    this.nameEn,
+    this.formattedAddress,
+    this.district,
+    this.placeId,
+    this.mapsUrl,
+  });
+
+  final double lat;
+  final double lng;
+  final String? nameEn;
+  final String? formattedAddress;
+  final String? district;
+  final String? placeId;
+  final String? mapsUrl;
+}
+
 class ProjectRepository {
   ProjectRepository._();
   static final ProjectRepository instance = ProjectRepository._();
@@ -248,6 +269,46 @@ class ProjectRepository {
     }
   }
 
+  /// ค้นหาพิกัดจริงจาก Google Places (Edge: project-geocode-preview)
+  Future<ProjectGeocodeHit> geocodeByName({
+    required String projectName,
+    String? hintDistrict,
+  }) async {
+    await _ensureImportAllowed();
+    final name = projectName.trim();
+    if (name.length < 2) {
+      throw Exception('ใส่ชื่อโครงการอย่างน้อย 2 ตัวอักษร');
+    }
+    final res = await SupabaseService.client!.functions.invoke(
+      'project-geocode-preview',
+      body: {
+        'project_name': name,
+        if (hintDistrict != null && hintDistrict.trim().isNotEmpty)
+          'hint_district': hintDistrict.trim(),
+      },
+    );
+    final data = _parseFunctionData(res.data, fallback: 'ค้นหาพิกัดจาก Google ไม่สำเร็จ');
+    final preview = data['preview'];
+    if (preview is! Map) {
+      throw Exception('ไม่พบพิกัดจาก Google Maps');
+    }
+    final map = Map<String, dynamic>.from(preview);
+    final lat = (map['lat'] as num?)?.toDouble();
+    final lng = (map['lng'] as num?)?.toDouble();
+    if (lat == null || lng == null) {
+      throw Exception('ไม่พบพิกัดจาก Google Maps');
+    }
+    return ProjectGeocodeHit(
+      lat: lat,
+      lng: lng,
+      nameEn: map['name_en'] as String?,
+      formattedAddress: map['formatted_address'] as String?,
+      district: map['district'] as String?,
+      placeId: map['place_id'] as String?,
+      mapsUrl: map['maps_url'] as String?,
+    );
+  }
+
   /// ดึงข้อมูลจาก LI มาเติมฟอร์ม (ยังไม่บันทึก)
   Future<PropertyProjectRow> previewFromUrl(String sourceUrl) async {
     await _ensureImportAllowed();
@@ -431,8 +492,8 @@ class ProjectRepository {
       btsStation: parsed['btsStation'] as String? ?? parsed['bts_station'] as String?,
       nearbyTransit: nearbyList,
       propertyType: parsed['propertyType'] as String? ?? parsed['property_type'] as String? ?? 'condo',
-      lat: (parsed['lat'] as num?)?.toDouble() ?? 13.7367,
-      lng: (parsed['lng'] as num?)?.toDouble() ?? 100.5608,
+      lat: (parsed['lat'] as num?)?.toDouble() ?? 0,
+      lng: (parsed['lng'] as num?)?.toDouble() ?? 0,
       isActive: true,
       aliases: aliasesRaw is List
           ? aliasesRaw.map((e) => e.toString()).toList()
@@ -464,8 +525,8 @@ class ProjectRepository {
       district: parsed['district'] as String? ?? 'กรุงเทพฯ',
       btsStation: parsed['bts_station'] as String?,
       propertyType: parsed['property_type'] as String? ?? 'condo',
-      lat: (parsed['lat'] as num?)?.toDouble() ?? 13.7367,
-      lng: (parsed['lng'] as num?)?.toDouble() ?? 100.5608,
+      lat: (parsed['lat'] as num?)?.toDouble() ?? 0,
+      lng: (parsed['lng'] as num?)?.toDouble() ?? 0,
       isActive: true,
       aliases: aliasesRaw is List
           ? aliasesRaw.map((e) => e.toString()).toList()

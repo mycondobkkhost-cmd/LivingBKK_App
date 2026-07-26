@@ -53,6 +53,11 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Thread not found" }, 404);
     }
 
+    const demandRef =
+      summary["ประกาศหาทรัพย์"] ?? summary["Search post"] ?? "";
+    const reqChatRef =
+      summary["แชทความต้องการ"] ?? summary["Requirement chat"] ?? "";
+
     const inserts: Array<Record<string, unknown>> = [
       {
         thread_id,
@@ -75,6 +80,18 @@ Deno.serve(async (req) => {
         text: "🔥 ลูกค้าสนใจจอง — ตอบทันที (ความสำคัญสูงสุด)",
       },
     ];
+
+    if (demandRef || reqChatRef) {
+      inserts.push({
+        thread_id,
+        role: "admin_notice",
+        text:
+          `🔒[โน้ตแอดมิน] จากแชทความต้องการ` +
+          (demandRef ? ` · ${demandRef}` : "") +
+          (reqChatRef ? ` · ${reqChatRef}` : "") +
+          ` — ติดต่อเจ้าของผ่านรหัสทรัพย์`,
+      });
+    }
 
     const { data: messages, error: msgError } = await db
       .from("chat_messages")
@@ -112,7 +129,7 @@ Deno.serve(async (req) => {
           listing_code: thread.listing_code,
           listing_id: thread.listing_id,
           reason: "booking_interest",
-          preview: summary["ทรัพย์"] ?? "",
+          preview: summary["ทรัพย์"] ?? summary["Property"] ?? demandRef,
         }),
       });
     } catch (_) {}

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../config/env.dart';
 import '../../data/admin_demo_data.dart';
+import '../../data/demo_media.dart';
 import '../../l10n/app_strings.dart';
 import '../../features/notifications/notification_center_sheet.dart';
 import '../../models/property_care_summary.dart';
@@ -616,7 +617,7 @@ class _CareClaimTile extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Image.network(
-                    'https://picsum.photos/seed/$coverSeed/240/180',
+                    DemoMedia.photo(coverSeed, width: 240, height: 180),
                     width: 52,
                     height: 52,
                     fit: BoxFit.cover,

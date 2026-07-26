@@ -1,32 +1,46 @@
 ---
-description: RealXtate — รีสตาร์ท dev + ลิงก์ทดสอบหลังแก้โค้ด mobile
+description: RealXtate — live UI preview บน localhost (hot reload)
 alwaysApply: true
 ---
 
-# RealXtate — ลิงก์ทดสอบหลังแก้โค้ด
+# RealXtate — Live UI preview (ไม่ต้องรีสตาร์ท server ทุกครั้ง)
 
-เมื่อแก้ไฟล์ใน `mobile/` และจบงาน:
+ผู้ใช้ต้องการ **ปรับ UI แล้วเห็นทันที** ในแท็บ preview — ไม่ push deploy, ไม่รีสตาร์ท server ทุกครั้ง, ไม่แคปรูปไปมา
 
-1. **รัน `./scripts/restart-cursor-dev.sh` ทุกครั้ง** — hot reload / รีเฟรชในแท็บเดิมไม่พอ
-2. **ส่งลิงก์ทดสอบ** Simple Browser ให้ผู้ใช้ทุกครั้ง
-3. แจ้งวิธีเปิดเท่านี้เท่านั้น:
-   - **ปิดแท็บ Simple Browser เก่า**
-   - **Cmd+Shift+P → Simple Browser: Show** → วางลิงก์ใหม่
-4. **ห้ามแนะนำ** Cmd+Shift+R, กด R ในเทอร์มินัล, hot restart, หรือรีเฟรชในแท็บเดิม — ผู้ใช้ต้องการปิดแท็บแล้วเปิดลิงก์ใหม่ทุกครั้ง
+## Workflow ที่ถูก
 
-## ลิงก์ทดสอบ
+1. **รัน dev server ครั้งเดียวต่อเซสชัน** — `./scripts/restart-cursor-dev.sh` (หรือ F5 → RealXtate Web live preview)
+2. **เปิด preview ค้างไว้** — Cmd+Shift+P → **Simple Browser: Show** → วางลิงก์ด้านล่าง **ไม่ต้องปิดแท็บทุกครั้ง**
+3. **แก้โค้ดแล้ว Save** — workspace ตั้ง `dart.flutterHotReloadOnSave: all` แล้ว → Flutter hot reload อัตโนมัติ
+4. **ดูผลในแท็บเดิม** — ส่วนใหญ่หน้า refresh เอง; ถ้ายังไม่เปลี่ยน กด refresh ใน Simple Browser **ครั้งเดียว** (ไม่ใช่ restart server)
+
+## เมื่อไหร่ต้อง restart server จริง (นานๆ ครั้ง)
+
+- เพิ่มไฟล์/route ใหม่, เปลี่ยน `pubspec.yaml`, migration, env ใหม่
+- Hot reload ไม่พอ → กด **R** (hot restart) ในเทอร์มินัล — ยังเร็วกว่า kill server
+
+## ลิงก์ preview (localhost)
 
 | หน้า | URL |
 |------|-----|
-| แอปลูกค้า | http://127.0.0.1:7357/ |
+| หน้าแรก (กรอบ iPhone) | http://127.0.0.1:7357/?preview=1 |
+| จัดการประกาศ (เจ้าของ) | http://127.0.0.1:7357/?preview=1&tab=mine |
+| (alias เดิม) | http://127.0.0.1:7357/listings/mine |
 | Admin | http://127.0.0.1:7357/admin |
+| แชทคอนโซล (3 แผง) | http://127.0.0.1:7357/admin/console |
 | ปฏิทินนัดดู | http://127.0.0.1:7357/admin?nav=viewingCalendar |
-| แชทคอนโซล | http://127.0.0.1:7357/admin/console |
+| เทรนบอท AI | http://127.0.0.1:7357/admin?nav=chatBotTraining |
 
-## คำสั่งรีสตาร์ท (บังคับหลังแก้โค้ด)
+## คำสั่งเริ่มเซสชัน (ครั้งเดียว)
 
 ```bash
 ./scripts/restart-cursor-dev.sh
 ```
 
-พอร์ตค่าเริ่มต้น **7357** · `flutter run -d web-server`
+พอร์ต **7357** · `flutter run -d web-server`
+
+## ห้ามทำ
+
+- อย่าแนะนำ push/deploy เพื่อดู UI
+- อย่ารีสตาร์ท server ทุกครั้งที่แก้สี/ข้อความ/layout
+- อย่าให้ผู้ใช้แคปรูปส่งกลับแทน preview สด

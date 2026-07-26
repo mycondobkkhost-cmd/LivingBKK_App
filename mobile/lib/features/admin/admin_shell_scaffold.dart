@@ -3,15 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_strings.dart';
-import '../../state/admin_viewport_controller.dart';
 import '../../theme/admin_theme.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../widgets/admin_attention_badge.dart';
 import '../../services/chat_service.dart';
 import '../../utils/admin_desktop.dart';
+import '../../utils/admin_routing.dart';
 import '../../utils/admin_sign_out.dart';
 import 'admin_nav_model.dart';
+import 'admin_template_shell.dart';
+import 'admin_template_theme.dart';
 const double kAdminShellSidebarWidth = 220;
 
 /// แถบหัวข้อเนื้อหาด้านขวา — โหมดคอม (ไม่มี AppBar คร่อม sidebar)
@@ -253,7 +255,6 @@ class _AdminNavMenuPanel extends StatelessWidget {
           onClose();
           performAdminSignOut(context);
         }),
-        if (kIsWeb) _AdminViewportModeBar(onApplied: onClose),
       ],
     );
   }
@@ -272,158 +273,6 @@ class _AdminSignOutBar extends StatelessWidget {
       leading: Icon(Icons.logout_outlined, size: 20, color: AdminTheme.textMuted),
       title: Text(s.signOut, style: const TextStyle(fontSize: 14)),
       onTap: onSignOut,
-    );
-  }
-}
-
-/// ปุ่มสลับคอม/แอปบน AppBar — มองเห็นได้โดยไม่ต้องเปิดเมนู
-class AdminViewportToggleButton extends StatelessWidget {
-  const AdminViewportToggleButton({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = AdminViewportController.instance;
-    if (controller == null) return const SizedBox.shrink();
-
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        final s = context.s;
-        final mode = controller.mode;
-        final isDesktop = mode == AdminViewportMode.desktop;
-        return IconButton(
-          tooltip: isDesktop
-              ? s.adminViewportToggleToMobile
-              : s.adminViewportToggleToDesktop,
-          icon: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 180),
-            child: Icon(
-              adminViewportModeIcon(mode),
-              key: ValueKey(mode),
-            ),
-          ),
-          onPressed: () => controller.setMode(
-            isDesktop ? AdminViewportMode.mobile : AdminViewportMode.desktop,
-          ),
-        );
-      },
-    );
-  }
-}
-
-/// สลับมุมมองบนเว็บ — คอมเต็มจอ (sidebar) / แบบแอป (เมนู ☰)
-class _AdminViewportModeBar extends StatelessWidget {
-  const _AdminViewportModeBar({this.onApplied});
-
-  final VoidCallback? onApplied;
-
-  @override
-  Widget build(BuildContext context) {
-    final controller = AdminViewportController.instance;
-    if (controller == null) return const SizedBox.shrink();
-
-    return ListenableBuilder(
-      listenable: controller,
-      builder: (context, _) {
-        final s = context.s;
-        final current = controller.mode;
-
-        Widget chip({
-          required AdminViewportMode mode,
-          required IconData icon,
-          required String label,
-        }) {
-          final selected = current == mode;
-          return Expanded(
-            child: Material(
-              color: selected
-                  ? LivingBkkBrand.purplePrimary.withOpacity(0.14)
-                  : AdminTheme.surfaceMuted,
-              borderRadius: BorderRadius.circular(8),
-              child: InkWell(
-                onTap: () async {
-                  await controller.setMode(mode);
-                  onApplied?.call();
-                },
-                borderRadius: BorderRadius.circular(8),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        icon,
-                        size: 20,
-                        color: selected
-                            ? LivingBkkBrand.purplePrimary
-                            : AdminTheme.textMuted,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                          color: selected
-                              ? LivingBkkBrand.purplePrimary
-                              : AdminTheme.textMuted,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          );
-        }
-
-        final modeHint = current == AdminViewportMode.desktop
-            ? s.adminViewportDesktopHint
-            : s.adminViewportMobileHint;
-
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                s.adminViewportSetting,
-                style: AdminTheme.caption.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                s.adminViewportWebOnlyNote,
-                style: AdminTheme.caption.copyWith(fontSize: 10),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  chip(
-                    mode: AdminViewportMode.desktop,
-                    icon: Icons.desktop_windows_outlined,
-                    label: s.adminViewportDesktop,
-                  ),
-                  const SizedBox(width: 6),
-                  chip(
-                    mode: AdminViewportMode.mobile,
-                    icon: Icons.smartphone_outlined,
-                    label: s.adminViewportMobile,
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                modeHint,
-                style: AdminTheme.caption.copyWith(
-                  fontSize: 10,
-                  color: LivingBkkBrand.purplePrimary,
-                  height: 1.35,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
@@ -519,6 +368,9 @@ class AdminShellScaffold extends StatelessWidget {
     required this.actions,
     this.header,
     this.tierLabel,
+    this.pageTitle,
+    this.hideSubnav = false,
+    this.contentBackgroundColor = AdminTemplateTheme.contentBg,
   });
 
   final AdminNavConfig config;
@@ -528,41 +380,24 @@ class AdminShellScaffold extends StatelessWidget {
   final List<Widget> actions;
   final Widget? header;
   final String? tierLabel;
+  final String? pageTitle;
+  final bool hideSubnav;
+  final Color contentBackgroundColor;
 
   @override
   Widget build(BuildContext context) {
-    final viewport = AdminViewportController.instance;
-    return ListenableBuilder(
-      listenable: viewport ?? Listenable.merge(const []),
+    return LayoutBuilder(
       builder: (context, _) {
-        if (useAdminWideShell(context)) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _Sidebar(
-                config: config,
-                selected: selected,
-                onSelect: onSelect,
-                tierLabel: tierLabel,
-              ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (header != null) header!,
-                    Expanded(child: body),
-                  ],
-                ),
-              ),
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (header != null) header!,
-            Expanded(child: body),
-          ],
+        return AdminTemplateShell(
+          config: config,
+          selected: selected,
+          onSelect: onSelect,
+          actions: actions,
+          banners: header != null ? [header!] : const [],
+          tierLabel: tierLabel,
+          pageTitle: pageTitle,
+          contentBackgroundColor: contentBackgroundColor,
+          body: body,
         );
       },
     );
@@ -662,7 +497,6 @@ class _Sidebar extends StatelessWidget {
                 _AdminSignOutBar(
                   onSignOut: () => performAdminSignOut(context),
                 ),
-                if (kIsWeb) const _AdminViewportModeBar(),
               ],
             ),
           ),
@@ -678,22 +512,7 @@ void _handleNavTap(
   AdminNavId id,
   ValueChanged<AdminNavId> onSelect,
 ) {
-  if (kIsWeb) {
-    switch (id) {
-      case AdminNavId.dashboard:
-        context.go('/admin');
-        return;
-      case AdminNavId.inbox:
-        context.go('/admin/console');
-        return;
-      case AdminNavId.queue:
-        context.go('/admin/console?filter=unclaimed');
-        return;
-      default:
-        break;
-    }
-  }
-  onSelect(id);
+  selectAdminNav(context, id, onSelect);
 }
 
 class _GroupSection extends StatefulWidget {

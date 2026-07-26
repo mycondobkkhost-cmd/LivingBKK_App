@@ -35,5 +35,12 @@ fi
 
 "$ROOT/scripts/sync-env.sh"
 echo ""
+echo "→ ตั้ง Supabase Edge secret (geocode fallback จากชื่อโครงการ LI)"
+if command -v supabase >/dev/null 2>&1; then
+  supabase secrets set "GOOGLE_MAPS_API_KEY=$KEY" || echo "⚠️  supabase secrets set ไม่สำเร็จ — ลอง supabase login แล้วรันใหม่"
+else
+  echo "⚠️  ไม่พบ supabase CLI — รัน: supabase secrets set GOOGLE_MAPS_API_KEY=$KEY"
+fi
+echo ""
 echo "✅ พร้อมแล้ว — รันแอปใหม่:"
 echo "   ./scripts/run-app.sh"

@@ -1,8 +1,10 @@
 import '../config/env.dart';
+import '../data/admin_demo_data.dart';
 import '../data/demo_calendar_events.dart';
 import '../models/appointment.dart';
 import '../models/calendar_event.dart';
 import '../utils/calendar_field_locks.dart';
+import 'demo_cast_bootstrap.dart';
 import 'supabase_service.dart';
 
 class CalendarEventRepository {
@@ -19,21 +21,37 @@ class CalendarEventRepository {
     return _demoStore!;
   }
 
+  /// โหมดทดลองแยก / ADMIN_DEMO_CASES — ไม่รอ Supabase (กัน spinner ค้างบนเว็บ)
+  static bool get _preferDemoStore =>
+      DemoCastBootstrap.shouldUseCastWorld ||
+      AdminDemoData.enabled ||
+      !Env.isConfigured ||
+      !SupabaseService.isReady;
+
+  static List<CalendarEvent> _demoInRange({
+    required DateTime from,
+    required DateTime to,
+    int limit = 300,
+  }) {
+    return _demoMutable()
+        .where(
+          (e) =>
+              e.status != 'cancelled' &&
+              !e.startAt.isBefore(from) &&
+              e.startAt.isBefore(to.add(const Duration(days: 1))),
+        )
+        .take(limit)
+        .toList()
+      ..sort((a, b) => a.startAt.compareTo(b.startAt));
+  }
+
   Future<List<CalendarEvent>> fetchRange({
     required DateTime from,
     required DateTime to,
     int limit = 300,
   }) async {
-    if (!Env.isConfigured || !SupabaseService.isReady) {
-      return _demoMutable()
-          .where(
-            (e) =>
-                e.status != 'cancelled' &&
-                !e.startAt.isBefore(from) &&
-                e.startAt.isBefore(to.add(const Duration(days: 1))),
-          )
-          .toList()
-        ..sort((a, b) => a.startAt.compareTo(b.startAt));
+    if (_preferDemoStore) {
+      return _demoInRange(from: from, to: to, limit: limit);
     }
 
     final rows = await SupabaseService.client!

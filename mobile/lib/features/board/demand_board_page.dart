@@ -1,39 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../navigation/demand_board_navigation.dart';
 import '../../l10n/app_strings.dart';
+import '../../models/demand_board_feed_tab.dart';
 import '../../models/demand_board_filter_state.dart';
 import '../../models/demand_post.dart';
 import '../../models/listing_public.dart';
+import '../../navigation/demand_board_navigation.dart';
+import '../../services/auth_service.dart';
 import '../../services/demand_board_favorites_service.dart';
 import '../../services/demand_mystock_match_service.dart';
 import '../../services/demand_repository.dart';
 import '../../services/my_stock_listing_pool.dart';
-import '../../theme/app_palette.dart';
+import '../../shell/main_shell_scope.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/li_layout.dart';
+import '../../theme/living_bkk_brand.dart';
 import '../../utils/demand_board_filter_apply.dart';
 import '../../utils/demand_search_match.dart';
+import '../../utils/page_safe_insets.dart';
+import '../../widgets/app_mobile_scaffold.dart';
+import '../../widgets/demand/demand_board_feed_tabs.dart';
 import '../../widgets/demand/demand_board_filter_sheet.dart';
-import '../../widgets/demand/demand_create_post_cta.dart';
+import '../../widgets/demand/demand_board_my_search_panel.dart';
+import '../../widgets/demand/demand_create_post_sheet.dart';
 import '../../widgets/demand_inquiry_card.dart';
 import '../../widgets/proppiter_search_capsule_field.dart';
-import '../../theme/li_layout.dart';
-import '../../utils/page_safe_insets.dart';
-import '../../shell/main_shell_scope.dart';
-import '../../widgets/consumer/consumer_page_shell.dart';
 
+/// บอร์ดหาทรัพย์ — สไตล์ Looking Feed · ฟังก์ชัน RealXtate
 class DemandBoardPage extends StatefulWidget {
   const DemandBoardPage({
     super.key,
     this.isShellTab = false,
     this.fromHomeEntry = false,
+    this.onBackToHub,
   });
 
-  /// แท็บล่าง「บอร์ด」— ปุ่มย้อนกลับกลับหน้าแรก
   final bool isShellTab;
-  /// กดเข้ามาจากหน้าแรก (เมนูบริการ) — ใช้หัวข้อยาว
   final bool fromHomeEntry;
+  /// ถ้าอยู่ใน hub — กลับ hub ก่อน; ไม่มี hub แล้วค่อยกลับแท็บแรก
+  final VoidCallback? onBackToHub;
 
   @override
   State<DemandBoardPage> createState() => _DemandBoardPageState();
@@ -45,10 +53,10 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
   final _locationFocus = FocusNode();
   List<DemandPost> _posts = [];
   bool _loading = true;
-  bool _openOnly = true;
+  bool _searchExpanded = false;
 
+  DemandBoardFeedTab _feedTab = DemandBoardFeedTab.feed;
   DemandBoardFilterState _filters = DemandBoardFilterState.initial;
-  bool _favoritesOnly = false;
   List<ListingPublic> _myStock = [];
   Map<String, int> _myStockScores = {};
 
@@ -57,6 +65,7 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
     super.initState();
     _locationController.addListener(_onLocationQueryChanged);
     DemandBoardFavoritesService.instance.addListener(_onFavoritesChanged);
+    AuthService.instance.addListener(_onAuthChanged);
     _load();
   }
 
@@ -64,13 +73,14 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
   void dispose() {
     _locationController.removeListener(_onLocationQueryChanged);
     DemandBoardFavoritesService.instance.removeListener(_onFavoritesChanged);
+    AuthService.instance.removeListener(_onAuthChanged);
     _locationController.dispose();
     _locationFocus.dispose();
     super.dispose();
   }
 
   void _onFavoritesChanged() => setState(() {});
-
+  void _onAuthChanged() => setState(() {});
   void _onLocationQueryChanged() => setState(() {});
 
   Future<void> _load() async {
@@ -86,13 +96,12 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
         _myStockScores = scores;
         _loading = false;
       });
-    } catch (e) {
+    } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   Future<void> _openFilterSheet() async {
-    final s = AppStrings.of(context);
     final picked = await DemandBoardFilterSheet.show(
       context,
       initial: _filters,
@@ -102,15 +111,10 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
     setState(() => _filters = picked);
   }
 
-  List<DemandPost> get _visible {
-    var list = _openOnly
-        ? _posts.where((p) => p.status == 'open').toList()
-        : _posts.where((p) => p.status != 'open').toList();
+  void _openCompose() => DemandCreatePostSheet.show(context);
 
-    if (_favoritesOnly) {
-      final fav = DemandBoardFavoritesService.instance;
-      list = list.where((p) => fav.isFavorite(p.id)).toList();
-    }
+  List<DemandPost> get _feedPosts {
+    var list = _posts.where((p) => p.status == 'open').toList();
 
     final locationQuery = _locationController.text;
     if (locationQuery.trim().isNotEmpty) {
@@ -125,28 +129,34 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
       myStockScores: _myStockScores,
     );
 
-    final open = list.where((p) => p.status == 'open').toList();
-    final closed = list.where((p) => p.status != 'open').toList();
-    open.sort((a, b) {
+    list.sort((a, b) {
       if (a.isUrgentRush != b.isUrgentRush) return a.isUrgentRush ? -1 : 1;
       if (a.isCashCase != b.isCashCase) return a.isCashCase ? -1 : 1;
-      if (_filters.matchMyStock) {
+      if (_filters.matchMyStock || _feedTab == DemandBoardFeedTab.matches) {
         final sa = _myStockScores[a.id] ?? 0;
         final sb = _myStockScores[b.id] ?? 0;
         if (sa != sb) return sb.compareTo(sa);
       }
       return compareDemandPostsByPriceSort(a, b, _filters.priceSort);
     });
-    closed.sort((a, b) => b.displayTime.compareTo(a.displayTime));
-    return [...open, ...closed];
+    return list;
   }
 
-  void _clearFilters() {
-    setState(() {
-      _filters = DemandBoardFilterState.initial;
-      _favoritesOnly = false;
-      _locationController.clear();
-    });
+  List<DemandPost> get _matchPosts {
+    final base = _feedPosts;
+    return base
+        .where((p) => (_myStockScores[p.id] ?? 0) >= 42)
+        .toList();
+  }
+
+  String _greetingName(AppStrings s) {
+    final auth = AuthService.instance;
+    final trial = auth.trialDisplayName?.trim();
+    if (trial != null && trial.isNotEmpty) return trial;
+    final email = (auth.displayEmail ?? '').trim();
+    if (email.contains('@')) return email.split('@').first;
+    if (email.isNotEmpty && !email.contains('Demo')) return email;
+    return LivingBkkBrand.name;
   }
 
   String _relativeTime(DateTime time, AppStrings s) {
@@ -172,262 +182,295 @@ class _DemandBoardPageState extends State<DemandBoardPage> {
         updated.difference(created).inMinutes > 2) {
       return s.updatedAgo(_relativeTime(updated, s));
     }
-    return s.postedAgo(_relativeTime(p.displayTime, s));
+    return _relativeTime(p.displayTime, s);
   }
 
   @override
   Widget build(BuildContext context) {
     final s = AppStrings.of(context);
-    final visible = _visible;
-    final hasLocationQuery = _locationController.text.trim().isNotEmpty;
     final favCount = DemandBoardFavoritesService.instance.count;
     final filterActive = _filters.hasActive;
-    final hasActiveFilters =
-        filterActive || _favoritesOnly || hasLocationQuery;
+    final matchCount = _matchPosts.length;
+    final top = PageSafeInsets.top(context);
+    final headerTop = top >= 50 ? top + 6.0 : (top > 0 ? top + 4.0 : 10.0);
 
-    return ConsumerPageShell(
-      title: widget.fromHomeEntry
-          ? s.demandBoardCollectionTitle
-          : s.demandBoardTitle,
-      titleFontSize: widget.fromHomeEntry ? 15 : null,
-      onBack: widget.isShellTab
-          ? () => MainShellScope.maybeOf(context)?.selectTab(0)
-          : () => Navigator.of(context).maybePop(),
+    return AppMobileScaffold(
+      backgroundColor: LivingBkkBrand.pageBackgroundOf(context),
       safeBottomBody: false,
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 4, right: 2),
-        child: DemandCreatePostCta(
-          onTap: () => DemandBoardNavigation.openCreateRequirement(context),
-        ),
-      ),
-      actions: [
-        ConsumerHeaderIconButton(
-          icon: Icons.tune_rounded,
-          onTap: _openFilterSheet,
-          showBadge: filterActive,
-          badgeLabel: filterActive ? Text('${_filters.activeCount}') : null,
-        ),
-        ConsumerHeaderIconButton(
-          icon: Icons.favorite_border_rounded,
-          onTap: () => DemandBoardNavigation.openSavedBoard(context),
-          showBadge: favCount > 0,
-          badgeLabel: favCount > 0 ? Text('$favCount') : null,
-        ),
-        if (hasActiveFilters)
-          ConsumerHeaderTextButton(
-            label: s.t('ล้าง', 'Clear'),
-            onTap: _clearFilters,
-          ),
-      ],
-      headerBottom: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          LiLayout.pagePadding,
-          0,
-          LiLayout.pagePadding,
-          4,
-        ),
-        child: ProppiterSearchCapsuleField(
-          controller: _locationController,
-          focusNode: _locationFocus,
-          typewriterHint: s.demandSearchLocationHint,
-          cacheKey: 'demand_board_search',
+        padding: const EdgeInsets.only(bottom: 8),
+        child: FloatingActionButton(
+          onPressed: _openCompose,
+          backgroundColor: LivingBkkBrand.accentOrange,
+          foregroundColor: Colors.white,
+          elevation: 4,
+          child: const Icon(Icons.add_rounded, size: 30),
         ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_filters.matchMyStock && _myStockScores.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                LiLayout.pagePadding,
-                8,
-                LiLayout.pagePadding,
-                0,
-              ),
-              child: _FilterChip(
-                label: s.demandMyStockMatchBadge,
-                active: true,
-                onTap: _openFilterSheet,
-                showDropdownIcon: false,
-                leadingIcon: Icons.home_work_outlined,
-              ),
-            ),
-          Container(
-            margin: EdgeInsets.fromLTRB(
-              LiLayout.pagePadding,
-              _filters.matchMyStock && _myStockScores.isNotEmpty ? 8 : 10,
-              LiLayout.pagePadding,
-              0,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.primaryLight, AppTheme.accentRoseLight],
-              ),
-              borderRadius: BorderRadius.circular(AppTheme.radiusMd),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    s.demandBoardHero,
-                    style: TextStyle(
-                      fontSize: 12,
-                      height: 1.3,
-                      fontWeight: FontWeight.w600,
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
+          AnnotatedRegion<SystemUiOverlayStyle>(
+            value: SystemUiOverlayStyle.dark,
+            child: ColoredBox(
+              color: Colors.white,
+              child: Padding(
+                padding: EdgeInsets.fromLTRB(
+                  LiLayout.pagePadding,
+                  headerTop,
+                  LiLayout.pagePadding,
+                  10,
                 ),
-                const SizedBox(width: 8),
-                Icon(Icons.inventory_2_outlined, color: AppTheme.primary, size: 28),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 8, LiLayout.pagePadding, 0),
-            child: SegmentedButton<bool>(
-              style: SegmentedButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                textStyle: const TextStyle(fontSize: 12),
-              ),
-              segments: [
-                ButtonSegment(value: true, label: Text(s.demandOfferOpen)),
-                ButtonSegment(value: false, label: Text(s.demandOfferClosed)),
-              ],
-              selected: {_openOnly},
-              onSelectionChanged: (v) => setState(() => _openOnly = v.first),
-            ),
-          ),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : visible.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        if (widget.isShellTab || widget.fromHomeEntry)
+                          IconButton(
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                            onPressed: () {
+                              if (widget.onBackToHub != null) {
+                                widget.onBackToHub!();
+                              } else if (widget.isShellTab) {
+                                MainShellScope.maybeOf(context)?.selectTab(0);
+                              } else {
+                                Navigator.of(context).maybePop();
+                              }
+                            },
+                            icon: Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 18,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        Expanded(
                           child: Text(
-                            _filters.matchMyStock && _myStock.isEmpty
-                                ? s.demandFilterMatchMyStockEmpty
-                                : _favoritesOnly
-                                    ? s.savedDemandBoardEmpty
-                                    : _filters.matchMyStock &&
-                                            visible.isEmpty
-                                        ? s.t(
-                                            'ไม่มีประกาศบอร์ดที่ตรงกับ MyStock ของคุณ',
-                                            'No board posts match your MyStock',
-                                          )
-                                        : hasLocationQuery
-                                    ? s.t(
-                                        'ไม่พบประกาศที่ตรงกับทำเลหรือโครงการนี้',
-                                        'No posts match this area or project',
-                                      )
-                                    : s.t(
-                                        'ยังไม่มีประกาศในหมวดนี้',
-                                        'No posts in this tab',
-                                      ),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: AppTheme.textSecondary),
+                            s.demandBoardGreeting(_greetingName(s)),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.prompt(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textPrimary,
+                              height: 1.2,
+                            ),
                           ),
                         ),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: _load,
-                        child: ListView.separated(
-                          physics: const AlwaysScrollableScrollPhysics(),
-                          padding: PageSafeInsets.padLTRB(
-                            context,
-                            left: 12,
-                            top: 8,
-                            right: 12,
-                            bottom: 72,
-                            addHomeIndicator: false,
+                        IconButton(
+                          onPressed: () =>
+                              DemandBoardNavigation.openSavedBoard(context),
+                          icon: Badge(
+                            isLabelVisible: favCount > 0,
+                            smallSize: 8,
+                            backgroundColor: LivingBkkBrand.brandRed,
+                            child: Icon(
+                              Icons.favorite_border_rounded,
+                              color: AppTheme.textPrimary,
+                            ),
                           ),
-                          itemCount: visible.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 6),
-                          itemBuilder: (context, i) {
-                            final p = visible[i];
-                            return DemandInquiryCard(
-                              post: p,
-                              timeLabel: _timeLabel(p, s),
-                              myStockMatchScore: _myStockScores[p.id],
-                              onTap: () => DemandBoardNavigation.openPostDetail(
-                                    context,
-                                    post: p,
-                                  ),
-                              onOffer: () => DemandBoardNavigation.openSubmitOffer(
-                                    context,
-                                    post: p,
-                                  ),
-                            );
-                          },
+                        ),
+                        IconButton(
+                          onPressed: () => setState(
+                            () => _searchExpanded = !_searchExpanded,
+                          ),
+                          icon: Icon(
+                            _searchExpanded
+                                ? Icons.close_rounded
+                                : Icons.search_rounded,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: _openFilterSheet,
+                          icon: Badge(
+                            isLabelVisible: filterActive,
+                            label: filterActive
+                                ? Text('${_filters.activeCount}')
+                                : null,
+                            backgroundColor: LivingBkkBrand.brandRed,
+                            child: Icon(
+                              Icons.tune_rounded,
+                              color: AppTheme.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    DemandBoardFeedTabs(
+                      selected: _feedTab,
+                      matchCount: matchCount > 0 ? matchCount : null,
+                      onChanged: (tab) {
+                        setState(() {
+                          _feedTab = tab;
+                          if (tab == DemandBoardFeedTab.matches) {
+                            _filters = _filters.copyWith(matchMyStock: true);
+                          } else if (_filters.matchMyStock &&
+                              tab == DemandBoardFeedTab.feed) {
+                            _filters = _filters.copyWith(matchMyStock: false);
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    if (_searchExpanded)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: ProppiterSearchCapsuleField(
+                          controller: _locationController,
+                          focusNode: _locationFocus,
+                          typewriterHint: s.demandSearchLocationHint,
+                          cacheKey: 'demand_board_search',
                         ),
                       ),
+                    _ComposeBar(
+                      hint: s.demandBoardComposeHint,
+                      onTap: _openCompose,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      s.demandBoardHero,
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        height: 1.35,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
+          Expanded(child: _buildBody(s)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBody(AppStrings s) {
+    if (_feedTab == DemandBoardFeedTab.mine) {
+      return const DemandBoardMySearchPanel();
+    }
+
+    final posts = _feedTab == DemandBoardFeedTab.matches
+        ? _matchPosts
+        : _feedPosts;
+
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (posts.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            _feedTab == DemandBoardFeedTab.matches
+                ? (_myStock.isEmpty
+                    ? s.demandFilterMatchMyStockEmpty
+                    : s.t(
+                        'ยังไม่มีประกาศที่จับคู่กับ MyStock',
+                        'No posts match your MyStock yet',
+                      ))
+                : s.t(
+                    'ยังไม่มีประกาศในฟีดนี้',
+                    'No posts in this feed',
+                  ),
+            textAlign: TextAlign.center,
+            style: TextStyle(color: AppTheme.textSecondary),
+          ),
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: LivingBkkBrand.brandRed,
+      onRefresh: _load,
+      child: ListView.separated(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: PageSafeInsets.padLTRB(
+          context,
+          left: 0,
+          top: 0,
+          right: 0,
+          bottom: 96,
+          addHomeIndicator: false,
+        ),
+        itemCount: posts.length,
+        separatorBuilder: (_, __) => const SizedBox.shrink(),
+        itemBuilder: (context, i) {
+          final p = posts[i];
+          return DemandInquiryCard(
+            post: p,
+            timeLabel: _timeLabel(p, s),
+            myStockMatchScore: _myStockScores[p.id],
+            onTap: () => DemandBoardNavigation.openPostDetail(
+              context,
+              post: p,
+            ),
+            onOffer: () => DemandBoardNavigation.openSubmitOffer(
+              context,
+              post: p,
+            ),
+          );
+        },
       ),
     );
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.active,
+class _ComposeBar extends StatelessWidget {
+  const _ComposeBar({
+    required this.hint,
     required this.onTap,
-    this.showDropdownIcon = true,
-    this.leadingIcon,
   });
 
-  final String label;
-  final bool active;
+  final String hint;
   final VoidCallback onTap;
-  final bool showDropdownIcon;
-  final IconData? leadingIcon;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: active ? AppTheme.primaryLight : AppTheme.cardTint,
+      color: LivingBkkBrand.pageBackground,
       shape: StadiumBorder(
-        side: BorderSide(color: active ? AppTheme.primary : AppTheme.border),
+        side: BorderSide(color: AppTheme.border.withOpacity(0.95)),
       ),
       child: InkWell(
         onTap: onTap,
         customBorder: const StadiumBorder(),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          padding: const EdgeInsets.fromLTRB(8, 8, 14, 8),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
             children: [
-              if (leadingIcon != null) ...[
-                Icon(
-                  leadingIcon,
-                  size: 14,
-                  color: active ? AppTheme.primary : AppTheme.textSecondary,
-                ),
-                const SizedBox(width: 4),
-              ],
-              Flexible(
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: LivingBkkBrand.brandRedTint,
                 child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  'R',
                   style: TextStyle(
+                    fontWeight: FontWeight.w800,
                     fontSize: 12,
-                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                    color: active ? AppTheme.primary : AppTheme.textSecondary,
+                    color: LivingBkkBrand.brandRed,
                   ),
                 ),
               ),
-              if (showDropdownIcon) ...[
-                const SizedBox(width: 2),
-                Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  size: 16,
-                  color: active ? AppTheme.primary : AppTheme.textSecondary,
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  hint,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppTheme.textSecondary,
+                  ),
                 ),
-              ],
+              ),
             ],
           ),
         ),

@@ -43,8 +43,10 @@ cat > "$ENV_MOBILE" <<EOF
 SUPABASE_URL=${SUPABASE_URL}
 SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
 GOOGLE_MAPS_API_KEY=${GOOGLE_MAPS_API_KEY:-}
+GOOGLE_MAPS_WEB_USE_OSM=${GOOGLE_MAPS_WEB_USE_OSM:-false}
 WEB_BASE_URL=${WEB_BASE_URL:-}
 TRIAL_MODE=${TRIAL_MODE:-false}
+ADMIN_DEMO_CASES=${ADMIN_DEMO_CASES:-false}
 FIREBASE_API_KEY=${FIREBASE_API_KEY:-}
 FIREBASE_APP_ID=${FIREBASE_APP_ID:-}
 FIREBASE_MESSAGING_SENDER_ID=${FIREBASE_MESSAGING_SENDER_ID:-}
@@ -54,31 +56,109 @@ EOF
 # อัปเดต Google Maps script บน Web (เฉพาะเมื่อมี key จริง)
 if [[ -f "$INDEX_HTML" ]]; then
   if sed --version 2>/dev/null | grep -q GNU; then
-    sed -i '/LIVINGBKK_GOOGLE_MAPS_SCRIPT/d' "$INDEX_HTML"
     sed -i '/maps.googleapis.com\/maps\/api\/js/d' "$INDEX_HTML"
   else
-    sed -i '' '/LIVINGBKK_GOOGLE_MAPS_SCRIPT/d' "$INDEX_HTML"
     sed -i '' '/maps.googleapis.com\/maps\/api\/js/d' "$INDEX_HTML"
+  fi
+
+  # คืน marker ถ้าหาย (เคยถูก sed ลบในรุ่นเก่า)
+  if ! grep -q 'LIVINGBKK_GOOGLE_MAPS_SCRIPT' "$INDEX_HTML"; then
+    python3 - "$INDEX_HTML" <<'PY'
+import sys
+path = sys.argv[1]
+text = open(path, encoding="utf-8").read()
+needle = "  <!-- Google Maps: sync-env.sh ใส่ script เมื่อมี GOOGLE_MAPS_API_KEY ใน .env.local -->"
+insert = needle + "\n  <!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT -->"
+if needle in text and "LIVINGBKK_GOOGLE_MAPS_SCRIPT" not in text:
+    text = text.replace(needle, insert, 1)
+    open(path, "w", encoding="utf-8").write(text)
+PY
   fi
 
   if [[ -n "${GOOGLE_MAPS_API_KEY:-}" ]] && ! _missing GOOGLE_MAPS_API_KEY; then
     MAPS_ESC="${GOOGLE_MAPS_API_KEY//\\/\\\\}"
-    MAPS_LINE="  <script src=\"https://maps.googleapis.com/maps/api/js?key=${MAPS_ESC}\"></script>"
-    python3 - "$INDEX_HTML" "$MAPS_LINE" <<'PY'
+    MAPS_ESC="${MAPS_ESC//\"/\\\"}"
+    python3 - "$INDEX_HTML" "$MAPS_ESC" <<'PY'
+import re
 import sys
-path, line = sys.argv[1], sys.argv[2]
-text = open(path, encoding="utf-8").read()
+from pathlib import Path
+
+path = Path(sys.argv[1])
+key = sys.argv[2]
+text = path.read_text(encoding="utf-8")
+
+# ลบ script maps + auth failure เก่า
+text = re.sub(
+    r"\s*<script[^>]*maps\.googleapis\.com/maps/api/js[^>]*>\s*</script>\s*",
+    "\n",
+    text,
+)
+text = re.sub(
+    r"\s*<script>\s*// LIVINGBKK_GMAPS_AUTH_FAILURE[\s\S]*?</script>\s*",
+    "\n",
+    text,
+)
+
+maps_block = f'''  <script src="https://maps.googleapis.com/maps/api/js?key={key}"></script>
+  <script>
+    // LIVINGBKK_GMAPS_AUTH_FAILURE
+    window.gm_authFailure = function () {{
+      window.__LIVINGBKK_GMAPS_FAILED = true;
+      try {{ localStorage.setItem('livingbkk_gmaps_failed', '1'); }} catch (e) {{}}
+      window.dispatchEvent(new Event('livingbkk-gmaps-failed'));
+    }};
+  </script>
+  <!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT -->'''
+
 needle = "<!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT -->"
 if needle in text:
-    text = text.replace(needle, line + "\n  " + needle, 1)
-    open(path, "w", encoding="utf-8").write(text)
+    text = text.replace(needle, maps_block, 1)
+else:
+    # คืน marker + block ใต้คอมเมนต์ Google Maps
+    marker_comment = "  <!-- Google Maps: sync-env.sh ใส่ script เมื่อมี GOOGLE_MAPS_API_KEY ใน .env.local -->"
+    if marker_comment in text:
+        text = text.replace(
+            marker_comment,
+            marker_comment + "\n" + maps_block,
+            1,
+        )
+
+path.write_text(text, encoding="utf-8")
 PY
   else
-    if sed --version 2>/dev/null | grep -q GNU; then
-      sed -i 's|<!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT -->|  <!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT (no key - OSM map) -->|' "$INDEX_HTML"
-    else
-      sed -i '' 's|<!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT -->|  <!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT (no key - OSM map) -->|' "$INDEX_HTML"
-    fi
+    python3 - "$INDEX_HTML" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+text = re.sub(
+    r"\s*<script[^>]*maps\.googleapis\.com/maps/api/js[^>]*>\s*</script>\s*",
+    "\n",
+    text,
+)
+text = re.sub(
+    r"\s*<script>\s*// LIVINGBKK_GMAPS_AUTH_FAILURE[\s\S]*?</script>\s*",
+    "\n",
+    text,
+)
+if "LIVINGBKK_GOOGLE_MAPS_SCRIPT" not in text:
+    marker_comment = "  <!-- Google Maps: sync-env.sh ใส่ script เมื่อมี GOOGLE_MAPS_API_KEY ใน .env.local -->"
+    if marker_comment in text:
+        text = text.replace(
+            marker_comment,
+            marker_comment + "\n  <!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT (no key - OSM map) -->",
+            1,
+        )
+elif "<!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT -->" in text:
+    text = text.replace(
+        "<!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT -->",
+        "<!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT (no key - OSM map) -->",
+        1,
+    )
+path.write_text(text, encoding="utf-8")
+PY
   fi
 fi
 
@@ -114,36 +194,54 @@ if [[ -n "${GOOGLE_MAPS_API_KEY:-}" ]] && ! _missing GOOGLE_MAPS_API_KEY; then
   echo "   - $LOCAL_PROPS (GOOGLE_MAPS_API_KEY)"
 fi
 
-# iOS — GMSServices ใน AppDelegate
+# iOS — GMSServices ใน AppDelegate (idempotent — ไม่ซ้อนบรรทัดซ้ำ)
 APP_DELEGATE="$ROOT/mobile/ios/Runner/AppDelegate.swift"
 if [[ -f "$APP_DELEGATE" ]]; then
   if [[ -n "${GOOGLE_MAPS_API_KEY:-}" ]] && ! _missing GOOGLE_MAPS_API_KEY; then
-    if ! grep -q 'import GoogleMaps' "$APP_DELEGATE"; then
-      if sed --version 2>/dev/null | grep -q GNU; then
-        sed -i '/import Flutter/a import GoogleMaps' "$APP_DELEGATE"
-      else
-        sed -i '' '/import Flutter/a\
-import GoogleMaps
-' "$APP_DELEGATE"
-      fi
-    fi
     KEY_ESC="${GOOGLE_MAPS_API_KEY//\\/\\\\}"
     KEY_ESC="${KEY_ESC//\"/\\\"}"
-    if grep -q 'LIVINGBKK_GOOGLE_MAPS_INIT' "$APP_DELEGATE"; then
-      if sed --version 2>/dev/null | grep -q GNU; then
-        sed -i "s|// LIVINGBKK_GOOGLE_MAPS_INIT.*|GMSServices.provideAPIKey(\"${KEY_ESC}\")|" "$APP_DELEGATE"
-      else
-        sed -i '' "s|// LIVINGBKK_GOOGLE_MAPS_INIT.*|GMSServices.provideAPIKey(\"${KEY_ESC}\")|" "$APP_DELEGATE"
-      fi
-    else
-      if sed --version 2>/dev/null | grep -q GNU; then
-        sed -i "/GeneratedPluginRegistrant.register/a \\    GMSServices.provideAPIKey(\"${KEY_ESC}\")" "$APP_DELEGATE"
-      else
-        sed -i '' "/GeneratedPluginRegistrant.register/a\\
-    GMSServices.provideAPIKey(\"${KEY_ESC}\")
-" "$APP_DELEGATE"
-      fi
-    fi
+    python3 - "$APP_DELEGATE" "$KEY_ESC" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+key = sys.argv[2]
+text = path.read_text()
+lines = text.splitlines()
+
+# ลบ GMSServices ซ้ำทั้งหมดก่อน
+lines = [ln for ln in lines if "GMSServices.provideAPIKey" not in ln]
+
+# ใส่ import GoogleMaps หลัง import Flutter ถ้ายังไม่มี
+if not any("import GoogleMaps" in ln for ln in lines):
+    out = []
+    for ln in lines:
+        out.append(ln)
+        if ln.strip() == "import Flutter":
+            out.append("import GoogleMaps")
+    lines = out
+
+init_line = f'    GMSServices.provideAPIKey("{key}") // LIVINGBKK_GOOGLE_MAPS_INIT'
+out = []
+inserted = False
+for ln in lines:
+    out.append(ln)
+    if (not inserted) and "GeneratedPluginRegistrant.register" in ln:
+        out.append(init_line)
+        inserted = True
+
+if not inserted:
+    # fallback — ใส่ก่อน return super.application
+    out2 = []
+    for ln in out:
+        if (not inserted) and "return super.application" in ln:
+            out2.append(init_line)
+            inserted = True
+        out2.append(ln)
+    out = out2
+
+path.write_text("\n".join(out) + "\n")
+PY
     echo "   - $APP_DELEGATE"
   fi
 fi

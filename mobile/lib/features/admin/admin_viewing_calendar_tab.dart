@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -30,6 +31,7 @@ import 'admin_calendar_day_timeline.dart';
 import 'admin_calendar_event_card.dart';
 import 'admin_calendar_event_sheet.dart';
 import 'admin_viewing_follow_up_actions.dart';
+import 'admin_enterprise_page.dart';
 
 Future<void> _openLeadFromSheet(BuildContext context, String leadId) async {
   dismissAdminRootOverlays(context);
@@ -408,35 +410,25 @@ class _AdminViewingCalendarTabState extends State<AdminViewingCalendarTab> {
   }
 
   Future<void> _bootstrap() async {
-    if (widget.viewingStaffOnly) {
-      final access = await AuthService.instance.fetchProfileAccess();
-      _staffUserId = AuthService.instance.effectiveUserId;
-      _staffSlug = access.staffSlug;
-    } else if (Env.adminDemoCases) {
-      await AppointmentRepository.ensureDemoSeedCurrent();
+    try {
+      if (widget.viewingStaffOnly) {
+        final access = await AuthService.instance.fetchProfileAccess();
+        _staffUserId = AuthService.instance.effectiveUserId;
+        _staffSlug = access.staffSlug;
+      } else if (Env.adminDemoCases) {
+        await AppointmentRepository.ensureDemoSeedCurrent();
+      }
+      await AdminCompCardService.instance.ensureSeeded();
+      await _load();
+    } catch (e, st) {
+      debugPrint('AdminViewingCalendarTab bootstrap failed: $e\n$st');
+      if (mounted) setState(() => _loading = false);
     }
-    await AdminCompCardService.instance.ensureSeeded();
-    await _load();
   }
 
   void _selectDay(DateTime d, {required bool wide}) {
     final day = DateTime(d.year, d.month, d.day);
     setState(() => _selectedDay = day);
-    if (!wide) {
-      final s = context.s;
-      _openDayListSheet(
-        context,
-        dayLabel: _dayLabel(day, s),
-        initialItems: _forDay(day),
-        initialCalendarEvents: _calendarForDay(day),
-        loadItems: () async => _forDay(day),
-        loadCalendarEvents: () async => _calendarForDay(day),
-        s: s,
-        onCalendarRefresh: _reloadCalendarItems,
-        statusColor: _statusColor,
-        canAssignStaff: _canAssignStaff,
-      );
-    }
   }
 
   String _dayLabel(DateTime day, AppStrings s) {
@@ -446,37 +438,43 @@ class _AdminViewingCalendarTabState extends State<AdminViewingCalendarTab> {
 
   Future<void> _load({bool silent = false}) async {
     if (!silent) setState(() => _loading = true);
-    final list = await _repo.fetchUpcoming(
-      limit: 200,
-      staffUserId: widget.viewingStaffOnly ? _staffUserId : null,
-      staffSlug: widget.viewingStaffOnly ? _staffSlug : null,
-    );
-    final events = await _calendarRepo.fetchUpcoming();
-    if (!mounted) return;
-    final items = list.where((a) => a.status != 'cancelled').toList();
-    final alerts = await ViewingCalendarAlertService.analyze(items);
-    if (!mounted) return;
-    setState(() {
-      _items = items;
-      _calendarEvents = events.where((e) => e.status != 'cancelled').toList();
-      _alerts = alerts;
-      _loading = false;
-    });
-    widget.onAttentionCountChanged?.call(alerts.navBadgeCount);
-    await ViewingCalendarAlertService.markSnapshot(items);
-    widget.onAttentionCountChanged?.call(0);
-    if (!widget.viewingStaffOnly) {
-      final s = context.s;
-      await ViewingCalendarAlertService.publishOverviewBanner(
-        summary: alerts,
-        message: s.adminCalendarAlertOverview(
-          unassigned: alerts.unassigned,
-          awaitingConfirm: alerts.awaitingConfirm,
-          newCases: alerts.newCases,
-          postViewing: alerts.postViewing,
-        ),
-        force: !silent,
+    try {
+      final list = await _repo.fetchUpcoming(
+        limit: 200,
+        staffUserId: widget.viewingStaffOnly ? _staffUserId : null,
+        staffSlug: widget.viewingStaffOnly ? _staffSlug : null,
       );
+      final events = await _calendarRepo.fetchUpcoming();
+      if (!mounted) return;
+      final items = list.where((a) => a.status != 'cancelled').toList();
+      final alerts = await ViewingCalendarAlertService.analyze(items);
+      if (!mounted) return;
+      setState(() {
+        _items = items;
+        _calendarEvents = events.where((e) => e.status != 'cancelled').toList();
+        _alerts = alerts;
+        _loading = false;
+      });
+      widget.onAttentionCountChanged?.call(alerts.navBadgeCount);
+      await ViewingCalendarAlertService.markSnapshot(items);
+      if (!mounted) return;
+      widget.onAttentionCountChanged?.call(0);
+      if (!widget.viewingStaffOnly) {
+        final s = context.s;
+        await ViewingCalendarAlertService.publishOverviewBanner(
+          summary: alerts,
+          message: s.adminCalendarAlertOverview(
+            unassigned: alerts.unassigned,
+            awaitingConfirm: alerts.awaitingConfirm,
+            newCases: alerts.newCases,
+            postViewing: alerts.postViewing,
+          ),
+          force: !silent,
+        );
+      }
+    } catch (e, st) {
+      debugPrint('AdminViewingCalendarTab load failed: $e\n$st');
+      if (mounted) setState(() => _loading = false);
     }
   }
 
@@ -579,117 +577,89 @@ class _AdminViewingCalendarTabState extends State<AdminViewingCalendarTab> {
         )
         .length;
 
-    // โหมดคอม (sidebar) — ใช้เลย์เอาต์แยกปฏิทิน|รายการวัน แม้พื้นที่แคบกว่า 900px
-    final wide =
-        useAdminWideShell(context) ||
-        MediaQuery.sizeOf(context).width >= kAdminDesktopMinWidth;
+    final wide = useAdminDesktopLayout(context);
+
+    final pendingCount = _countWhere((a) => a.status == 'pending');
+    final unassignedCount =
+        _countWhere((a) => a.assignedTo == null || a.assignedTo!.isEmpty);
 
     final header = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    s.adminCalendarTitle,
-                    style: AdminTheme.title.copyWith(fontSize: 16),
-                  ),
-                  Text(
-                    s.adminCalendarSubtitle,
-                    style: AdminTheme.caption.copyWith(fontSize: 11),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
+        AdminEnterprisePageHeader(
+          title: s.adminCalendarTitle,
+          subtitle: s.adminCalendarSubtitle,
+          badge: _alerts.navBadgeCount > 0
+              ? '${_alerts.navBadgeCount}'
+              : null,
+          badgeAlert: _alerts.navBadgeCount > 0,
+          actions: [
             if (!widget.viewingStaffOnly && Env.adminDemoCases) ...[
-              TextButton(
+              TextButton.icon(
                 onPressed: _resetTrialCases,
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.restart_alt, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      s.adminResetTrialCases,
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ),
+                icon: const Icon(Icons.restart_alt, size: 16),
+                label: Text(s.adminResetTrialCases),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
               ),
-              TextButton(
+              TextButton.icon(
                 onPressed: () => context.go('/admin?nav=appointments'),
-                style: TextButton.styleFrom(
-                  visualDensity: VisualDensity.compact,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(Icons.map_outlined, size: 16),
-                    const SizedBox(width: 4),
-                    Text(
-                      s.adminCalendarListMapLink,
-                      style: const TextStyle(fontSize: 11),
-                    ),
-                  ],
-                ),
+                icon: const Icon(Icons.map_outlined, size: 16),
+                label: Text(s.adminCalendarListMapLink),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
               ),
             ],
           ],
         ),
-        const SizedBox(height: 6),
-        if (_alerts.hasAny && !widget.viewingStaffOnly)
-          _CalendarAlertBanner(summary: _alerts, s: s),
-        if (_alerts.hasAny && !widget.viewingStaffOnly) const SizedBox(height: 8),
-        _SummaryRow(
-          tiles: [
-            _SummaryTile(
-              label: s.adminCalendarTodayCount(todayItems.length),
+        const SizedBox(height: 10),
+        if (_alerts.hasAny && !widget.viewingStaffOnly) ...[
+          AdminEnterpriseBanner(
+            message: s.adminCalendarAlertOverview(
+              unassigned: _alerts.unassigned,
+              awaitingConfirm: _alerts.awaitingConfirm,
+              newCases: _alerts.newCases,
+              postViewing: _alerts.postViewing,
+            ),
+            icon: Icons.notifications_active_outlined,
+            tone: AdminEnterpriseBannerTone.warn,
+          ),
+          const SizedBox(height: 10),
+        ],
+        AdminEnterpriseStatStrip(
+          items: [
+            AdminEnterpriseStat(
+              label: s.t('วันนี้', 'Today'),
+              value: '${todayItems.length}',
               icon: Icons.today_outlined,
-              color: LivingBkkBrand.purplePrimary,
-              highlight: todayItems.isNotEmpty,
+              alert: todayItems.isNotEmpty,
             ),
-            _SummaryTile(
-              label: s.adminCalendarPendingCount(
-                _countWhere((a) => a.status == 'pending'),
-              ),
+            AdminEnterpriseStat(
+              label: s.t('รอ', 'Pending'),
+              value: '$pendingCount',
               icon: Icons.pending_actions_outlined,
-              color: Colors.orange.shade800,
-              highlight: _countWhere((a) => a.status == 'pending') > 0,
+              alert: pendingCount > 0,
             ),
-            _SummaryTile(
-              label: s.adminCalendarWeekCount(weekCount),
+            AdminEnterpriseStat(
+              label: s.t('7 วัน', '7 days'),
+              value: '$weekCount',
               icon: Icons.date_range_outlined,
-              color: AppTheme.primary,
             ),
             if (!widget.viewingStaffOnly)
-              _SummaryTile(
-                label: s.adminCalendarUnassignedCount(
-                  _countWhere((a) => a.assignedTo == null || a.assignedTo!.isEmpty),
-                ),
+              AdminEnterpriseStat(
+                label: s.t('ยังไม่ระบุ', 'Unassigned'),
+                value: '$unassignedCount',
                 icon: Icons.person_off_outlined,
-                color: AppTheme.textSecondary,
+                alert: unassignedCount > 0,
               ),
             if (!widget.viewingStaffOnly && _aiDraftCount > 0)
-              _SummaryTile(
-                label: s.adminCalendarAiDraftCount(_aiDraftCount),
+              AdminEnterpriseStat(
+                label: 'AI',
+                value: '$_aiDraftCount',
                 icon: Icons.auto_awesome,
-                color: LivingBkkBrand.purplePrimary,
-                highlight: true,
+                alert: true,
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
       ],
     );
 
@@ -761,12 +731,12 @@ class _AdminViewingCalendarTabState extends State<AdminViewingCalendarTab> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            padding: adminEnterprisePagePadding(context).copyWith(bottom: 0),
             child: header,
           ),
           Expanded(
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              padding: adminEnterprisePagePadding(context).copyWith(top: 0),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
@@ -793,11 +763,29 @@ class _AdminViewingCalendarTabState extends State<AdminViewingCalendarTab> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(
-        padding: const EdgeInsets.all(12),
+        padding: adminEnterprisePagePadding(context),
         physics: const AlwaysScrollableScrollPhysics(),
         children: [
           header,
           monthCalendar,
+          const SizedBox(height: 12),
+          _DayListPanel(
+            dayLabel: _dayLabel(_selectedDay, s),
+            initialItems: selectedItems,
+            calendarEvents: dayEvents,
+            loadItems: () async {
+              await _load();
+              return _forDay(_selectedDay);
+            },
+            loadCalendarEvents: () async {
+              await _load();
+              return _calendarForDay(_selectedDay);
+            },
+            s: s,
+            onCalendarRefresh: _reloadCalendarItems,
+            statusColor: _statusColor,
+            canAssignStaff: _canAssignStaff,
+          ),
         ],
       ),
     );

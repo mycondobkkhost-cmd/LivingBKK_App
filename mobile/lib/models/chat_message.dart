@@ -1,6 +1,6 @@
 import '../l10n/app_strings.dart';
 
-enum ChatMessageRole { user, ai, system, adminNotice }
+enum ChatMessageRole { user, ai, system, adminNotice, adminCoach }
 
 enum ChatMessageLinkKind {
   listing,
@@ -166,6 +166,12 @@ class ChatMessage {
       role == ChatMessageRole.adminNotice &&
       text.startsWith(adminInternalPrefix);
 
+  /// คำขอแนวตอบจาก AI → แอดมินเท่านั้น (ห้ามโชว์ลูกค้า)
+  bool get isAdminCoach => role == ChatMessageRole.adminCoach;
+
+  /// ข้อความที่ลูกค้าไม่ควรเห็นในแชท
+  bool get isCustomerHidden => isAdminCoach || isAdminInternal;
+
   String get displayText =>
       isAdminInternal ? text.substring(adminInternalPrefix.length) : text;
 
@@ -209,6 +215,8 @@ class ChatMessage {
         return ChatMessageRole.system;
       case 'admin_notice':
         return ChatMessageRole.adminNotice;
+      case 'admin_coach':
+        return ChatMessageRole.adminCoach;
       default:
         return ChatMessageRole.user;
     }

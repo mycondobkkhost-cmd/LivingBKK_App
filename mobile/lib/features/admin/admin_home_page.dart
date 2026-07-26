@@ -19,7 +19,6 @@ import '../../services/appointment_repository.dart';
 import '../../services/notification_service.dart';
 import '../../services/realtime_service.dart';
 import '../../services/supabase_service.dart';
-import '../../state/admin_viewport_controller.dart';
 import '../../state/session_gate.dart';
 import '../../state/user_role_controller.dart';
 import '../../services/demo_cast_bootstrap.dart';
@@ -56,6 +55,8 @@ import 'admin_vault_tab.dart';
 import 'admin_requirements_tab.dart';
 import 'admin_vault_demo_tabs.dart';
 import 'admin_watermark_tab.dart';
+import 'admin_enterprise_page.dart';
+import 'admin_phone_frame_host.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key, this.initialNav, this.roleController});
@@ -348,7 +349,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
             compact: true,
           ),
         if (castBtn != null) castBtn,
-        const AdminViewportToggleButton(),
         if (_selected != AdminNavId.viewingCalendar)
           AdminCalendarNavIconButton(
             unreadCount: _overview.viewingCalendarBadge,
@@ -432,7 +432,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
           onSelect: _selectNav,
         ),
       if (castBtn != null) castBtn,
-      const AdminViewportToggleButton(),
       if (_selected != AdminNavId.viewingCalendar)
         AdminCalendarNavIconButton(
           unreadCount: _overview.viewingCalendarBadge,
@@ -482,13 +481,15 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 ],
               ),
             ),
-            const Expanded(child: AdminChatsTab(focusQueue: true)),
+            const Expanded(
+              child: AdminChatsTab(focusQueue: true, opsLayout: true),
+            ),
           ],
         );
       case AdminNavId.leads:
         return _leadsTab(s);
       case AdminNavId.inbox:
-        return const AdminChatsTab();
+        return const AdminChatsTab(opsLayout: true);
       case AdminNavId.dashboard:
         return AdminDashboardTab(onOpenNav: _selectNav);
       case AdminNavId.assetRegistry:
@@ -645,7 +646,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
           )
         : null;
 
-    return PopScope(
+    return AdminPhoneFrameHost(
+      child: PopScope(
       canPop: _selected == AdminNavId.dashboard,
       onPopInvoked: (didPop) {
         if (!didPop && _selected != AdminNavId.dashboard) {
@@ -656,73 +658,43 @@ class _AdminHomePageState extends State<AdminHomePage> {
       data: shell,
       child: AdminTheme.lightPaletteScope(
       child: ListenableBuilder(
-        listenable: Listenable.merge([
-          if (AdminViewportController.instance != null)
-            AdminViewportController.instance!,
-          DemoCastSession.instance,
-        ]),
+        listenable: DemoCastSession.instance,
         builder: (context, _) {
-          final wide = useAdminWideShell(context);
           final navConfig = _navConfig;
           final content = _buildBody(s);
-          final main = wide
+          final bannerColumn = (trialBanner != null ||
+                  isolatedBanner != null ||
+                  castBanner != null)
               ? Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    AdminWideContentBar(
-                      title: navConfig.labelForNav(_selected, s),
-                      actions: _appBarActions(s, false),
-                    ),
                     if (trialBanner != null) trialBanner,
                     if (isolatedBanner != null) isolatedBanner,
                     if (castBanner != null) castBanner,
-                    Expanded(child: content),
                   ],
                 )
-              : content;
+              : null;
 
           return KeyedSubtree(
-            key: ValueKey('admin-shell-${AdminViewportController.instance?.mode.name}'),
+            key: const ValueKey('admin-enterprise-shell'),
             child: AdminMobileLayout.scaffold(
               context: context,
               backgroundColor: AdminTheme.bg,
-              appBar: wide
-                  ? null
-                  : AdminMobileLayout.appBar(
-                      context: context,
-                      leading: _appBarLeading(s, compact, wide),
-                      title: Text(
-                        s.adminLivingBkk,
-                        style: AdminTheme.title.copyWith(fontSize: compact ? 16 : 17),
-                      ),
-                      actions: _appBarActions(s, compact),
-                    ),
               body: AdminShellScaffold(
                 config: navConfig,
                 selected: _selected,
                 onSelect: _selectNav,
                 tierLabel: s.adminNavTierLabel(_adminTier),
+                pageTitle: navConfig.labelForNav(_selected, s),
                 actions: _appBarActions(s, compact),
-                header: wide
-                    ? null
-                    : (trialBanner != null ||
-                            isolatedBanner != null ||
-                            castBanner != null)
-                        ? Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (trialBanner != null) trialBanner,
-                              if (isolatedBanner != null) isolatedBanner,
-                              if (castBanner != null) castBanner,
-                            ],
-                          )
-                        : null,
-                body: main,
+                header: bannerColumn,
+                body: content,
               ),
             ),
           );
         },
       ),
+    ),
     ),
     ),
     );
@@ -807,58 +779,55 @@ class _AdminHomePageState extends State<AdminHomePage> {
   }
 
   Widget _leadsTab(AppStrings s) {
+    final newCount = _overview.leadsNew;
     return ListView(
-      padding: AdminMobileLayout.scrollPadding(context, top: 8, horizontal: 12, fabClearance: 16),
+      padding: adminEnterprisePagePadding(context),
       children: [
+        AdminEnterprisePageHeader(
+          title: s.adminTabLeads,
+          subtitle: s.adminLeadsPageSubtitle,
+          badge: newCount > 0 ? '$newCount' : null,
+          badgeAlert: newCount > 0,
+        ),
+        const SizedBox(height: 12),
         if (_stats != null)
-          Card(
-            child: ListTile(
-              title: Text(s.adminStatsMakecom),
-              subtitle: Text(
-                s.adminLeadStatsLine(
-                  (_stats!['lead_count'] as num?)?.toInt() ?? 0,
-                  (_stats!['accepted_count'] as num?)?.toInt() ?? 0,
-                ),
-              ),
+          AdminEnterpriseBanner(
+            message: s.adminLeadStatsLine(
+              (_stats!['lead_count'] as num?)?.toInt() ?? 0,
+              (_stats!['accepted_count'] as num?)?.toInt() ?? 0,
             ),
+            icon: Icons.analytics_outlined,
           ),
+        if (_stats != null) const SizedBox(height: 12),
         if (_leads.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(s.adminNoLeads),
+          AdminEnterpriseEmptyState(
+            message: s.adminNoLeads,
+            icon: Icons.support_agent_outlined,
           )
         else
-          ..._leads.map((l) {
-            final code = l['listing_code']?.toString() ?? '—';
-            final listingId = l['listing_id']?.toString();
-            return Card(
-              child: ListTile(
-                leading: Icon(Icons.support_agent, color: AppTheme.primary),
-                title: InkWell(
-                  onTap: code != '—'
-                      ? () => openAdminListing(
-                            context,
-                            listingId: listingId,
-                            listingCode: code,
-                          )
-                      : null,
-                  child: Text(
-                    code,
-                    style: TextStyle(
-                      color: code != '—' ? AppTheme.primary : null,
-                      decoration: code != '—' ? TextDecoration.underline : null,
-                      decorationColor: AppTheme.primary.withOpacity(0.5),
-                    ),
+          AdminEnterprisePanel(
+            title: '${s.adminTabLeads} (${_leads.length})',
+            padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
+            child: Column(
+              children: _leads.map((l) {
+                final code = l['listing_code']?.toString() ?? '—';
+                final status = l['status']?.toString() ?? '';
+                final isNew = status == 'new' || status == 'pending';
+                return AdminEnterpriseRecordTile(
+                  title: l['seeker_nickname']?.toString() ?? s.leadDefaultName,
+                  subtitle:
+                      '$code · $status${_viewingHint(l, s)}',
+                  alert: isNew,
+                  leading: Icon(
+                    Icons.support_agent_outlined,
+                    size: 18,
+                    color: isNew ? AppTheme.error : AppTheme.primary,
                   ),
-                ),
-                subtitle: Text(
-                  '${l['seeker_nickname']} · ${l['status']}${_viewingHint(l, s)}',
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => _openLead(l['id'] as String),
-              ),
-            );
-          }),
+                  onTap: () => _openLead(l['id'] as String),
+                );
+              }).toList(),
+            ),
+          ),
       ],
     );
   }

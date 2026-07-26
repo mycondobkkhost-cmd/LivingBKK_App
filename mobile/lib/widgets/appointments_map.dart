@@ -3,7 +3,8 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../config/env.dart';
 import '../models/appointment.dart';
-import '../theme/app_theme.dart';
+import '../theme/google_map_clean_style.dart';
+import '../utils/google_maps_web_auth.dart';
 import 'listings_map.dart';
 import 'osm_interactive_map.dart';
 
@@ -28,6 +29,19 @@ class AppointmentsMap extends StatefulWidget {
 
 class _AppointmentsMapState extends State<AppointmentsMap> {
   GoogleMapController? _controller;
+  bool _webMapsBlocked = isGoogleMapsWebBlocked;
+
+  bool get _useOsmFallback =>
+      !Env.hasMapsKey || Env.preferOsmWebMap || _webMapsBlocked;
+
+  @override
+  void initState() {
+    super.initState();
+    listenGoogleMapsWebAuthFailure(() {
+      if (!mounted || _webMapsBlocked) return;
+      setState(() => _webMapsBlocked = true);
+    });
+  }
 
   Set<Marker> _markers() {
     final markers = <Marker>{};
@@ -39,7 +53,7 @@ class _AppointmentsMapState extends State<AppointmentsMap> {
           markerId: MarkerId(a.id),
           position: LatLng(a.lat!, a.lng!),
           icon: BitmapDescriptor.defaultMarkerWithHue(
-            selected ? BitmapDescriptor.hueViolet : BitmapDescriptor.hueOrange,
+            selected ? BitmapDescriptor.hueRed : BitmapDescriptor.hueOrange,
           ),
           infoWindow: InfoWindow(
             title: a.seekerNickname,
@@ -87,7 +101,7 @@ class _AppointmentsMapState extends State<AppointmentsMap> {
 
   @override
   Widget build(BuildContext context) {
-    if (!Env.hasMapsKey) {
+    if (_useOsmFallback) {
       return OsmAppointmentsMap(
         height: widget.height,
         appointments: widget.appointments,
@@ -105,11 +119,20 @@ class _AppointmentsMapState extends State<AppointmentsMap> {
             target: kBangkokCenter,
             zoom: 11,
           ),
+          style: GoogleMapCleanStyle.json,
           markers: _markers(),
+          mapType: MapType.normal,
           myLocationButtonEnabled: false,
           zoomControlsEnabled: false,
-          onMapCreated: (c) {
+          compassEnabled: false,
+          mapToolbarEnabled: false,
+          indoorViewEnabled: false,
+          trafficEnabled: false,
+          onMapCreated: (c) async {
             _controller = c;
+            try {
+              await c.setMapStyle(GoogleMapCleanStyle.json);
+            } catch (_) {}
             WidgetsBinding.instance.addPostFrameCallback((_) => _fitBounds());
           },
         ),

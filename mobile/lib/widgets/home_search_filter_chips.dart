@@ -5,8 +5,9 @@ import '../state/search_session_controller.dart';
 import '../theme/app_palette.dart';
 import '../theme/app_theme.dart';
 import '../theme/li_layout.dart';
+import '../theme/living_bkk_brand.dart';
 
-/// ตัวกรองด่วนใต้ช่องค้นหา — เช่า/ซื้อ + ปุ่มตัวกรอง
+/// ตัวกรองด่วนใต้ช่องค้นหา — เช่า/ซื้อ + ตัวกรอง (แนว Shopee)
 class HomeSearchFilterChips extends StatelessWidget {
   const HomeSearchFilterChips({
     super.key,
@@ -27,42 +28,48 @@ class HomeSearchFilterChips extends StatelessWidget {
     return ListenableBuilder(
       listenable: session,
       builder: (context, _) {
-        final isRent = session.isRent;
-        final isSale = session.filters.listingType == 'sale';
+        final type = session.filters.listingType;
+        final isRent = type == 'rent';
+        final isSale = type == 'sale';
+        final isAll = type == null;
 
-        return Padding(
-          padding: const EdgeInsets.fromLTRB(LiLayout.pagePadding, 0, LiLayout.pagePadding, 4),
-          child: Row(
+        return SizedBox(
+          height: 44,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(
+              LiLayout.pagePadding,
+              6,
+              LiLayout.pagePadding,
+              6,
+            ),
             children: [
               _chip(
                 p,
-                s.rent,
-                isRent && !isSale,
-                () => session.setListingType('rent'),
+                label: s.isEnglish ? 'All' : 'ทั้งหมด',
+                selected: isAll,
+                onTap: () => session.setListingType(null),
               ),
               const SizedBox(width: 8),
               _chip(
                 p,
-                s.sale,
-                isSale,
-                () => session.setListingType('sale'),
+                label: s.rent,
+                selected: isRent,
+                onTap: () => session.setListingType('rent'),
               ),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: onOpenFilters,
-                icon: Icon(
-                  Icons.tune,
-                  size: 18,
-                  color: hasActiveFilters ? p.primary : p.textSecondary,
-                ),
-                label: Text(
-                  hasActiveFilters ? s.filtersActive : s.advancedFilters,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: hasActiveFilters ? p.primary : p.textSecondary,
-                  ),
-                ),
+              const SizedBox(width: 8),
+              _chip(
+                p,
+                label: s.sale,
+                selected: isSale,
+                onTap: () => session.setListingType('sale'),
+              ),
+              const SizedBox(width: 10),
+              _filterBtn(
+                p,
+                label: hasActiveFilters ? s.filtersActive : s.advancedFilters,
+                active: hasActiveFilters,
+                onTap: onOpenFilters,
               ),
             ],
           ),
@@ -71,25 +78,83 @@ class HomeSearchFilterChips extends StatelessWidget {
     );
   }
 
-  Widget _chip(AppPalette p, String label, bool selected, VoidCallback onTap) {
-    return FilterChip(
-      label: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: selected ? p.onPrimary : p.textPrimary,
+  Widget _chip(
+    AppPalette p, {
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: selected ? p.primary : p.surface,
+      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            border: Border.all(
+              color: selected ? p.primary : p.border,
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+              height: 1.1,
+              color: selected ? Colors.white : p.textPrimary,
+            ),
+          ),
         ),
       ),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      showCheckmark: false,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
-      visualDensity: VisualDensity.compact,
-      backgroundColor: p.surface,
-      selectedColor: p.primary,
-      side: BorderSide(color: selected ? p.primary : p.border),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppTheme.radiusPill)),
+    );
+  }
+
+  Widget _filterBtn(
+    AppPalette p, {
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: active
+          ? LivingBkkBrand.brandRed.withOpacity(0.08)
+          : p.surface,
+      borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+            border: Border.all(
+              color: active ? p.primary : p.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.tune_rounded,
+                size: 15,
+                color: active ? p.primary : p.textSecondary,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: active ? p.primary : p.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

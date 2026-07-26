@@ -1,4 +1,5 @@
 import '../models/listing_public.dart';
+import 'demo_media.dart';
 
 /// ทรัพย์ตัวอย่างที่ผูกกับรหัสในโหมดเดโม (ลีด/ปฏิทิน/แชท)
 abstract final class DemoCastListingPins {
@@ -65,10 +66,7 @@ abstract final class DemoCastListingPins {
         bathrooms: isHouse ? 3 : 1,
         lat: coords.$1,
         lng: coords.$2,
-        imageUrls: [
-          'https://picsum.photos/seed/$code-1/800/600',
-          'https://picsum.photos/seed/$code-2/800/600',
-        ],
+        imageUrls: DemoMedia.gallery(code, count: 2),
         description: 'ทรัพย์ตัวอย่างสำหรับทดสอบแท็กหลังบ้าน — $title',
         coAgentEligible: true,
         petAllowed: false,

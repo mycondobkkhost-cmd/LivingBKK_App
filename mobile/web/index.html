@@ -25,7 +25,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="RealXtate">
-  <meta name="theme-color" content="#583AD6">
+  <meta name="theme-color" content="#EE4D2D">
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
@@ -36,6 +36,16 @@
   <link rel="manifest" href="manifest.json">
 
   <!-- Google Maps: sync-env.sh ใส่ script เมื่อมี GOOGLE_MAPS_API_KEY ใน .env.local -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAVg6zlrKulbuRxlEsAK3YC946I01BaQl8"></script>
+  <script>
+    // LIVINGBKK_GMAPS_AUTH_FAILURE
+    window.gm_authFailure = function () {
+      window.__LIVINGBKK_GMAPS_FAILED = true;
+      try { localStorage.setItem('livingbkk_gmaps_failed', '1'); } catch (e) {}
+      window.dispatchEvent(new Event('livingbkk-gmaps-failed'));
+    };
+  </script>
+  <!-- LIVINGBKK_GOOGLE_MAPS_SCRIPT -->
 
   <script>
     // The value below is injected by flutter build, do not touch.

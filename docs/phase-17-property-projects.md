@@ -43,8 +43,15 @@ cd mobile && dart run tool/export_projects_sql.dart
 
 ---
 
+## สมุดโครงการมาสเตอร์ (2026-07)
+
+**ชื่อยึด Property Hub · ทำเล/BTS จาก PH + LivingInsider**  
+ดู `docs/PROJECT-MASTER.md` และ `./scripts/build-project-master.sh`
+
+Pantip ไม่ใช่สมุดชื่อหลัก — ดู `docs/PANTIP-PROJECT-CATALOG.md`
+
 ## อนาคต
 
 - Admin CRUD โครงการในแอป
-- Import CSV / LI scrape pipeline
+- Geocode / เติมพิกัดจาก LivingInsider เมื่อ PH ว่าง
 - หน้า Project Hub แยก (ไม่ใช่แค่ list ห้องในโครงเดียวกัน)

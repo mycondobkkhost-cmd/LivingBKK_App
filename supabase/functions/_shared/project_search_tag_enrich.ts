@@ -114,7 +114,7 @@ export function enrichProjectTags(input: {
   let primaryZone: string | null = null;
   let bestZoneKm = Infinity;
 
-  for (const { station, km } of nearbyStationsFromCoords(lat, lng)) {
+  for (const { station, km } of nearbyStationsFromCoords(lat, lng, 1.5, 3)) {
     transitHitCount++;
     addSlug(transitSlug(station.system, station.nameEn), "A_transit", Math.round(km * 1350));
     for (const z of STATION_ZONE[station.nameEn] ?? []) {
@@ -167,7 +167,7 @@ export function enrichProjectTags(input: {
     if (km > 1.5) textWarnings.push(`marketing_${label}_${Math.round(km * 1000)}m`);
   }
 
-  const nearbyTransit = transitLabelsFromCoords(lat, lng);
+  const nearbyTransit = transitLabelsFromCoords(lat, lng, 1.5, 3);
 
   if (input.slug) slugSet.add(input.slug);
 
@@ -178,7 +178,8 @@ export function enrichProjectTags(input: {
     search_tag_slugs: [...slugSet],
     nearby_transit: nearbyTransit,
     bts_station: nearbyTransit.length > 0 ? nearbyTransit.join(" · ") : null,
-    aliases_extra: nearbyTransit.map((l) => l.replace(/^(BTS|MRT|ARL|Gold)\s+/, "")),
+    // สถานีไม่ใส่ใน aliases — ใช้ nearby_transit / bts_station เท่านั้น
+    aliases_extra: [],
     primary_geo_zone_slug: primaryZone,
     tag_enrich_status: status,
     tag_enrich_meta: {

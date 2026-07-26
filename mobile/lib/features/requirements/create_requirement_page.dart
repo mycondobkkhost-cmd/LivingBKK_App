@@ -13,7 +13,6 @@ import '../../theme/app_theme.dart';
 import '../../utils/price_slider_scale.dart';
 import '../../widgets/budget_range_slider.dart';
 import '../../widgets/property_type_more_sheet.dart';
-import '../../widgets/demand/requirement_serious_use_notice.dart';
 import '../../widgets/demand/requirement_urgent_rush_toggle.dart';
 import '../../widgets/requirement_location_picker.dart';
 import '../../utils/page_safe_insets.dart';
@@ -294,8 +293,6 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const RequirementSeriousUseNotice(compact: true),
-                  const SizedBox(height: 12),
                   Text(
                     s.requirementConfirmIntro,
                     style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.4),
@@ -372,8 +369,6 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
               s.requirementCreateIntro,
               style: TextStyle(fontSize: 13, color: AppTheme.textSecondary, height: 1.45),
             ),
-            const SizedBox(height: 14),
-            const RequirementSeriousUseNotice(),
             const SizedBox(height: 14),
             RequirementUrgentRushToggle(
               value: _urgentRush,
@@ -594,8 +589,6 @@ class _CreateRequirementPageState extends State<CreateRequirementPage> {
               minLines: 2,
             ),
             const SizedBox(height: 16),
-            const RequirementSeriousUseNotice(compact: true),
-            const SizedBox(height: 14),
             SizedBox(
               height: 48,
               child: FilledButton(

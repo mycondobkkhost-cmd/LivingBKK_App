@@ -7,7 +7,6 @@ import '../../navigation/demand_board_navigation.dart';
 import '../../navigation/post_listing_navigation.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/app_palette.dart';
-import '../../theme/app_theme.dart';
 import '../../theme/li_layout.dart';
 
 /// เมนูบริการแนวนอน — กะทัดรัด + ฉากหลังกราฟิกเบาๆ
@@ -79,7 +78,7 @@ class HomeServiceGrid extends StatelessWidget {
         icon: Icons.manage_search_rounded,
         tint: const Color(0xFF10B981),
         bg: _ServiceBg.requirement,
-        onTap: () => DemandBoardNavigation.openCreateRequirement(context),
+        onTap: () => DemandBoardNavigation.openBoardLooking(context, fromHome: true),
       ));
     }
 
@@ -90,7 +89,7 @@ class HomeServiceGrid extends StatelessWidget {
         icon: Icons.forum_outlined,
         tint: const Color(0xFFF59E0B),
         bg: _ServiceBg.board,
-        onTap: () => DemandBoardNavigation.openBoardTab(context, fromHome: true),
+        onTap: () => DemandBoardNavigation.openBoardFeed(context, fromHome: true),
       ));
     }
 

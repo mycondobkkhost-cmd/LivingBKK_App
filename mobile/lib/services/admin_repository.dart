@@ -1,5 +1,6 @@
 import '../config/env.dart';
 import '../data/admin_demo_data.dart';
+import '../data/demo_media.dart';
 import '../models/admin_audit_entry.dart';
 import '../models/admin_dashboard_overview.dart';
 import '../models/listing_public.dart';
@@ -525,10 +526,7 @@ class AdminRepository {
   }
 
   List<String> _trialPreviewImageUrls(String listingId) {
-    return List.generate(
-      4,
-      (i) => 'https://picsum.photos/seed/$listingId-$i/800/600',
-    );
+    return DemoMedia.gallery(listingId, count: 4);
   }
 
   ListingPublic _listingPublicFromRow(

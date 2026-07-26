@@ -2,14 +2,38 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../config/demand_board_menu_config.dart';
+import '../models/demand_board_hub_section.dart';
 import '../models/demand_post.dart';
 import '../shell/main_shell_scope.dart';
+
 /// นำทางเมนูบอร์ดหาทรัพย์ — ใช้แทน `context.push('/requirements/...')` ตรงๆ
 abstract final class DemandBoardNavigation {
-  static void openBoardTab(BuildContext context, {bool fromHome = false}) {
+  /// เปิดแท็บบอร์ด — ค่าเริ่มต้นเป็น hub เลือก 2 ฟังก์ชัน
+  static void openBoardTab(
+    BuildContext context, {
+    bool fromHome = false,
+    DemandBoardHubSection section = DemandBoardHubSection.landing,
+  }) {
     MainShellScope.maybeOf(context)?.selectTab(
       DemandBoardMenuConfig.boardTabIndex,
       boardFromHome: fromHome,
+      boardSection: section,
+    );
+  }
+
+  static void openBoardFeed(BuildContext context, {bool fromHome = false}) {
+    openBoardTab(
+      context,
+      fromHome: fromHome,
+      section: DemandBoardHubSection.feed,
+    );
+  }
+
+  static void openBoardLooking(BuildContext context, {bool fromHome = false}) {
+    openBoardTab(
+      context,
+      fromHome: fromHome,
+      section: DemandBoardHubSection.looking,
     );
   }
 

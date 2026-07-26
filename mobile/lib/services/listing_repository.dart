@@ -16,6 +16,9 @@ class ListingRepository {
   /// true = แสดงทรัพย์ตัวอย่างในแอป (Supabase ว่างหรือยังไม่ seed)
   static bool lastFetchUsedDemo = false;
 
+  /// ถ้าประกาศจริงน้อยกว่านี้ ให้เติมด้วย demo เพื่อให้กริดหน้าแรกหนาแน่น
+  static const int minListingsForBrowseUi = 36;
+
   Future<String?> resolveIdByCode(String listingCode) async {
     final code = listingCode.trim();
     if (code.isEmpty) return null;
@@ -149,7 +152,46 @@ class ListingRepository {
         filters: filters,
       );
     }
+
+    if (list.length < minListingsForBrowseUi) {
+      lastFetchUsedDemo = true;
+      return _padWithDemo(
+        list,
+        listingType: listingType,
+        coAgentEligibleOnly: coAgentEligibleOnly,
+        filters: filters,
+      );
+    }
     return list;
+  }
+
+  /// ประกาศจริงมาก่อน แล้วเติม demo ที่ยังไม่อยู่ในชุด — ให้กริดมีพอแสดง
+  List<ListingPublic> _padWithDemo(
+    List<ListingPublic> primary, {
+    String? listingType,
+    bool coAgentEligibleOnly = false,
+    SearchFilters? filters,
+  }) {
+    final demo = _applyFilters(
+      DemoListingsFactory.cached,
+      listingType: listingType,
+      coAgentEligibleOnly: coAgentEligibleOnly,
+      filters: filters,
+    );
+    final seen = <String>{
+      ...primary.map((l) => l.id),
+      ...primary.map((l) => l.listingCode.toUpperCase()),
+    };
+    final merged = <ListingPublic>[...primary];
+    for (final l in demo) {
+      if (merged.length >= minListingsForBrowseUi * 2) break;
+      final code = l.listingCode.toUpperCase();
+      if (seen.contains(l.id) || seen.contains(code)) continue;
+      seen.add(l.id);
+      seen.add(code);
+      merged.add(l);
+    }
+    return merged;
   }
 
   List<ListingPublic> _applyFilters(

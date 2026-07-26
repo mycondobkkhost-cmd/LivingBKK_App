@@ -40,14 +40,16 @@ class MapPinRadiusBar extends StatelessWidget {
         ),
       );
     }
+    // โทนคล้าย Google Maps — ปุ่มขาวขอบเทา ไม่ส้มทึบ
     return FilledButton.styleFrom(
-      backgroundColor: AppTheme.cta,
-      foregroundColor: Colors.white,
-      disabledBackgroundColor: AppTheme.cta.withOpacity(0.45),
+      backgroundColor: Colors.white,
+      foregroundColor: const Color(0xFF202124),
+      disabledBackgroundColor: const Color(0xFFF1F3F4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       elevation: 0,
+      side: const BorderSide(color: Color(0xFFDADCE0)),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(AppTheme.radiusPill),
+        borderRadius: BorderRadius.circular(24),
       ),
     );
   }
@@ -67,10 +69,10 @@ class MapPinRadiusBar extends StatelessWidget {
     final radiusHintColor =
         _onBrandHeader ? Colors.white.withOpacity(0.75) : AppTheme.textSecondary;
     final sliderActive =
-        _onBrandHeader ? Colors.white : p.primary;
+        _onBrandHeader ? Colors.white : const Color(0xFF1A73E8);
     final sliderInactive = _onBrandHeader
         ? Colors.white.withOpacity(0.35)
-        : p.border;
+        : const Color(0xFFDADCE0);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

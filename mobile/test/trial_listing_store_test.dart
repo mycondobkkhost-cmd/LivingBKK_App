@@ -37,6 +37,16 @@ void main() {
     expect(pending.first['id'], 'trial-listing-pending');
   });
 
+  test('seed มี published ที่เจ้าของลงเอง (ไม่รอเติมข้อมูล)', () {
+    final direct = TrialListingStore.instance.myListings().where((r) {
+      final id = r['id']?.toString() ?? '';
+      return r['status'] == 'published' &&
+          r['owner_data_status'] == 'complete' &&
+          id.startsWith('trial-listing-owner-direct');
+    });
+    expect(direct.length, 3);
+  });
+
   test('ลงประกาศ → ส่งตรวจ → อนุมัติ → published', () {
     final id = TrialListingStore.instance.registerDraft(_sampleInput());
     expect(TrialListingStore.instance.submitForReview(id), isTrue);

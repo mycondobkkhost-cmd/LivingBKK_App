@@ -14,18 +14,15 @@ import '../../services/search_service.dart';
 import '../../state/search_session_controller.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/app_theme.dart';
-import '../../theme/li_layout.dart';
-import '../../widgets/home_search_strip.dart';
 import '../../widgets/listing_grid.dart';
 import '../../widgets/listings_map.dart';
-import '../../widgets/map_pin_radius_bar.dart';
-import '../../widgets/smart_search_bar.dart';
+import '../../widgets/map_location_picker.dart';
 import '../../utils/geo_distance.dart';
 import '../../utils/page_safe_insets.dart';
 import '../../widgets/admin_mobile_layout.dart';
 import '../../widgets/app_mobile_scaffold.dart';
 
-/// แท็บแผนที่ — ค้นหาทรัพย์บนแผนที่โดยเฉพาะ
+/// แท็บแผนที่ — เลือกตำแหน่งแล้วค้นหารอบจุด (UI อ้างอิง)
 class MapSearchPage extends StatefulWidget {
   const MapSearchPage({
     super.key,
@@ -46,8 +43,8 @@ class _MapSearchPageState extends State<MapSearchPage> {
   List<ListingPublic> _listings = [];
   bool _loading = true;
   String? _selectedId;
-  bool _focusNearMeOnMap = true;
-  bool _pinPlacementMode = false;
+  bool _picking = true;
+  String? _pickedAddress;
   double? _userLat;
   double? _userLng;
 
@@ -72,6 +69,8 @@ class _MapSearchPageState extends State<MapSearchPage> {
   }
 
   bool get _isAgent => widget.roleController.isAgent;
+
+  SearchFilters get _filters => widget.searchSession.filters;
 
   SearchFilters _effectiveFilters() {
     var f = widget.searchSession.filters;
@@ -141,6 +140,15 @@ class _MapSearchPageState extends State<MapSearchPage> {
         excludeId: anchor.id,
       );
     }
+    final pinLat = _filters.pinLatitude;
+    final pinLng = _filters.pinLongitude;
+    if (pinLat != null && pinLng != null) {
+      return sortByProximityThenPrice(
+        _listings,
+        lat: pinLat,
+        lng: pinLng,
+      );
+    }
     if (_userLat != null && _userLng != null) {
       return sortByProximityThenPrice(
         _listings,
@@ -158,17 +166,21 @@ class _MapSearchPageState extends State<MapSearchPage> {
     );
   }
 
-  void _onPinPlaced(double lat, double lng) {
-    final f = widget.searchSession.filters;
-    final radius = f.radiusKm ?? kSearchPinRadiusDefaultKm;
+  void _onConfirm(double lat, double lng, String address) {
+    final radius = _filters.radiusKm ?? kSearchPinRadiusDefaultKm;
     widget.searchSession.setFilters(
-      f.copyWith(
+      _filters.copyWith(
         pinLatitude: lat,
         pinLongitude: lng,
         radiusKm: radius,
       ),
     );
-    setState(() => _pinPlacementMode = false);
+    setState(() {
+      _picking = false;
+      _pickedAddress = address;
+      _selectedId = null;
+    });
+    unawaited(_load());
   }
 
   @override
@@ -179,12 +191,26 @@ class _MapSearchPageState extends State<MapSearchPage> {
         widget.roleController,
       ]),
       builder: (context, _) {
+        if (_picking) {
+          return MapLocationPicker(
+            initialLat: _filters.pinLatitude ?? _userLat,
+            initialLng: _filters.pinLongitude ?? _userLng,
+            initialAddress: _pickedAddress,
+            onBack: () {
+              // แท็บแผนที่ — กลับไปโหมดเลือกใหม่ / เคลียร์โฟกัส
+              setState(() {
+                _picking = true;
+                _selectedId = null;
+              });
+            },
+            onConfirm: _onConfirm,
+          );
+        }
+
         final s = AppStrings.of(context);
         final topInset = PageSafeInsets.top(context);
         final selected = _selected;
-        final filters = widget.searchSession.filters;
         final sheetListings = _sheetListings(anchor: selected);
-        final headerTitle = s.mapListingCount(sheetListings.length);
 
         return AppMobileScaffold(
           safeBottomBody: false,
@@ -192,137 +218,122 @@ class _MapSearchPageState extends State<MapSearchPage> {
           body: AdminMobileLayout.withInsets(
             context,
             Stack(
-            children: [
-              Positioned.fill(
-                child: _loading
-                    ? const Center(child: CircularProgressIndicator())
-                    : ListingsMap(
-                        listings: _listings,
-                        selectedId: _selectedId,
-                        showPriceOnMarker: true,
-                        fullBleed: true,
-                        focusUserOnStart: _focusNearMeOnMap,
-                        fabBottomPadding: 160,
-                        pinLatitude: filters.pinLatitude,
-                        pinLongitude: filters.pinLongitude,
-                        radiusKm: filters.radiusKm,
-                        pinPlacementMode: _pinPlacementMode,
-                        onPinPlaced: _onPinPlaced,
-                        onListingTap: (l) => setState(() => _selectedId = l.id),
-                      ),
-              ),
-              Positioned(
-                left: 0,
-                right: 0,
-                top: 0,
-                child: Material(
-                  elevation: 2,
-                  color: Colors.white,
-                  child: Padding(
-                    padding: EdgeInsets.only(top: topInset),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            LiLayout.pagePadding,
-                            6,
-                            LiLayout.pagePadding,
-                            0,
-                          ),
-                          child: SmartSearchBar(
-                            filters: widget.searchSession.filters,
-                            onFiltersChanged: widget.searchSession.setFilters,
-                            style: SearchBarStyle.livingInsider,
-                          ),
+              children: [
+                Positioned.fill(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : ListingsMap(
+                          listings: _listings,
+                          selectedId: _selectedId,
+                          showPriceOnMarker: true,
+                          fullBleed: true,
+                          focusUserOnStart: false,
+                          fabBottomPadding: 160,
+                          pinLatitude: _filters.pinLatitude,
+                          pinLongitude: _filters.pinLongitude,
+                          radiusKm: _filters.radiusKm,
+                          onListingTap: (l) => setState(() => _selectedId = l.id),
                         ),
-                        HomeSearchStrip(
-                          session: widget.searchSession,
-                          onCategoryTap: (_) => _load(),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(
-                            LiLayout.pagePadding,
-                            0,
-                            LiLayout.pagePadding,
-                            4,
-                          ),
-                          child: MapPinRadiusBar(
-                            filters: filters,
-                            pinPlacementMode: _pinPlacementMode,
-                            onPinPlacementModeChanged: (v) =>
-                                setState(() => _pinPlacementMode = v),
-                            onFiltersChanged: widget.searchSession.setFilters,
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  headerTitle,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 13,
+                ),
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  top: 0,
+                  child: Material(
+                    elevation: 2,
+                    color: Colors.white,
+                    child: Padding(
+                      padding: EdgeInsets.only(top: topInset),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+                                  onPressed: () => setState(() {
+                                    _picking = true;
+                                    _selectedId = null;
+                                  }),
+                                ),
+                                Expanded(
+                                  child: Text(
+                                    s.mapPickerResultsTitle(sheetListings.length),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 15,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              IconButton(
-                                onPressed: () {
-                                  setState(() => _focusNearMeOnMap = true);
-                                  unawaited(_bootstrapNearMe());
-                                },
-                                tooltip: s.searchNearByTitle,
-                                icon: const Icon(Icons.near_me_outlined, size: 22),
-                              ),
-                            ],
+                                TextButton(
+                                  onPressed: () => setState(() {
+                                    _picking = true;
+                                    _selectedId = null;
+                                  }),
+                                  child: Text(s.mapPickerTitle),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                      ],
+                          if (_pickedAddress != null && _pickedAddress!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                              child: Text(
+                                _pickedAddress!,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade700,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-              if (!_loading && _listings.isNotEmpty)
-                DraggableScrollableSheet(
-                  initialChildSize: 0.22,
-                  minChildSize: 0.14,
-                  maxChildSize: 0.55,
-                  builder: (context, scrollController) {
-                    return Container(
-                      decoration: const BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black26,
-                            blurRadius: 8,
-                            offset: Offset(0, -2),
-                          ),
-                        ],
-                      ),
-                      child: ListingGrid(
-                        scrollController: scrollController,
-                        items: sheetListings.take(20).toList(),
-                        horizontalPadding: 12,
-                        shrinkWrap: false,
-                        physics: const ClampingScrollPhysics(),
-                        padding: EdgeInsets.fromLTRB(
-                          12,
-                          8,
-                          12,
-                          24 + PageSafeInsets.bottom(context),
+                if (!_loading && _listings.isNotEmpty)
+                  DraggableScrollableSheet(
+                    initialChildSize: 0.22,
+                    minChildSize: 0.14,
+                    maxChildSize: 0.55,
+                    builder: (context, scrollController) {
+                      return Container(
+                        decoration: const BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 8,
+                              offset: Offset(0, -2),
+                            ),
+                          ],
                         ),
-                        showCoAgentStrip: _isAgent,
-                        onTapListing: _openListing,
-                      ),
-                    );
-                  },
-                ),
-            ],
+                        child: ListingGrid(
+                          scrollController: scrollController,
+                          items: sheetListings.take(20).toList(),
+                          horizontalPadding: 12,
+                          shrinkWrap: false,
+                          physics: const ClampingScrollPhysics(),
+                          padding: EdgeInsets.fromLTRB(
+                            12,
+                            8,
+                            12,
+                            24 + PageSafeInsets.bottom(context),
+                          ),
+                          showCoAgentStrip: _isAgent,
+                          onTapListing: _openListing,
+                        ),
+                      );
+                    },
+                  ),
+              ],
             ),
             bleedBottom: true,
           ),

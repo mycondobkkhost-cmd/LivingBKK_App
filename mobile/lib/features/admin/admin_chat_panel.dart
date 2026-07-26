@@ -41,10 +41,12 @@ class AdminChatPanel extends StatefulWidget {
     this.onBack,
     this.backTooltip,
     this.onHighlightConsumed,
+    this.opsLayout = false,
   });
 
   final String roomId;
   final bool embedded;
+  final bool opsLayout;
   final String? highlightMessageId;
   final VoidCallback? onResolved;
   final VoidCallback? onBack;
@@ -542,26 +544,42 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _PanelHeader(
-              room: live,
-              preview: AdminInboxPreview.fromRoom(live, s),
-              embedded: widget.embedded,
-              isOpen: isOpen,
-              needsAttention: needsAttention,
-              canReply: canReply,
-              onBack: widget.onBack,
-              backTooltip: widget.backTooltip,
-              onClaim: _claim,
-              onAssign: _assign,
-              onResolve: _markResolved,
-              onRename: () => _renameChat(live),
-            ),
-            _MetaBar(
-              room: live,
-              isOpen: isOpen,
-              needsAttention: needsAttention,
-              canReply: canReply,
-            ),
+            if (widget.opsLayout)
+              _OpsChatHeader(
+                room: live,
+                preview: AdminInboxPreview.fromRoom(live, s),
+                isOpen: isOpen,
+                needsAttention: needsAttention,
+                canReply: canReply,
+                onBack: widget.onBack,
+                backTooltip: widget.backTooltip,
+                onClaim: _claim,
+                onAssign: _assign,
+                onResolve: _markResolved,
+                onRename: () => _renameChat(live),
+              )
+            else ...[
+              _PanelHeader(
+                room: live,
+                preview: AdminInboxPreview.fromRoom(live, s),
+                embedded: widget.embedded,
+                isOpen: isOpen,
+                needsAttention: needsAttention,
+                canReply: canReply,
+                onBack: widget.onBack,
+                backTooltip: widget.backTooltip,
+                onClaim: _claim,
+                onAssign: _assign,
+                onResolve: _markResolved,
+                onRename: () => _renameChat(live),
+              ),
+              _MetaBar(
+                room: live,
+                isOpen: isOpen,
+                needsAttention: needsAttention,
+                canReply: canReply,
+              ),
+            ],
             if (continuity != null)
               _ReturningCustomerBanner(
                 hint: continuity,
@@ -679,6 +697,180 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
           ],
         );
       },
+    );
+  }
+}
+
+/// หัวแชทโหมด Ops — กระชับ ปุ่มไอคอน
+class _OpsChatHeader extends StatelessWidget {
+  const _OpsChatHeader({
+    required this.room,
+    required this.preview,
+    required this.isOpen,
+    required this.needsAttention,
+    required this.canReply,
+    this.onBack,
+    this.backTooltip,
+    required this.onClaim,
+    required this.onAssign,
+    required this.onResolve,
+    required this.onRename,
+  });
+
+  final ChatRoom room;
+  final AdminInboxPreview preview;
+  final bool isOpen;
+  final bool needsAttention;
+  final bool canReply;
+  final VoidCallback? onBack;
+  final String? backTooltip;
+  final VoidCallback onClaim;
+  final VoidCallback onAssign;
+  final VoidCallback onResolve;
+  final VoidCallback onRename;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = context.s;
+    final statusColor = !isOpen
+        ? AppTheme.textSecondary
+        : (needsAttention ? AppTheme.accentMid : AppTheme.primary);
+    final statusText = !isOpen
+        ? s.adminResolvedMeta
+        : (needsAttention ? s.adminPendingMeta : s.adminActiveMeta);
+
+    return Material(
+      color: AdminTheme.surface,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: AdminTheme.border)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  if (onBack != null)
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, size: 20),
+                      onPressed: onBack,
+                      tooltip: backTooltip ?? s.back,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          preview.displayName,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (room.displayTitle.isNotEmpty)
+                          Text(
+                            room.displayTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AdminTheme.caption,
+                          ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.drive_file_rename_outline, size: 18),
+                    tooltip: s.adminChatRenameTitle,
+                    onPressed: onRename,
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  if (room.isUnclaimed && needsAttention)
+                    _OpsIconAction(
+                      icon: Icons.back_hand_outlined,
+                      tooltip: s.adminClaimWork,
+                      color: AppTheme.accentMid,
+                      onPressed: onClaim,
+                    ),
+                  if (isOpen && needsAttention)
+                    _OpsIconAction(
+                      icon: Icons.person_add_alt_1_outlined,
+                      tooltip: s.adminAssignWork,
+                      color: AppTheme.primary,
+                      onPressed: onAssign,
+                    ),
+                  if (isOpen && canReply)
+                    _OpsIconAction(
+                      icon: Icons.check_circle_outline,
+                      tooltip: s.adminCloseCase,
+                      color: const Color(0xFF059669),
+                      onPressed: onResolve,
+                      filled: true,
+                    ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: statusColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  statusText,
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OpsIconAction extends StatelessWidget {
+  const _OpsIconAction({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+    required this.color,
+    this.filled = false,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+  final Color color;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    if (filled) {
+      return IconButton.filled(
+        icon: Icon(icon, size: 18),
+        tooltip: tooltip,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(36, 36),
+        ),
+      );
+    }
+    return IconButton(
+      icon: Icon(icon, size: 18, color: color),
+      tooltip: tooltip,
+      onPressed: onPressed,
+      visualDensity: VisualDensity.compact,
     );
   }
 }
@@ -1075,6 +1267,8 @@ class _AdminBubble extends StatelessWidget {
         return s.chatRoleSystem;
       case ChatMessageRole.adminNotice:
         return s.chatRoleTeam;
+      case ChatMessageRole.adminCoach:
+        return 'Coach';
     }
   }
 
@@ -1083,6 +1277,7 @@ class _AdminBubble extends StatelessWidget {
     final s = context.s;
     final isUser = message.role == ChatMessageRole.user;
     final isStaff = message.role == ChatMessageRole.adminNotice;
+    final isCoach = message.role == ChatMessageRole.adminCoach;
     final isSystem = message.role == ChatMessageRole.system;
     final time = DateFormat('HH:mm').format(message.createdAt);
     final maxBubbleWidth = MediaQuery.sizeOf(context).width * 0.72;
@@ -1094,6 +1289,9 @@ class _AdminBubble extends StatelessWidget {
     if (isUser) {
       bg = AppTheme.primary;
       fg = Colors.white;
+    } else if (isCoach) {
+      bg = const Color(0xFFFFF3E0);
+      fg = AppTheme.textPrimary;
     } else if (isStaff) {
       bg = const Color(0xFFEDE9FE);
       fg = AppTheme.textPrimary;
@@ -1119,7 +1317,9 @@ class _AdminBubble extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
-                  color: isStaff ? AppTheme.accentMid : AppTheme.textSecondary,
+                  color: isStaff || isCoach
+                      ? AppTheme.accentMid
+                      : AppTheme.textSecondary,
                 ),
               ),
               const SizedBox(width: 6),

@@ -1,6 +1,7 @@
 import '../models/listing_public.dart';
 import '../models/listing_transaction_types.dart';
 import '../utils/reference_codes.dart';
+import 'demo_media.dart';
 import 'property_catalog.dart';
 
 /// ตัวอย่างประกาศต่อหมวดทรัพย์ — แสดงเมื่อกดเมนูหมวดจากหน้าแรก
@@ -14,6 +15,14 @@ abstract final class DemoCategoryListings {
     ('พญาไท', 'Phaya Thai', 'bangkok-all'),
     ('จตุจักร', 'Chatuchak', 'bangkok-all'),
     ('รามคำแหง', 'Ramkhamhaeng', 'bangkok-all'),
+    ('อโศก', 'Asoke', 'sukhumvit'),
+    ('พร้อมพงษ์', 'Phrom Phong', 'sukhumvit'),
+    ('เอกมัย', 'Ekkamai', 'thonglor'),
+    ('รัชดา', 'Ratchada', 'bangkok-all'),
+    ('ห้วยขวาง', 'Huai Khwang', 'bangkok-all'),
+    ('พระราม 9', 'Rama 9', 'bangkok-all'),
+    ('สาทร', 'Sathorn', 'bangkok-all'),
+    ('สีลม', 'Silom', 'bangkok-all'),
   ];
 
   static List<ListingPublic> all() {
@@ -30,11 +39,12 @@ abstract final class DemoCategoryListings {
     if (cat == null) return const [];
 
     final count = switch (slug) {
-      'condo' => 8,
-      'house' => 5,
-      'townhome' => 5,
-      'apartment' => 4,
-      _ => 3,
+      'condo' => 48,
+      'house' => 28,
+      'townhome' => 24,
+      'apartment' => 24,
+      'land' => 20,
+      _ => 16,
     };
 
     return List.generate(count, (i) => _build(cat.slug, cat.dbValue, i));
@@ -46,7 +56,7 @@ abstract final class DemoCategoryListings {
     final districtEn = district.$2;
     final geoZone = district.$3;
     final isRent = index.isEven;
-    final isDual = slug == 'condo' && index == 1;
+    final isDual = slug == 'condo' && index % 8 == 1;
     final listingType = isDual
         ? ListingTransactionTypes.rentAndSale
         : (isRent ? 'rent' : 'sale');
@@ -73,34 +83,36 @@ abstract final class DemoCategoryListings {
 
     final labelTh = PropertyCatalog.bySlug(slug)?.labelTh ?? slug;
     final project = switch (slug) {
-      'condo' => 'ไลฟ์ อโศก ${index + 1}',
-      'house' => 'บ้านเดี่ยว $districtTh',
-      'townhome' => 'ทาวน์โฮม $districtTh',
-      'apartment' => 'อพาร์ทเมนต์ $districtTh',
-      'land' => 'ที่ดิน $districtTh',
-      'office' => 'สำนักงาน $districtTh',
-      'commercial' => 'อาคารพาณิชย์ $districtTh',
-      'home_office' => 'โฮมออฟฟิศ $districtTh',
-      'showroom' => 'โชว์รูม $districtTh',
-      'business' => 'กิจการ $districtTh',
-      'warehouse' => 'โกดัง $districtTh',
-      'factory' => 'โรงงาน $districtTh',
-      'co_working' => 'Co-Working $districtTh',
-      'pool_villa' => 'พูลวิลล่า $districtTh',
-      _ => '$labelTh $districtTh',
+      'condo' => switch (index % 5) {
+          0 => 'ไลฟ์ อโศก ${index + 1}',
+          1 => 'ไอดีโอ Q ${index + 1}',
+          2 => 'โนเบิล อราวน์ ${index + 1}',
+          3 => 'ดิเอ็กซ์คลูซีฟ ${index + 1}',
+          _ => 'ริทึ่ม สุขุมวิท ${index + 1}',
+        },
+      'house' => 'บ้านเดี่ยว $districtTh ${index + 1}',
+      'townhome' => 'ทาวน์โฮม $districtTh ${index + 1}',
+      'apartment' => 'อพาร์ทเมนต์ $districtTh ${index + 1}',
+      'land' => 'ที่ดิน $districtTh ${index + 1}',
+      'office' => 'สำนักงาน $districtTh ${index + 1}',
+      'commercial' => 'อาคารพาณิชย์ $districtTh ${index + 1}',
+      'home_office' => 'โฮมออฟฟิศ $districtTh ${index + 1}',
+      'showroom' => 'โชว์รูม $districtTh ${index + 1}',
+      'business' => 'กิจการ $districtTh ${index + 1}',
+      'warehouse' => 'โกดัง $districtTh ${index + 1}',
+      'factory' => 'โรงงาน $districtTh ${index + 1}',
+      'co_working' => 'Co-Working $districtTh ${index + 1}',
+      'pool_villa' => 'พูลวิลล่า $districtTh ${index + 1}',
+      _ => '$labelTh $districtTh ${index + 1}',
     };
 
     final bedLabel = bedrooms == 0 ? 'สตูดิโอ' : '$bedrooms นอน';
-    final txnLabel = isDual
-        ? 'ขาย+เช่า'
-        : (isRent ? 'เช่า' : 'ขาย');
-    final title = '$txnLabel$labelTh · $project\n'
-        '${area.toInt()} ตร.ม. · $bedLabel · ใกล้$districtTh';
-    final titleEn = isDual
-        ? 'Sale+rent $labelTh · $project\n'
-            '${area.toInt()} sqm · near $districtEn'
-        : '${isRent ? 'Rent' : 'Sale'} · $project\n'
-            '${area.toInt()} sqm · near $districtEn';
+    final bedLabelEn = bedrooms == 0 ? 'Studio' : '$bedrooms bed';
+    // หัวข้อ 2 บรรทัดแนวรายการอสังหา — ไม่ซ้ำป้ายเช่า/ขายบนรูป
+    final title = '$project\n'
+        '${area.toInt()} ตร.ม. · $bedLabel · $districtTh';
+    final titleEn = '$project\n'
+        '${area.toInt()} sqm · $bedLabelEn · $districtEn';
 
     final seq = 800 + index + slug.hashCode.abs() % 100;
     final code = ReferenceCodes.listingCode(
@@ -133,17 +145,20 @@ abstract final class DemoCategoryListings {
       lat: 13.7563 + (index % 5) * 0.004,
       lng: 100.5018 + (index % 4) * 0.004,
       geoZoneSlug: geoZone,
-      imageUrls: [
-        'https://picsum.photos/seed/demo-cat-$slug-$index/900/600',
-        'https://picsum.photos/seed/demo-cat-$slug-$index-b/900/600',
-      ],
+      imageUrls: DemoMedia.gallery(
+        'demo-cat-$slug-$index',
+        count: 4 + (index % 3),
+        width: 900,
+        height: 600,
+        propertyType: dbValue,
+      ),
       description:
           'ตัวอย่าง$labelTh — $project ทำเล$districtTh พื้นที่ ${area.toInt()} ตร.ม. '
           'สำหรับทดสอบหน้าหมวดหมู่',
       descriptionEn:
           'Sample $labelTh listing — $project, $districtEn, ${area.toInt()} sqm.',
-      ownerExclusiveMandate: index < 4,
-      ownerExclusiveContractDays: index < 4 ? 30 : null,
+      ownerExclusiveMandate: false,
+      ownerExclusiveContractDays: null,
       lastBumpAt: DateTime.now().subtract(
         Duration(minutes: index == 0 ? 25 : index * 90),
       ),

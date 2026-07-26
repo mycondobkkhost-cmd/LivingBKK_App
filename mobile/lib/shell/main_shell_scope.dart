@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../models/demand_board_hub_section.dart';
+
 /// ให้หน้าลูกสลับแท็บล่าง (เช่น ไปแผนที่จากช่องค้นหา)
 class MainShellScope extends InheritedWidget {
   const MainShellScope({
@@ -8,7 +10,11 @@ class MainShellScope extends InheritedWidget {
     required super.child,
   });
 
-  final void Function(int index, {bool boardFromHome}) selectTab;
+  final void Function(
+    int index, {
+    bool boardFromHome,
+    DemandBoardHubSection? boardSection,
+  }) selectTab;
 
   static MainShellScope? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<MainShellScope>();

@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../data/bangkok_geo_zone_tags.dart';
 import '../data/bangkok_projects.dart';
 import '../data/bangkok_transit_station_coords.dart';
+import '../data/bangkok_transit_stations.dart';
 import '../data/popular_areas.dart';
 import '../models/search_zone_catalog_entry.dart';
 import 'project_catalog.dart';
@@ -79,6 +80,10 @@ class SearchZoneCatalog extends ChangeNotifier {
         lat: z.centerLat,
         lng: z.centerLng,
         matchRadiusKm: z.maxKmFromZoneCenter,
+        aliases: [
+          ...z.stationNamesTh,
+          ...z.aliases,
+        ],
       ));
     }
     for (final a in PopularAreas.all) {
@@ -89,22 +94,32 @@ class SearchZoneCatalog extends ChangeNotifier {
         titleTh: a.nameTh,
         titleEn: a.nameEn,
         geoZoneSlugs: [a.slug],
+        aliases: [
+          a.subtitleTh,
+          a.subtitleEn,
+        ],
       ));
     }
   }
 
   void _seedTransit() {
+    final aliasByLabel = <String, List<String>>{
+      for (final s in BangkokTransitStations.all)
+        s.nameTh: s.aliases,
+    };
     for (final st in BangkokTransitStationCoords.all) {
       final id = _transitId(st.system, st.nameEn);
+      final labelTh = st.labelTh;
       _entries.add(SearchZoneCatalogEntry(
         id: id,
         category: 'transit',
-        titleTh: st.labelTh,
+        titleTh: labelTh,
         titleEn: st.labelEn,
         geoZoneSlugs: st.geoZoneSlugs,
         lat: st.lat,
         lng: st.lng,
         matchRadiusKm: 1.2,
+        aliases: aliasByLabel[labelTh] ?? const [],
       ));
     }
   }
@@ -207,66 +222,102 @@ class SearchZoneCatalog extends ChangeNotifier {
     return id.replaceAll('-', ' ');
   }
 
-  /// Autocomplete for tag search — prefix/substring match on titles + aliases.
+  static bool _isPlaceCategory(String category) =>
+      category == 'location' ||
+      category == 'landmark' ||
+      category == 'transit' ||
+      category == 'education';
+
+  /// Autocomplete — จองโควต้าทำเลก่อน แล้วค่อยโครงการ
   List<SearchZoneCatalogEntry> search(
     String query, {
     String? category,
-    int limit = 15,
+    int limit = 24,
     Set<String> excludeIds = const {},
   }) {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return [];
-    final results = <SearchZoneCatalogEntry>[];
+
+    final places = <SearchZoneCatalogEntry>[];
+    final projects = <SearchZoneCatalogEntry>[];
+    final placeCap =
+        category == 'project' ? 0 : (limit / 2).ceil().clamp(4, 10);
+
     for (final e in _entries) {
       if (category != null && e.category != category) continue;
       if (excludeIds.contains(e.id)) continue;
-      if (_entryMatchesQuery(e, q)) {
-        results.add(e);
-        if (results.length >= limit) break;
+      if (!_entryMatchesQuery(e, q)) continue;
+      if (_isPlaceCategory(e.category)) {
+        if (places.length < placeCap) places.add(e);
+      } else if (e.category == 'project') {
+        final projectCap =
+            category == 'project' ? limit : limit - places.length;
+        if (projects.length < projectCap) projects.add(e);
       }
+      if (places.length + projects.length >= limit) break;
     }
-    results.sort((a, b) {
-      if (a.category == 'project' && b.category != 'project') return -1;
-      if (a.category != 'project' && b.category == 'project') return 1;
-      return 0;
-    });
-    return results;
+
+    return [...places, ...projects].take(limit).toList();
   }
 
   bool _entryMatchesQuery(SearchZoneCatalogEntry e, String q) {
+    bool transitLike(String a) {
+      final s = a.toLowerCase().trim();
+      return s.startsWith('bts ') ||
+          s.startsWith('mrt ') ||
+          s.startsWith('arl ') ||
+          s.startsWith('gold ');
+    }
+
+    if (e.category == 'project') {
+      // ชื่อ / slug + aliases ชื่อโครงการ (ไม่ใช้ alias แบบสถานี)
+      final hay = [
+        e.titleTh.toLowerCase(),
+        e.titleEn.toLowerCase(),
+        e.id.toLowerCase().replaceAll('-', ' '),
+        if (e.projectSlug != null)
+          e.projectSlug!.toLowerCase().replaceAll('-', ' '),
+        ...e.aliases.where((a) => !transitLike(a)).map((a) => a.toLowerCase()),
+      ];
+      return hay.any((h) => h.isNotEmpty && h.contains(q));
+    }
+
     final hay = [
       e.titleTh.toLowerCase(),
       e.titleEn.toLowerCase(),
       e.id.toLowerCase().replaceAll('-', ' '),
-      if (e.projectSlug != null) e.projectSlug!.toLowerCase().replaceAll('-', ' '),
       ...e.aliases.map((a) => a.toLowerCase()),
     ];
     return hay.any((h) => h.isNotEmpty && h.contains(q));
   }
 
-  /// รวมผล local + cloud สำหรับโครงการ
+  /// รวมผล local + cloud — คงทำเลไว้ด้านบน · โครงการต้องตรงชื่อจริง
   Future<List<SearchZoneCatalogEntry>> searchWithProjects(
     String query, {
     Set<String> excludeIds = const {},
-    int limit = 15,
+    int limit = 24,
   }) async {
     final local = search(query, excludeIds: excludeIds, limit: limit);
     if (query.trim().length < 2) return local;
 
+    final q = query.trim().toLowerCase();
+    final places = local.where((e) => _isPlaceCategory(e.category)).toList();
+    final projects = local.where((e) => e.category == 'project').toList();
+
     final online = await ProjectCatalog.instance.searchOnline(query);
-    final seen = {...local.map((e) => e.id), ...excludeIds};
-    final merged = [...local];
+    final seen = {
+      ...local.map((e) => e.id),
+      ...excludeIds,
+    };
     for (final p in online) {
       if (seen.contains(p.slug)) continue;
-      merged.add(entryFromProject(p));
+      final entry = entryFromProject(p);
+      if (!_entryMatchesQuery(entry, q)) continue;
+      projects.add(entry);
       seen.add(p.slug);
-      if (merged.length >= limit) break;
+      if (places.length + projects.length >= limit) break;
     }
-    merged.sort((a, b) {
-      if (a.category == 'project' && b.category != 'project') return -1;
-      if (a.category != 'project' && b.category == 'project') return 1;
-      return 0;
-    });
-    return merged.take(limit).toList();
+
+    return [...places, ...projects].take(limit).toList();
   }
 }

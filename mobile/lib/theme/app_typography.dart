@@ -100,3 +100,58 @@ class AppTypography {
         color: p.textSecondary,
       );
 }
+
+/// Typography สำหรับการ์ด spotlight / ลิสติ้งเต็มความกว้าง
+abstract final class HomeTypography {
+  static TextStyle listingTitleStyle(AppPalette p) => GoogleFonts.prompt(
+        fontSize: 16,
+        fontWeight: FontWeight.w700,
+        height: 1.25,
+        letterSpacing: -0.2,
+        color: p.textPrimary,
+      );
+
+  static TextStyle locationLineStyle(AppPalette p) => GoogleFonts.prompt(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        height: 1.3,
+        color: p.textSecondary,
+      );
+
+  static TextStyle specChipStyle(AppPalette p) => GoogleFonts.prompt(
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+        height: 1.2,
+        color: p.textPrimary,
+      );
+
+  static TextStyle priceStyle(AppPalette p) => GoogleFonts.prompt(
+        fontSize: 18,
+        fontWeight: FontWeight.w800,
+        height: 1.1,
+        color: p.primary,
+      );
+
+  static TextStyle priceStrikeStyle(AppPalette p) => GoogleFonts.prompt(
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+        height: 1.1,
+        color: p.textSecondary,
+        decoration: TextDecoration.lineThrough,
+      );
+
+  static TextStyle perMonthStyle(AppPalette p) => GoogleFonts.prompt(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        height: 1.1,
+        color: p.textSecondary,
+      );
+
+  static TextStyle metaStyle(AppPalette p, {FontWeight weight = FontWeight.w400}) =>
+      GoogleFonts.prompt(
+        fontSize: 11,
+        fontWeight: weight,
+        height: 1.2,
+        color: p.textSecondary,
+      );
+}

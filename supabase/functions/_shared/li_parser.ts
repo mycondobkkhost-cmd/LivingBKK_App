@@ -26,6 +26,7 @@ export type LiParsedListing = {
   flags: string[];
   contactPrivate: { phones: string[]; lines: string[]; urls: string[] };
   sourceMeta?: ImportSourceMeta;
+  sourceTextOriginal?: string;
 };
 
 const UA =
@@ -103,6 +104,11 @@ function firstMatch(html: string, re: RegExp): string | null {
 export function extractContacts(text: string): LiParsedListing["contactPrivate"] {
   const phones = [...text.matchAll(PHONE_RE)].map((m) => m[0]);
   const lines = [...text.matchAll(LINE_RE)].map((m) => m[0]);
+  for (const m of text.matchAll(
+    /(?:line|ไลน์)\s*[:：]\s*[@]?([a-z][a-z0-9._-]{2,})/gi,
+  )) {
+    lines.push(`Line: ${m[1]}`);
+  }
   const urls = [...text.matchAll(URL_RE)].map((m) => m[0]);
   return {
     phones: [...new Set(phones)],
@@ -112,11 +118,25 @@ export function extractContacts(text: string): LiParsedListing["contactPrivate"]
 }
 
 export function sanitizePublicText(text: string): string {
-  let out = text;
+  let out = stripHtmlTags(text);
+  out = out.replace(/คลิกเพื่อดูเบอร์โทรติดต่อ/gi, "[เบอร์ซ่อนบน LI — ดูจากต้นทาง]");
   out = out.replace(PHONE_RE, "[ติดต่อผ่าน LivingBKK]");
   out = out.replace(LINE_RE, "[Line ถูกซ่อน]");
   out = out.replace(URL_RE, "");
   return out.replace(/\s{2,}/g, " ").trim();
+}
+
+export function stripHtmlTags(text: string): string {
+  return text
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
 }
 
 function parsePrice(html: string): number | null {
@@ -127,13 +147,20 @@ function parsePrice(html: string): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-function parseArea(html: string): number | null {
+function parseArea(html: string, description: string): number | null {
   const m = html.match(
     /class="detail-property-list-text">\s*([\d.]+)\s*ตร\.ม/i,
   );
-  if (!m) return null;
-  const n = parseFloat(m[1]);
-  return Number.isFinite(n) ? n : null;
+  if (m) {
+    const n = parseFloat(m[1]);
+    if (Number.isFinite(n)) return n;
+  }
+  const fromText = description.match(/([\d.]+)\s*(?:ตร\.?\s*ม|sqm|sq\.?\s*m)/i);
+  if (fromText) {
+    const n = parseFloat(fromText[1]);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
 }
 
 function parseLatLng(html: string): { lat: number | null; lng: number | null } {
@@ -147,13 +174,14 @@ function parseLatLng(html: string): { lat: number | null; lng: number | null } {
   };
 }
 
-function parseImages(html: string): string[] {
+function parseImages(html: string, webId: string | null): string[] {
   const urls = new Set<string>();
   const patterns = [
     /class="gallery-item"[^>]*\n\s*href="(https:\/\/www\.livinginsider\.com\/upload\/topic[^"]+)"/gi,
     /data-src="(https:\/\/www\.livinginsider\.com\/upload\/topic[^"]+)"/gi,
     /src='(https:\/\/www\.livinginsider\.com\/upload\/topic[^']+)'/gi,
     /src="(https:\/\/www\.livinginsider\.com\/upload\/topic[^"]+)"/gi,
+    /href="(https:\/\/www\.livinginsider\.com\/upload\/topic[^"]+)"/gi,
   ];
   for (const re of patterns) {
     for (const m of html.matchAll(re)) {
@@ -161,7 +189,24 @@ function parseImages(html: string): string[] {
       if (u && !u.includes("photo-contact")) urls.add(u);
     }
   }
+  if (webId) {
+    urls.add(`https://www.livinginsider.com/og_post/${webId}.jpg`);
+  }
+  const og = firstMatch(html, /property="og:image"\s+content="([^"]+)"/i);
+  if (og?.startsWith("http")) urls.add(og);
   return [...urls];
+}
+
+function parseLiPoster(html: string): { name: string | null; url: string | null } {
+  const profile = firstMatch(
+    html,
+    /href="(https:\/\/www\.livinginsider\.com\/member[^"]+)"[^>]*>([^<]{2,40})</i,
+  );
+  if (profile) {
+    return { url: profile.split('"')[0] ?? null, name: null };
+  }
+  const name = firstMatch(html, /class="[^"]*member[^"]*name[^"]*"[^>]*>([^<]+)/i);
+  return { name, url: null };
 }
 
 function parseListingType(html: string, title: string): "rent" | "sale" {
@@ -185,24 +230,38 @@ function parsePropertyType(html: string): LiParsedListing["propertyType"] {
   return "other";
 }
 
-function parseBedrooms(html: string, title: string): number | null {
-  const m = title.match(/(\d+)\s*bed/i) ||
-    html.match(/ห้องนอน[^0-9]*(\d+)/i) ||
-    html.match(/(\d+)\s*ห้องนอน/i);
-  if (!m) return null;
-  const n = parseInt(m[1], 10);
-  return Number.isFinite(n) ? n : null;
+function parseBedrooms(html: string, title: string, description: string): number | null {
+  const fromText = (text: string): number | null => {
+    const m =
+      text.match(/type\s*(\d+)\s*bed/i) ||
+      text.match(/(\d+)\s*bedroom/i) ||
+      text.match(/(\d+)\s*ห้องนอน/i) ||
+      text.match(/ห้องนอน[^0-9]*(\d+)/i);
+    if (!m) return null;
+    const n = parseInt(m[1], 10);
+    return Number.isFinite(n) && n > 0 && n <= 20 ? n : null;
+  };
+
+  return fromText(description) ??
+    fromText(title) ??
+    fromText(firstMatch(html, /property="og:description"\s+content="([^"]*)"/i) ?? "");
 }
 
 function parseProjectName(html: string, description: string): string | null {
+  const green = firstMatch(html, /class="text_project_detail_green">\s*([^<]+)/i);
+  if (green && !green.includes("ไม่ระบุ")) return green;
+
   const breadcrumb = firstMatch(
     html,
-    /"name":\s*"([^"]+)"[^}]*"item":\s*"https:\/\/www\.livinginsider\.com\/living_project/i,
+    /living_project[^"]*"[^>]*>([^<]+)</i,
   );
   if (breadcrumb && !breadcrumb.includes("ไม่ระบุ")) return breadcrumb;
 
-  const green = firstMatch(html, /class="text_project_detail_green">\s*([^<]+)/i);
-  if (green && !green.includes("ไม่ระบุ")) return green;
+  const ld = firstMatch(
+    html,
+    /"name":\s*"([^"]+)"[^}]*"item":\s*"https:\/\/www\.livinginsider\.com\/living_project/i,
+  );
+  if (ld && !ld.includes("ไม่ระบุ")) return ld;
 
   const origin = description.match(
     /(?:at|@|โครงการ|project)\s+([A-Za-z0-9\u0E00-\u0E7F\s\-']{3,40})/i,
@@ -231,7 +290,7 @@ export function parseLiHtml(html: string, sourceUrl: string): LiParsedListing {
   const ogDesc = firstMatch(html, /property="og:description"\s+content="([^"]*)"/i) ??
     "";
   const bodyDesc = firstMatch(html, /<p class="wordwrap">([\s\S]*?)<\/p>/i) ?? "";
-  const rawDescription = decodeHtml(`${ogDesc} ${bodyDesc}`.trim());
+  const rawDescription = decodeHtml(stripHtmlTags(`${ogDesc}\n${bodyDesc}`.trim()));
 
   const contactPrivate = extractContacts(rawDescription + " " + html.slice(0, 50000));
   const description = sanitizePublicText(rawDescription);
@@ -239,16 +298,16 @@ export function parseLiHtml(html: string, sourceUrl: string): LiParsedListing {
   const priceNet = parsePrice(html);
   if (!priceNet) flags.push("missing_price");
 
-  const areaSqm = parseArea(html);
+  const areaSqm = parseArea(html, rawDescription);
   const { lat, lng } = parseLatLng(html);
   if (lat == null || lng == null) flags.push("missing_coords");
 
-  const imageUrls = parseImages(html);
+  const imageUrls = parseImages(html, webId);
   if (imageUrls.length === 0) flags.push("missing_images");
 
   const listingType = parseListingType(html, title);
   const propertyType = parsePropertyType(html);
-  const bedrooms = parseBedrooms(html, title);
+  const bedrooms = parseBedrooms(html, title, rawDescription);
   const projectName = parseProjectName(html, rawDescription);
   if (!projectName) flags.push("missing_project");
 
@@ -258,6 +317,15 @@ export function parseLiHtml(html: string, sourceUrl: string): LiParsedListing {
   if (contactPrivate.phones.length || contactPrivate.lines.length) {
     flags.push("contacts_stripped");
   }
+
+  const poster = parseLiPoster(html);
+  const sourceMeta: ImportSourceMeta = {
+    postUrl: sourceUrl,
+    postText: rawDescription.slice(0, 12_000),
+    posterName: poster.name,
+    posterUrl: poster.url,
+    postLinks: contactPrivate.urls.slice(0, 12),
+  };
 
   return {
     sourceExternalId: webId,
@@ -276,7 +344,26 @@ export function parseLiHtml(html: string, sourceUrl: string): LiParsedListing {
     imageUrls,
     flags,
     contactPrivate,
+    sourceMeta,
+    sourceTextOriginal: rawDescription,
   };
+}
+
+export function projectNamesAlign(
+  parsed: string | null,
+  matchedName: string | null | undefined,
+): boolean {
+  if (!parsed || !matchedName) return false;
+  const norm = (s: string) =>
+    s.toLowerCase().replace(/\s+/g, " ").replace(/[^\w\u0E00-\u0E7F\s-]/g, "").trim();
+  const a = norm(parsed);
+  const b = norm(matchedName);
+  if (!a || !b) return false;
+  if (a === b || a.includes(b) || b.includes(a)) return true;
+  const tokensA = a.split(/\s+/).filter((t) => t.length > 2);
+  const tokensB = new Set(b.split(/\s+/).filter((t) => t.length > 2));
+  const overlap = tokensA.filter((t) => tokensB.has(t)).length;
+  return overlap >= Math.min(2, Math.max(1, tokensA.length - 1));
 }
 
 export async function matchProject(

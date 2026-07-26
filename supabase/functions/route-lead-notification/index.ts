@@ -1,6 +1,10 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { postMakeComWebhook, sendFcmToUser } from "../_shared/notify.ts";
+import {
+  feedFromLeadCreated,
+} from "../_shared/admin_ai_feed.ts";
+import { orchestrateAdminFeed } from "../_shared/admin_orchestrator.ts";
 
 /**
  * Routes a new lead to the listing owner (assignee) and notifies assignee + Make.com.
@@ -24,7 +28,7 @@ Deno.serve(async (req) => {
 
     const { data: lead, error } = await supabase
       .from("leads")
-      .select("id, listing_id, listing_code, assigned_to, status, seeker_nickname")
+      .select("id, listing_id, listing_code, assigned_to, status, seeker_nickname, thread_id, transaction_ref")
       .eq("id", lead_id)
       .single();
 
@@ -72,6 +76,19 @@ Deno.serve(async (req) => {
       assignee,
       "LivingBKK — Lead ใหม่",
       `มี Lead สำหรับ $listingCode`,
+    );
+
+    await orchestrateAdminFeed(
+      supabase,
+      "route-lead-notification",
+      feedFromLeadCreated({
+        leadId: lead_id,
+        threadId: lead.thread_id as string | null,
+        listingCode,
+        listingId: lead.listing_id as string | null,
+        seekerNickname: nickname,
+        transactionRef: lead.transaction_ref as string | null,
+      }),
     );
 
     return jsonResponse({

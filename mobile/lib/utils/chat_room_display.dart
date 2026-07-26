@@ -61,12 +61,21 @@ extension ChatRoomDisplay on ChatRoom {
       }
       return '${s.chatTeamLivingBkk}: $text';
     }
-    final last = lastMessage;
+    final last = lastCustomerVisibleMessage;
     if (last == null) return s.chatEmptyHint;
     if (last.role == ChatMessageRole.system) {
       return last.text;
     }
     return last.text;
+  }
+
+  ChatMessage? get lastCustomerVisibleMessage {
+    for (var i = messages.length - 1; i >= 0; i--) {
+      final m = messages[i];
+      if (m.isCustomerHidden) continue;
+      return m;
+    }
+    return null;
   }
 
   bool get hasTeamFormLink =>

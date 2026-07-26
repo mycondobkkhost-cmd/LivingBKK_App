@@ -1,14 +1,35 @@
+import {
+  classifyOwnerInquiryIntent,
+  ownerInquiryOfferText,
+  type OwnerInquiryType,
+} from "./owner_inquiry_intent.ts";
+import { VOICE, priceNegotiationSalesBurst } from "./owner_inquiry_voice.ts";
+import { normalizeChatText } from "./chat_text_normalize.ts";
+import {
+  discoveryWelcomeText,
+  propertyWelcomeText,
+} from "./chat_ai_voice.ts";
+
 export type ChatRoomKind = "property" | "staff_support";
 
 export type ChatLink = {
   label: string;
-  kind: "listing" | "projectUnits";
+  kind:
+    | "listing"
+    | "projectUnits"
+    | "project_request"
+    | "owner_inquiry_form"
+    | "owner_inquiry"
+    | "requirement_form"
+    | "viewing_form"
+    | "viewing_location";
   listingId: string;
   projectName?: string;
+  refCode?: string;
 };
 
 export type BotReply = {
-  role: "ai" | "system" | "admin_notice";
+  role: "ai" | "system" | "admin_notice" | "admin_coach";
   text: string;
   requires_admin?: boolean;
   links?: ChatLink[];
@@ -114,11 +135,11 @@ export function contactRequestReply(): BotReply {
   return {
     role: "ai",
     text:
-      "เข้าใจครับว่าต้องการติดต่อโดยตรง — ทางแพลตฟอร์มไม่เปิดเผยเบอร์โทร " +
-      "Line หรือช่องทางส่วนตัวของเจ้าของ/ผู้ลงประกาศ เพื่อความเป็นส่วนตัวและความปลอดภัยของทุกฝ่ายครับ\n\n" +
+      "เข้าใจค่ะว่าต้องการติดต่อโดยตรง — ทางแพลตฟอร์มไม่เปิดเผยเบอร์โทร " +
+      "Line หรือช่องทางส่วนตัวของเจ้าของ/ผู้ลงประกาศ เพื่อความเป็นส่วนตัวและความปลอดภัยของทุกฝ่ายค่ะ\n\n" +
       "หากสะดวก รบกวนแจ้งเบอร์ติดต่อของคุณ พร้อมคำถามหรือรายละเอียดที่อยากทราบในแชทนี้ " +
-      "เจ้าหน้าที่ RealXtate จะติดต่อกลับโดยเร็วที่สุดในช่วงเวลาทำการครับ\n\n" +
-      "หากมีคำถามอื่นที่ตอบได้จากข้อมูลประกาศ (เช่น ทำเล ราคา Net เงื่อนไขเบื้องต้น) ถามต่อได้เลยครับ",
+      "เจ้าหน้าที่ RealXtate จะติดต่อกลับโดยเร็วที่สุดในช่วงเวลาทำการค่ะ\n\n" +
+      "หากมีคำถามอื่นที่ตอบได้จากข้อมูลประกาศ (เช่น ทำเล ราคา Net เงื่อนไขเบื้องต้น) ถามต่อได้เลยค่ะ",
   };
 }
 
@@ -127,37 +148,43 @@ export function ownerPdpaReply(): BotReply {
   return {
     role: "ai",
     text:
-      "ขอบคุณที่สนใจทรัพย์ครับ\n\n" +
+      "ขอบคุณที่สนใจทรัพย์ค่ะ\n\n" +
       "เพื่อเป็นไปตามนโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA) และความเป็นส่วนตัวของเจ้าของทรัพย์ " +
-      "แพลตฟอร์มไม่สามารถเปิดเผยข้อมูลติดต่อ ชื่อ หรือข้อมูลส่วนตัวของเจ้าของ/ผู้ลงประกาศได้ครับ\n\n" +
+      "แพลตฟอร์มไม่สามารถเปิดเผยข้อมูลติดต่อ ชื่อ หรือข้อมูลส่วนตัวของเจ้าของ/ผู้ลงประกาศได้ค่ะ\n\n" +
       "หากมีคำถามอื่นเกี่ยวกับทรัพย์นี้ — เช่น ทำเล ราคา Net เงื่อนไขเบื้องต้น หรือการนัดดูห้อง — " +
-      "แจ้งได้เลยครับ ยินดีช่วยตอบในสิ่งที่เปิดเผยได้ตามประกาศครับ",
+      "แจ้งได้เลยค่ะ ยินดีช่วยตอบในสิ่งที่เปิดเผยได้ตามประกาศค่ะ",
   };
 }
 
-/** ต่อรองราคา / เงื่อนไขสัญญา — ส่งต่อเจ้าหน้าที่ */
-export function negotiateAdminReply(): BotReply {
+/** ชวนกรอกฟอร์มสอบถามเจ้าของ — ไม่ส่งแอดมินทันที */
+export function ownerInquiryOfferReply(
+  type: OwnerInquiryType,
+  prefill?: string,
+  listingId = "",
+): BotReply {
   return {
     role: "ai",
-    text:
-      "รับทราบเรื่องการเจรจาราคาและเงื่อนไขสัญญาครับ\n\n" +
-      "เรื่องส่วนนี้ต้องให้เจ้าหน้าที่พิจารณาเป็นรายกับทางเจ้าของหรือผู้มีอำนาจตัดสินใจ — " +
-      "ผมได้แจ้งทีมงานแล้ว และจะกลับมาตอบคุณในแชทนี้โดยเร็วที่สุดครับ\n\n" +
-      "หากมีข้อมูลเพิ่มเติมที่อยากให้ทีมนำไปเสนอ (เช่น ระยะสัญญาที่ต้องการ วันที่พร้อมเข้าอยู่ หรืองบประมาณ) " +
-      "พิมพ์เพิ่มในแชทนี้ได้เลยครับ",
-    requires_admin: true,
+    text: ownerInquiryOfferText(type),
+    links: [{
+      label: VOICE.formLabel,
+      kind: "owner_inquiry_form",
+      listingId,
+      projectName: prefill?.trim() || undefined,
+      refCode: type,
+    }],
   };
 }
 
-/** เลขห้อง / ชั้น / ทิศ — ไม่เปิดในแชทอัตโนมัติ */
+/** ต่อรองราคา — ชวนกรอกฟอร์มสอบถามเจ้าของ (แทน escalate ทันที) */
+export function negotiateInquiryReply(text: string, listingId = ""): BotReply {
+  return ownerInquiryOfferReply("price_negotiation", text, listingId);
+}
+
+/** เลขห้อง — แจ้งเมื่อนัดดูเท่านั้น */
 export function unitPrivacyReply(): BotReply {
   return {
     role: "ai",
-    text:
-      "ตามนโยบายแพลตฟอร์ม เราไม่เปิดเผยเลขห้อง ชั้น หรือทิศห้องที่แน่นอนในแชทอัตโนมัติ " +
-      "เพื่อปกป้องความเป็นส่วนตัวครับ — รายละเอียดเหล่านี้เจ้าหน้าที่จะแจ้งเมื่อคุณนัดดูห้อง " +
-      "หรือดำเนินการต่อผ่านแพลตฟอร์มครับ\n\n" +
-      "หากมีคำถามอื่นเกี่ยวกับทำเล ราคา Net หรือเงื่อนไขเบื้องต้น ถามต่อได้เลยครับ",
+    text: VOICE.unitNumberViewing,
   };
 }
 
@@ -166,8 +193,8 @@ export function commissionAdminReply(): BotReply {
   return {
     role: "ai",
     text:
-      "เรื่องค่าคอมมิชชันและโครงสร้างส่วนแบ่งเป็นรายละเอียดที่เจ้าหน้าที่จะอธิบายให้ชัดเจนเมื่อดำเนินการต่อครับ — " +
-      "ผมได้แจ้งทีมงานแล้ว และจะกลับมาตอบในแชทนี้โดยเร็วที่สุดครับ",
+      "เรื่องค่าคอมมิชชันและโครงสร้างส่วนแบ่งเป็นรายละเอียดที่เจ้าหน้าที่จะอธิบายให้ชัดเจนเมื่อดำเนินการต่อค่ะ — " +
+      "ทีมงานได้รับแจ้งแล้ว และจะกลับมาตอบในแชทนี้โดยเร็วที่สุดค่ะ",
     requires_admin: true,
   };
 }
@@ -177,8 +204,8 @@ export function phoneReceivedAckReply(): BotReply {
   return {
     role: "ai",
     text:
-      "ขอบคุณมากครับ ทางเราได้รับเบอร์ติดต่อและข้อมูลของท่านเรียบร้อยแล้ว " +
-      "ทีมงานจะรีบนำข้อมูลไปตรวจสอบและติดต่อกลับเพื่อให้บริการโดยเร็วที่สุดครับ",
+      "ขอบคุณมากค่ะ ทางเราได้รับเบอร์ติดต่อและข้อมูลของท่านเรียบร้อยแล้ว " +
+      "ทีมงานจะรีบนำข้อมูลไปตรวจสอบและติดต่อกลับเพื่อให้บริการโดยเร็วที่สุดค่ะ",
     requires_admin: true,
   };
 }
@@ -191,7 +218,10 @@ export function sensitiveReply(kind: SensitiveKind, text?: string): BotReply {
     case "owner":
       return ownerPdpaReply();
     case "negotiate":
-      return negotiateAdminReply();
+      return {
+        role: "ai",
+        text: priceNegotiationSalesBurst()[0],
+      };
     case "unit_privacy":
       return unitPrivacyReply();
     case "commission":
@@ -224,30 +254,18 @@ export function welcomeMessage(
   if (isDiscovery) {
     return {
       role: "ai",
-      text:
-        "สวัสดีครับ ผมผู้ช่วย LivingBKK\n" +
-        `${AI_DISCLAIMER}\n\n` +
-        "บอกทำเล · โครงการ · งบประมาณ — ผมช่วยคัดทรัพย์ในระบบให้\n" +
-        "ตัวอย่าง: 「หาคอนโดเช่า ทองหล่อ งบ 18,000」\n" +
-        "หรือเปิดแชทจากทรัพย์ที่สนใจเพื่อถามรายละเอียดเฉพาะห้อง",
+      text: discoveryWelcomeText(AI_DISCLAIMER),
     };
   }
   if (allowViewingRequest) {
     return {
       role: "ai",
-      text:
-        `สวัสดีครับ ผมผู้ช่วย LivingBKK สำหรับ ${listingTitle}\n` +
-        `${AI_DISCLAIMER}\n\n` +
-        "ถามรายละเอียดทรัพย์นี้ได้เลย — ถามหาทรัพย์อื่น/ทำเล/งบก็ได้ในแชทนี้\n" +
-        "หากต้องการนัดดูห้อง กด「ขอนัดดูห้อง」ด้านล่างเมื่อพร้อมครับ",
+      text: propertyWelcomeText(listingTitle, AI_DISCLAIMER, true),
     };
   }
   return {
     role: "ai",
-    text:
-      `สวัสดีครับ ผมผู้ช่วย LivingBKK สำหรับ ${listingTitle}\n` +
-      `${AI_DISCLAIMER}\n\n` +
-      "ถามเรื่องทำเล ราคา เงื่อนไข หรือให้แนะนำทรัพย์อื่นในระบบได้เลยครับ",
+    text: propertyWelcomeText(listingTitle, AI_DISCLAIMER, false),
   };
 }
 
@@ -313,6 +331,133 @@ function textMatchesListing(q: string, l: ListingRow): boolean {
   return tokens.some((t) => hay.includes(t));
 }
 
+const FIND_OTHER_ROOM_KEYS = [
+  "หาห้องให้",
+  "ช่วยหา",
+  "ฝากหา",
+  "หาห้อง",
+  "หาคอนโดให้",
+  "หาบ้านให้",
+  "ช่วยสแกน",
+  "ช่วยคัด",
+  "find me a room",
+  "help me find",
+  "help find",
+  "ไม่ตรงใจ",
+  "ไม่ชอบ",
+  "ไม่โดน",
+  "ไม่ถูกใจ",
+  "อยากได้อื่น",
+  "อยากได้ห้องอื่น",
+  "หาที่พัก",
+  "หาที่อยู่",
+  "หาห้องอื่น",
+  "ขอห้องอื่น",
+  "รีบหาที่อยู่",
+  "ต้องการห้องด่วน",
+];
+
+const PROJECT_OTHER_KEYS = [
+  "ห้องอื่น",
+  "ตัวอื่น",
+  "ในโครงการ",
+  "unit อื่น",
+  "ห้องอื่นอีก",
+  "มีห้องอื่น",
+];
+
+const ZONE_HINTS = [
+  "ทองหล่อ",
+  "เอกมัย",
+  "อโศก",
+  "สุขุมวิท",
+  "สาทร",
+  "สีลม",
+  "พระโขนง",
+  "อารีย์",
+  "ลาดพร้าว",
+  "thong",
+  "ekkamai",
+  "asok",
+  "sukhumvit",
+  "sathorn",
+  "silom",
+  "bts",
+  "mrt",
+];
+
+const GENERIC_PROJECT_HINT_REJECT = [
+  "ให้ได้ไหม",
+  "ได้ไหม",
+  "หน่อย",
+  "ช่วยหา",
+  "หาห้อง",
+  "หาคอนโด",
+  "ไหมคะ",
+  "ไหมครับ",
+  "ค่ะ",
+  "ครับ",
+];
+
+/** ลูกค้าขอให้ช่วยหาห้องอื่น (ไม่ใช่ห้องอื่นในโครงการเดียวกัน) */
+export function wantsOtherUnitsInProject(text: string): boolean {
+  const q = normalizeChatText(text);
+  return PROJECT_OTHER_KEYS.some((k) => q.includes(k));
+}
+
+export function isFindOtherRoomIntent(text: string): boolean {
+  const q = normalizeChatText(text);
+  if (wantsOtherUnitsInProject(text)) return false;
+  return FIND_OTHER_ROOM_KEYS.some((k) => q.includes(normalizeChatText(k)));
+}
+
+export function hasSearchSignals(text: string): boolean {
+  const q = normalizeChatText(text);
+  if (ZONE_HINTS.some((z) => q.includes(z))) return true;
+  if (/\d[\d,]*\s*(?:บาท|k)/i.test(q)) return true;
+  if (/\b(ideo|noble|rhythm|the\s|mobi|place)\b/i.test(q)) return true;
+  return false;
+}
+
+/** ในแชททรัพย์ — ค้นหาทรัพย์อื่นเฉพาะเมื่อมีสัญญาณทำเล/งบ ไม่ใช่แค่คำว่า「หา」 */
+export function isDiscoveryIntentOnProperty(text: string): boolean {
+  if (isFindOtherRoomIntent(text)) return false;
+  if (wantsOtherUnitsInProject(text)) return true;
+  const q = normalizeChatText(text);
+  const broad = [
+    "หา", "แนะนำ", "ค้นห", "อยากได้", "อยากเช่า", "อยากซื้อ", "โครงการ",
+    "คอนโด", "บ้าน", "เช่า", "ซื้อ", "compare", "เปรียบ",
+  ];
+  if (!broad.some((k) => q.includes(k)) && !/\d[\d,]*\s*(?:บาท|k)?/i.test(q)) {
+    return false;
+  }
+  return hasSearchSignals(text);
+}
+
+/** ชื่อโครงการที่น่าจะระบุในข้อความค้นหา */
+function extractProjectHint(text: string): string | null {
+  if (isFindOtherRoomIntent(text)) return null;
+
+  const t = text.trim();
+  if (t.length < 4) return null;
+  const condo = t.match(
+    /(?:หา|ค้นหา|สนใจ|อยากได้|อยากเช่า|อยากซื้อ)?\s*(?:คอนโด|condo)?\s*([^\n,?！!]{4,60})/i,
+  );
+  if (condo?.[1]) {
+    const name = condo[1].trim();
+    if (name.length >= 4 && !/^(คอนโด|condo|บ้าน|ทาวน์)/i.test(name)) {
+      const norm = normalizeChatText(name);
+      if (!GENERIC_PROJECT_HINT_REJECT.some((r) => norm.includes(r))) {
+        return name;
+      }
+    }
+  }
+  if (/\b(ideo|noble|rhythm|the\s|mobi|place)\b/i.test(t) && t.split(/\s+/).length >= 2) {
+    return t.slice(0, 80);
+  }
+  return null;
+}
+
 export function aiSupportReply(text: string, listings: ListingRow[]): BotReply {
   const q = text.toLowerCase();
   const rent = !(q.includes("ซื้อ") || q.includes("sale"));
@@ -335,12 +480,27 @@ export function aiSupportReply(text: string, listings: ListingRow[]): BotReply {
   matched = matched.slice(0, 3);
 
   if (matched.length === 0) {
+    const projectHint = extractProjectHint(text);
+    if (projectHint) {
+      return {
+        role: "ai",
+        text:
+          `ยังไม่พบโครงการ「${projectHint}」ในระบบของเราค่ะ\n` +
+          "กดปุ่มด้านล่างเพื่อแจ้งให้ทีมงานเพิ่มโครงการนี้ — เราจะแจ้งเมื่อบันทึกคำขอแล้วค่ะ",
+        links: [{
+          label: `ขอให้ทีมเพิ่ม ${projectHint}`,
+          kind: "project_request",
+          listingId: "",
+          projectName: projectHint,
+        }],
+      };
+    }
     return {
       role: "ai",
       text:
-        "ยังไม่พบทรัพย์ที่ตรงบรีฟชัดเจนครับ " +
+        "ยังไม่พบทรัพย์ที่ตรงบรีฟชัดเจนค่ะ " +
         "ลองระบุทำเล โครงการ หรืองบประมาณเพิ่มเติม\n" +
-        "หรือกด「คุยกับเจ้าหน้าที่」เพื่อให้ทีมช่วยคัดให้",
+        "หรือกด「คุยกับเจ้าหน้าที่」เพื่อให้ทีมช่วยคัดให้ค่ะ",
     };
   }
 
@@ -385,7 +545,7 @@ export function escalationReply(): BotReply {
   return {
     role: "system",
     text:
-      "คำถามนี้ต้องให้เจ้าหน้าที่ตอบโดยตรง — เราแจ้งทีมแล้ว และจะติดต่อกลับในแชทนี้โดยเร็วที่สุด",
+      "คำถามนี้ต้องให้เจ้าหน้าที่ตอบโดยตรงค่ะ — ทีมงานได้รับแจ้งแล้ว และจะติดต่อกลับในแชทนี้โดยเร็วที่สุดค่ะ",
     requires_admin: true,
   };
 }
@@ -395,8 +555,9 @@ export function softClarifyReply(): BotReply {
   return {
     role: "ai",
     text:
-      "ยังไม่แน่ใจคำถามครับ ลองระบุทำเล · งบ · หรือรายละเอียดที่ต้องการเพิ่ม\n" +
-      "หรือพิมพ์「ขอคุยกับเจ้าหน้าที่」เมื่อต้องการให้ทีมช่วยโดยตรง",
+      "ยังไม่แน่ใจคำถามค่ะ ลองระบุทำเล · งบ · หรือรายละเอียดที่ต้องการเพิ่ม\n" +
+      "หากต้องการให้ช่วยหาห้องอื่น พิมพ์「ช่วยหาห้อง」\n" +
+      "หรือพิมพ์「ขอคุยกับเจ้าหน้าที่」เมื่อต้องการให้ทีมช่วยโดยตรงค่ะ",
   };
 }
 

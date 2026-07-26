@@ -17,6 +17,7 @@ import 'in_app_notification_hub.dart';
 import '../utils/listing_ids.dart';
 import '../utils/localized_content.dart';
 import '../utils/reference_codes.dart';
+import '../utils/chat_ai_voice.dart';
 import '../data/demo_cast_simulation.dart';
 import '../data/demo_viewing_record_seed.dart';
 import 'auth_service.dart';
@@ -1677,14 +1678,51 @@ class ChatService extends ChangeNotifier {
     }
 
     if (room.isPropertyListing) {
+      // Trial/memory — ไม่มี chat-turn: ตอบเบื้องต้นเอง ไม่ซี้ซั้วส่งแอดมิน
+      if (isGreetingOnly(trimmed)) {
+        room.messages.add(ChatMessage(
+          id: '${userMsg.id}-greet',
+          role: ChatMessageRole.ai,
+          text: greetingReply,
+        ));
+        room.unclearStreak = 0;
+        room.updatedAt = DateTime.now();
+        notifyListeners();
+        return;
+      }
+      if (room.unclearStreak < 1) {
+        room.messages.add(ChatMessage(
+          id: '${userMsg.id}-soft',
+          role: ChatMessageRole.ai,
+          text:
+              'รับทราบค่ะ สอบถามรายละเอียดทรัพย์นี้ได้เลยนะคะ '
+              'เช่น ราคา ทำเล เงื่อนไข หรือนัดดูห้อง\n'
+              'ถ้าต้องการคุยกับเจ้าหน้าที่โดยตรง พิมพ์「ขอคุยกับเจ้าหน้าที่」ได้ค่ะ',
+        ));
+        room.unclearStreak++;
+        room.updatedAt = DateTime.now();
+        notifyListeners();
+        return;
+      }
+      if (!_isExplicitStaffRequest(trimmed) && room.unclearStreak < 2) {
+        room.messages.add(ChatMessage(
+          id: '${userMsg.id}-soft2',
+          role: ChatMessageRole.ai,
+          text:
+              'ยังไม่แน่ใจคำถามค่ะ ลองระบุรายละเอียดเพิ่ม หรือพิมพ์「ขอคุยกับเจ้าหน้าที่」นะคะ',
+        ));
+        room.unclearStreak++;
+        room.updatedAt = DateTime.now();
+        notifyListeners();
+        return;
+      }
       room.adminEscalated = true;
       room.status = 'waiting_admin';
       room.unclearStreak = 0;
       room.messages.add(ChatMessage(
         id: '${userMsg.id}-escalate',
         role: ChatMessageRole.system,
-        text:
-            'คำถามนี้ต้องให้เจ้าหน้าที่ตอบโดยตรง — เราแจ้งทีมแล้ว และจะติดต่อกลับในแชทนี้โดยเร็วที่สุด',
+        text: _copy.chatEscalateToStaff,
         requiresAdmin: true,
       ));
       room.updatedAt = DateTime.now();

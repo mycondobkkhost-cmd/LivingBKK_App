@@ -4,17 +4,16 @@ import 'package:go_router/go_router.dart';
 
 import '../../l10n/app_strings.dart';
 import '../../models/search_filters.dart';
+import '../../services/auth_service.dart';
 import '../../theme/app_palette.dart';
 import '../../state/locale_controller.dart';
 import '../../state/user_role_controller.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../notification_bell_button.dart';
-import '../proppiter_brand_hero.dart';
-import '../perspective_dropdown_chip.dart';
 import '../search_filter_chips.dart';
 import '../typewriter_hint_label.dart';
 
-/// หัวหน้าแรก — gradient ม่วงนุ่ม + toolbar + ค้นหา (sticky)
+/// หัวหน้าแรก — ยินดีต้อนรับ + โหมดรับโค + ค้นหา (sticky)
 class HomeStickySearchHeader extends StatelessWidget {
   const HomeStickySearchHeader({
     super.key,
@@ -39,21 +38,21 @@ class HomeStickySearchHeader extends StatelessWidget {
   final void Function(String projectName, {String? projectSlug})? onOpenProject;
   final VoidCallback? onOpenFilters;
 
-  static const double hPad = 16;
-  static const double topContentPad = 6;
-  /// โซนโลโก้ + สโลแกน + แถวปุ่มขวา (standard lockup ~40 + สโลแกน)
-  static const double toolbarHeight = 64;
-  static const double searchHeight = 48;
+  static const double hPad = 12;
+  static const double topContentPad = 4;
+  /// แถวยินดีต้อนรับ + ปุ่มขวา
+  static const double toolbarHeight = 48;
+  static const double searchHeight = 44;
   static const double zoneChipsHeight = 34;
   static const double zoneChipsGap = 6;
-  static const double blockGap = 10;
-  static const double bottomPad = 14;
+  static const double blockGap = 8;
+  static const double bottomPad = 12;
 
-  /// ลดช่องว่างม่วงด้านบนลง 30% (เทียบ safe area + padding เดิม)
+  /// ลดช่องว่างแดงด้านบนลง 30% (เทียบ safe area + padding เดิม)
   static const double headerGapReduction = 0.30;
 
   /// ดึงแถว toolbar ลงเพิ่มจากค่าที่ลดแล้ว
-  static const double headerTopRelax = 10;
+  static const double headerTopRelax = 8;
 
   static double topInset(BuildContext context) {
     final mq = MediaQuery.of(context);
@@ -177,77 +176,96 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
       value: SystemUiOverlayStyle.light,
       child: DecoratedBox(
         decoration: BoxDecoration(
-          gradient: LivingBkkBrand.homeHeaderBlockGradientOf(context),
-        ),
-        child: Column(
-          children: [
-            SizedBox(height: topSpacer),
-            SizedBox(
-              height: bodyH,
-              width: double.infinity,
-              child: Padding(
-                padding: EdgeInsets.fromLTRB(
-                  HomeStickySearchHeader.hPad,
-                  HomeStickySearchHeader.headerContentTopPad,
-                  HomeStickySearchHeader.hPad,
-                  HomeStickySearchHeader.bottomPad,
-                ),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    // ค้นหา (+ chips ทำเล) — ติดล่างเสมอ (sticky collapsed state)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          if (showZoneChips && zoneChipsCallback != null) ...[
-                            SizedBox(
-                              height: HomeStickySearchHeader.zoneChipsHeight,
-                              child: SearchFilterChips(
-                                filters: filters,
-                                onFiltersChanged: zoneChipsCallback,
-                              ),
-                            ),
-                            const SizedBox(height: HomeStickySearchHeader.zoneChipsGap),
-                          ],
-                          SizedBox(
-                            height: HomeStickySearchHeader.searchHeight,
-                            width: double.infinity,
-                            child: _SearchCapsule(
-                              filters: filters,
-                              onOpenSearch: onOpenSearch,
-                              onMapSearch: onMapSearch,
-                              onOpenFilters: onOpenFilters,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Toolbar — หายไปเมื่อ scroll ลง
-                    if (t > 0.02)
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: toolbarH,
-                        child: ClipRect(
-                          child: Opacity(
-                            opacity: t,
-                            child: _ToolbarRow(
-                              roleController: roleController,
-                              localeController: localeController,
-                              onOpenNotifications: onOpenNotifications,
-                              toolbarHeight: toolbarH,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(14),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: const BorderRadius.vertical(
+            bottom: Radius.circular(14),
+          ),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LivingBkkBrand.homeHeaderBlockGradientOf(context),
+            ),
+            child: Column(
+              children: [
+                SizedBox(height: topSpacer),
+                SizedBox(
+                  height: bodyH,
+                  width: double.infinity,
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      HomeStickySearchHeader.hPad,
+                      HomeStickySearchHeader.headerContentTopPad,
+                      HomeStickySearchHeader.hPad,
+                      HomeStickySearchHeader.bottomPad,
+                    ),
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (showZoneChips && zoneChipsCallback != null) ...[
+                                SizedBox(
+                                  height: HomeStickySearchHeader.zoneChipsHeight,
+                                  child: SearchFilterChips(
+                                    filters: filters,
+                                    onFiltersChanged: zoneChipsCallback,
+                                  ),
+                                ),
+                                const SizedBox(
+                                  height: HomeStickySearchHeader.zoneChipsGap,
+                                ),
+                              ],
+                              SizedBox(
+                                height: HomeStickySearchHeader.searchHeight,
+                                width: double.infinity,
+                                child: _SearchCapsule(
+                                  filters: filters,
+                                  onOpenSearch: onOpenSearch,
+                                  onMapSearch: onMapSearch,
+                                  onOpenFilters: onOpenFilters,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (t > 0.02)
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            height: toolbarH,
+                            child: ClipRect(
+                              child: Opacity(
+                                opacity: t,
+                                child: _ToolbarRow(
+                                  filters: filters,
+                                  onFiltersChanged: onFiltersChanged,
+                                  onOpenNotifications: onOpenNotifications,
+                                  toolbarHeight: toolbarH,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -263,33 +281,55 @@ class _HomeHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-/// Lockup P + RealXtate (PNG) บน + สโลแกนล่าง
-class _HomeHeaderBrandBlock extends StatelessWidget {
-  const _HomeHeaderBrandBlock({
-    required this.toolbarHeight,
+/// ยินดีต้อนรับ + ชื่อผู้ใช้
+class _WelcomeBlock extends StatelessWidget {
+  const _WelcomeBlock({
+    required this.greeting,
+    required this.name,
+    required this.height,
   });
 
-  final double toolbarHeight;
+  final String greeting;
+  final String name;
+  final double height;
 
   @override
   Widget build(BuildContext context) {
-    // สโลแกนต้องการ ~12pt ใต้ lockup — ซ่อนก่อนถ้า toolbar หดจนล้น
-    final showSlogan = toolbarHeight >= 52;
-    final size = toolbarHeight >= 58
-        ? ProppiterBrandHeroSize.standard
-        : ProppiterBrandHeroSize.compact;
-
-    return Padding(
-      padding: const EdgeInsets.only(left: 2),
-      child: SizedBox(
-        height: toolbarHeight,
+    return SizedBox(
+      height: height,
+      child: Align(
+        alignment: Alignment.centerLeft,
         child: FittedBox(
           fit: BoxFit.scaleDown,
           alignment: Alignment.centerLeft,
-          child: ProppiterBrandHero(
-            size: size,
-            showSlogan: showSlogan,
-            sloganLift: size == ProppiterBrandHeroSize.standard ? 4 : 2,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                greeting,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.88),
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  height: 1.1,
+                  letterSpacing: -0.1,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                  letterSpacing: -0.3,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -299,73 +339,157 @@ class _HomeHeaderBrandBlock extends StatelessWidget {
 
 class _ToolbarRow extends StatelessWidget {
   const _ToolbarRow({
-    required this.roleController,
-    required this.localeController,
+    required this.filters,
     required this.onOpenNotifications,
     required this.toolbarHeight,
+    this.onFiltersChanged,
   });
 
-  final UserRoleController roleController;
-  final LocaleController localeController;
+  final SearchFilters filters;
+  final ValueChanged<SearchFilters>? onFiltersChanged;
   final VoidCallback onOpenNotifications;
   final double toolbarHeight;
 
-  static const double _actionSize = 36;
+  static const double _actionSize = 34;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: _HomeHeaderBrandBlock(toolbarHeight: toolbarHeight),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: PerspectiveDropdownChip(
-          controller: roleController,
-          localeController: localeController,
-          onPurpleHeader: true,
-          compact: true,
-          mini: true,
-          ),
-        ),
-        const SizedBox(width: 6),
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: _actionIcon(
-          icon: Icons.favorite_border_rounded,
-          onTap: () => context.push('/saved-listings'),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: SizedBox(
-            width: _actionSize,
-            height: _actionSize,
-            child: NotificationBellButton(
-              compact: true,
-              onPressed: onOpenNotifications,
-              onPurple: true,
+    final s = AppStrings.of(context);
+    final coOn = filters.coAgentEligibleOnly == true;
+
+    return ListenableBuilder(
+      listenable: AuthService.instance,
+      builder: (context, _) {
+        final name = AuthService.instance.displayName;
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: _WelcomeBlock(
+                greeting: s.homeHeaderGreeting,
+                name: name,
+                height: toolbarHeight,
+              ),
+            ),
+            _CoAgentIdeasChip(
+              active: coOn,
+              label:
+                  coOn ? s.homeCoAgentIdeasChipActive : s.homeCoAgentIdeasChip,
+              tooltip: s.homeCoAgentIdeasHint,
+              onTap: onFiltersChanged == null
+                  ? null
+                  : () {
+                      onFiltersChanged!(
+                        coOn
+                            ? filters.copyWith(clearCoAgent: true)
+                            : filters.copyWith(coAgentEligibleOnly: true),
+                      );
+                    },
+            ),
+            const SizedBox(width: 6),
+            _HeaderIconButton(
+              size: _actionSize,
+              icon: Icons.favorite_border_rounded,
+              onTap: () => context.push('/saved-listings'),
+            ),
+            const SizedBox(width: 4),
+            SizedBox(
+              width: _actionSize,
+              height: _actionSize,
+              child: NotificationBellButton(
+                compact: true,
+                onPressed: onOpenNotifications,
+                onPurple: true,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _CoAgentIdeasChip extends StatelessWidget {
+  const _CoAgentIdeasChip({
+    required this.active,
+    required this.label,
+    required this.tooltip,
+    this.onTap,
+  });
+
+  final bool active;
+  final String label;
+  final String tooltip;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final bg = active ? Colors.white : Colors.white.withOpacity(0.16);
+    final fg = active ? LivingBkkBrand.brandRed : Colors.white;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: bg,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  active
+                      ? Icons.visibility_rounded
+                      : Icons.visibility_outlined,
+                  size: 15,
+                  color: fg,
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: fg,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                    height: 1,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-      ],
+      ),
     );
   }
+}
 
-  Widget _actionIcon({required IconData icon, required VoidCallback onTap}) {
+class _HeaderIconButton extends StatelessWidget {
+  const _HeaderIconButton({
+    required this.size,
+    required this.icon,
+    required this.onTap,
+  });
+
+  final double size;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withOpacity(0.16),
+      color: Colors.white.withOpacity(0.14),
       shape: const CircleBorder(),
       child: InkWell(
         customBorder: const CircleBorder(),
         onTap: onTap,
         child: SizedBox(
-          width: _actionSize,
-          height: _actionSize,
-          child: Icon(icon, size: 20, color: Colors.white),
+          width: size,
+          height: size,
+          child: Icon(icon, size: 19, color: Colors.white),
         ),
       ),
     );
@@ -398,81 +522,96 @@ class _SearchCapsule extends StatelessWidget {
     final radius = BorderRadius.circular(HomeStickySearchHeader.searchHeight / 2);
     final hasActions = onMapSearch != null || onOpenFilters != null;
 
-    return Material(
-      color: p.surface,
-      elevation: 0,
-      borderRadius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: InkWell(
-              onTap: onOpenSearch,
-              child: Padding(
-                padding: const EdgeInsets.only(left: _leftPad, right: 4),
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.search_rounded,
-                      size: 22,
-                      color: p.primary,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: hasQuery
-                          ? Text(
-                              query!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 14,
-                                height: 1.2,
-                                fontWeight: FontWeight.w600,
-                                color: p.textPrimary,
-                              ),
-                            )
-                          : TypewriterHintLabel(
-                              fullText: s.searchDiscoveryTypewriterHint,
-                              cacheKey: 'home_search_capsule',
-                              style: TextStyle(
-                                fontSize: 14,
-                                height: 1.2,
-                                fontWeight: FontWeight.w400,
-                                color: p.textSecondary,
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
-              ),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: radius,
+        boxShadow: LivingBkkBrand.warmCardShadow(opacity: 0.12),
+      ),
+      child: Material(
+        color: p.surface,
+        elevation: 0,
+        borderRadius: radius,
+        clipBehavior: Clip.antiAlias,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: radius,
+            border: Border.all(
+              color: LivingBkkBrand.brandRed.withOpacity(0.08),
+              width: 1,
             ),
           ),
-          if (hasActions) ...[
-            _CapsuleDivider(),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (onMapSearch != null)
-                  _CapsuleAction(
-                    icon: Icons.map_outlined,
-                    tooltip: s.mapSearchShort,
-                    onTap: onMapSearch!,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: onOpenSearch,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: _leftPad, right: 4),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.search_rounded,
+                          size: 22,
+                          color: p.primary,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: hasQuery
+                              ? Text(
+                                  query,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w600,
+                                    color: p.textPrimary,
+                                  ),
+                                )
+                              : TypewriterHintLabel(
+                                  fullText: s.searchDiscoveryTypewriterHint,
+                                  cacheKey: 'home_search_capsule',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w400,
+                                    color: p.textSecondary,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
                   ),
-                if (onMapSearch != null && onOpenFilters != null)
-                  _CapsuleDivider(),
-                if (onOpenFilters != null)
-                  _CapsuleAction(
-                    icon: Icons.tune_rounded,
-                    tooltip: s.advancedFilters,
-                    onTap: onOpenFilters!,
-                    showBadge: hasActive,
-                  ),
+                ),
+              ),
+              if (hasActions) ...[
+                _CapsuleDivider(),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (onMapSearch != null)
+                      _CapsuleAction(
+                        icon: Icons.map_outlined,
+                        tooltip: s.mapSearchShort,
+                        onTap: onMapSearch!,
+                      ),
+                    if (onMapSearch != null && onOpenFilters != null)
+                      _CapsuleDivider(),
+                    if (onOpenFilters != null)
+                      _CapsuleAction(
+                        icon: Icons.tune_rounded,
+                        tooltip: s.advancedFilters,
+                        onTap: onOpenFilters!,
+                        showBadge: hasActive,
+                      ),
+                  ],
+                ),
+                const SizedBox(width: _rightPad),
               ],
-            ),
-            const SizedBox(width: _rightPad),
-          ],
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

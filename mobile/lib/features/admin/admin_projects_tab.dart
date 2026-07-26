@@ -516,7 +516,9 @@ class _ProjectEditorSheetState extends State<_ProjectEditorSheet> {
   late String _propertyType;
   bool _slugTouched = false;
   bool _prefilling = false;
+  bool _geocoding = false;
   String? _prefilledId;
+  String? _geocodeHint;
   List<String> _selectedTags = [];
   List<ProjectTag> _suggestedTags = [];
 
@@ -530,8 +532,16 @@ class _ProjectEditorSheetState extends State<_ProjectEditorSheet> {
     _district = TextEditingController(text: e?.district ?? '');
     _selectedTags = List<String>.from(e?.nearbyTransit ?? const []);
     _bts = TextEditingController(text: e?.btsStation ?? '');
-    _lat = TextEditingController(text: e?.lat.toStringAsFixed(6) ?? '13.736700');
-    _lng = TextEditingController(text: e?.lng.toStringAsFixed(6) ?? '100.560800');
+    _lat = TextEditingController(
+      text: e == null || (e.lat == 0 && e.lng == 0)
+          ? ''
+          : e.lat.toStringAsFixed(6),
+    );
+    _lng = TextEditingController(
+      text: e == null || (e.lat == 0 && e.lng == 0)
+          ? ''
+          : e.lng.toStringAsFixed(6),
+    );
     _aliases = TextEditingController(text: e?.aliases.join(', ') ?? '');
     _year = TextEditingController(text: e?.yearBuilt?.toString() ?? '');
     _facilities = TextEditingController(
@@ -674,6 +684,52 @@ class _ProjectEditorSheetState extends State<_ProjectEditorSheet> {
       );
     } finally {
       if (mounted) setState(() => _prefilling = false);
+    }
+  }
+
+  Future<void> _lookupOnGoogleMaps() async {
+    final s = context.s;
+    final name = _nameEn.text.trim().isNotEmpty
+        ? _nameEn.text.trim()
+        : _nameTh.text.trim();
+    if (name.length < 2) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminProjectsGeocodeNeedName)),
+      );
+      return;
+    }
+    setState(() {
+      _geocoding = true;
+      _geocodeHint = null;
+    });
+    try {
+      final hit = await _repo.geocodeByName(
+        projectName: name,
+        hintDistrict: _district.text.trim().isEmpty ? null : _district.text.trim(),
+      );
+      if (!mounted) return;
+      setState(() {
+        _lat.text = hit.lat.toStringAsFixed(6);
+        _lng.text = hit.lng.toStringAsFixed(6);
+        if ((_district.text.trim().isEmpty || _district.text.trim() == 'กรุงเทพฯ') &&
+            hit.district != null &&
+            hit.district!.trim().isNotEmpty) {
+          _district.text = hit.district!.trim();
+        }
+        _geocodeHint = hit.formattedAddress ??
+            '${hit.lat.toStringAsFixed(5)}, ${hit.lng.toStringAsFixed(5)}';
+      });
+      _recomputeTagSuggestions(applyAuto: _selectedTags.isEmpty);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(s.adminProjectsGeocodeDone)),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(ProjectRepository.friendlyImportError(e))),
+      );
+    } finally {
+      if (mounted) setState(() => _geocoding = false);
     }
   }
 
@@ -976,12 +1032,35 @@ class _ProjectEditorSheetState extends State<_ProjectEditorSheet> {
                     ),
                   ],
                 ),
+                if (_geocodeHint != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    _geocodeHint!,
+                    style: AdminTheme.caption,
+                  ),
+                ],
                 Align(
                   alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: _refreshNearbyTransit,
-                    icon: const Icon(Icons.directions_transit_outlined, size: 18),
-                    label: Text(s.adminProjectsRefreshTransit),
+                  child: Wrap(
+                    spacing: 4,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _geocoding ? null : _lookupOnGoogleMaps,
+                        icon: _geocoding
+                            ? const SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : const Icon(Icons.travel_explore, size: 18),
+                        label: Text(s.adminProjectsGeocodeBtn),
+                      ),
+                      TextButton.icon(
+                        onPressed: _refreshNearbyTransit,
+                        icon: const Icon(Icons.directions_transit_outlined, size: 18),
+                        label: Text(s.adminProjectsRefreshTransit),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 14),

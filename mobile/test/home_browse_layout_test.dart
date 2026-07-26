@@ -21,6 +21,9 @@ void main() {
     final roleController = UserRoleController();
     final searchSession = SearchSessionController();
     final localeController = LocaleController();
+    addTearDown(roleController.dispose);
+    addTearDown(searchSession.dispose);
+    addTearDown(localeController.dispose);
 
     await tester.pumpWidget(
       MaterialApp(
@@ -33,13 +36,12 @@ void main() {
             filters: const SearchFilters(),
             listings: const [],
             sections: const [],
-            isAgentPerspective: false,
           ),
         ),
       ),
     );
 
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(find.byType(HomeBrowseLayout), findsOneWidget);
   });
 }

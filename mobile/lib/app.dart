@@ -198,7 +198,7 @@ class _LivingBkkAppState extends State<LivingBkkApp> with WidgetsBindingObserver
                     AppSplashOverlay(
                       child: MobileViewportShell(
                         key: ValueKey(
-                          'viewport-$shellPath-${widget.adminViewportController.mode.name}-$fullWidth',
+                          'viewport-$shellPath-${widget.adminViewportController.phoneFramePreview}-$fullWidth',
                         ),
                         path: shellPath,
                         fullWidth: fullWidth,

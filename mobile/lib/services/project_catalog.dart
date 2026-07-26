@@ -16,7 +16,7 @@ class ProjectCatalog extends ChangeNotifier {
   static final ProjectCatalog instance = ProjectCatalog._();
 
   static const _selectCols =
-      'id,slug,name_th,name_en,district,bts_station,property_type,'
+      'id,slug,name_th,name_en,district,bts_station,nearby_transit,property_type,'
       'lat,lng,aliases,year_built,facilities,geo_zone_id';
 
   List<BangkokProject> _projects = BangkokProjects.bootstrap;
@@ -143,6 +143,9 @@ class ProjectCatalog extends ChangeNotifier {
         .toList();
     final needle = tokens.isNotEmpty ? tokens.first : q;
     final safe = Uri.encodeComponent('%$needle%');
+    // aliases.cs uses contains; ilike on names + slug covers typed queries.
+    // PostgREST cannot ilike array elements directly — fetch by name/slug then
+    // filter aliases locally in [_filter].
     final uri = Uri.parse(
       '${Env.supabaseUrl}/rest/v1/property_projects'
       '?select=$_selectCols'
@@ -169,20 +172,30 @@ class ProjectCatalog extends ChangeNotifier {
     final q = query.trim().toLowerCase();
     if (q.length < 2) return [];
 
+    bool isTransitLikeAlias(String a) {
+      final s = a.toLowerCase().trim();
+      return s.startsWith('bts ') ||
+          s.startsWith('mrt ') ||
+          s.startsWith('arl ') ||
+          s.startsWith('gold ');
+    }
+
     bool matches(BangkokProject p) {
-      final fields = [
+      // ชื่อ / slug + aliases ที่เป็นชื่อโครงการ (ตัด alias แบบสถานี)
+      final nameHay = [
         p.nameTh.toLowerCase(),
         p.nameEn.toLowerCase(),
         p.slug.toLowerCase().replaceAll('-', ' '),
-        p.district.toLowerCase(),
-        p.bts?.toLowerCase(),
-        ...p.aliases.map((a) => a.toLowerCase()),
-      ].whereType<String>();
-
-      final hay = fields.join(' ');
-      final tokens = q.split(RegExp(r'\s+')).where((t) => t.length >= 2).toList();
-      if (tokens.isEmpty) return hay.contains(q);
-      return tokens.every(hay.contains);
+        ...p.aliases
+            .where((a) => !isTransitLikeAlias(a))
+            .map((a) => a.toLowerCase()),
+      ];
+      final tokens =
+          q.split(RegExp(r'\s+')).where((t) => t.length >= 2).toList();
+      if (tokens.isEmpty) {
+        return nameHay.any((h) => h.contains(q));
+      }
+      return tokens.every((t) => nameHay.any((h) => h.contains(t)));
     }
 
     return source.where(matches).toList();
@@ -205,7 +218,7 @@ class ProjectCatalog extends ChangeNotifier {
     final aliases = aliasesRaw is List
         ? aliasesRaw.map((e) => e.toString()).toList()
         : <String>[];
-    final mergedAliases = <String>{...aliases, ...nearby}.toList();
+    // ไม่ merge nearby_transit เข้า aliases — สถานีคนละฟิลด์
     final bts = row['bts_station']?.toString() ??
         (nearby.isEmpty ? null : nearby.join(' · '));
     return BangkokProject(
@@ -219,7 +232,7 @@ class ProjectCatalog extends ChangeNotifier {
       lng: (row['lng'] as num?)?.toDouble() ?? 100.5018,
       bts: bts,
       propertyType: row['property_type']?.toString() ?? 'condo',
-      aliases: mergedAliases,
+      aliases: aliases,
       yearBuilt: (row['year_built'] as num?)?.toInt(),
       facilities: facilitiesRaw is List
           ? facilitiesRaw.map((e) => e.toString()).toList()

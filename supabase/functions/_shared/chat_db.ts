@@ -24,7 +24,8 @@ export async function ensureChatThread(
     }
   }
   const threadId = body.thread_id as string | undefined;
-  const isDiscovery = roomKind === "property" && !listingId;
+  const isDiscovery =
+    roomKind === "property" && !listingId && !listingCode;
 
   if (threadId) {
     const { data, error } = await db

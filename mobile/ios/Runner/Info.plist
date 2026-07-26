@@ -51,6 +51,11 @@
 	<string>RealXtate ใช้รูปภาพจากคลังเพื่ออัปโหลดรูปโปรไฟล์และรูปประกาศทรัพย์</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>

@@ -1,4 +1,5 @@
 import '../models/listing_occupancy.dart';
+import '../data/demo_media.dart';
 import 'listing_create_repository.dart';
 
 /// สถานะประกาศในหน่วยความจำ — โหมดทดลอง (อนุมัติ/ปฏิเสธ/ส่งตรวจ)
@@ -32,7 +33,7 @@ class TrialListingStore {
         'price_net': 35000,
         'district': 'คลองเตย',
         'project_name': null,
-        'cover_image_url': 'https://picsum.photos/seed/lb-nana-rent/240/180',
+        'cover_image_url': DemoMedia.photo('lb-nana-rent', width: 240, height: 180),
         'updated_at': now,
       },
       {
@@ -45,7 +46,7 @@ class TrialListingStore {
         'price_net': 42000,
         'district': 'วัฒนา',
         'project_name': 'The Lofts Ekkamai',
-        'cover_image_url': 'https://picsum.photos/seed/lb-ekkamai-rent/240/180',
+        'cover_image_url': DemoMedia.photo('lb-ekkamai-rent', width: 240, height: 180),
         'updated_at': now,
       },
       {
@@ -73,7 +74,7 @@ class TrialListingStore {
         'published_at': now,
         'expires_at':
             DateTime.now().add(const Duration(days: 22)).toUtc().toIso8601String(),
-        'cover_image_url': 'https://picsum.photos/seed/lb-asoke-condo/240/180',
+        'cover_image_url': DemoMedia.photo('lb-asoke-condo', width: 240, height: 180),
         'owner_data_status': 'pending',
         'updated_at': now,
       },
@@ -87,7 +88,7 @@ class TrialListingStore {
         'price_net': 4200000,
         'district': 'บางเขน',
         'project_name': null,
-        'cover_image_url': 'https://picsum.photos/seed/lb-ramintra-sale/240/180',
+        'cover_image_url': DemoMedia.photo('lb-ramintra-sale', width: 240, height: 180),
         'updated_at': now,
       },
     ]);

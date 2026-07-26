@@ -10,7 +10,6 @@ import '../../theme/app_theme.dart';
 import '../../theme/living_bkk_brand.dart';
 import '../../widgets/demand_inquiry_card.dart';
 import '../../utils/page_safe_insets.dart';
-import '../../theme/li_layout.dart';
 import '../../widgets/consumer/consumer_page_shell.dart';
 
 class SavedDemandBoardPage extends StatefulWidget {
@@ -215,14 +214,14 @@ class _SavedDemandBoardPageState extends State<SavedDemandBoardPage> {
                         physics: const AlwaysScrollableScrollPhysics(),
                         padding: PageSafeInsets.padLTRB(
                           context,
-                          left: LiLayout.pagePadding,
-                          top: LiLayout.pagePadding,
-                          right: LiLayout.pagePadding,
+                          left: 0,
+                          top: 0,
+                          right: 0,
                           bottom: _manageMode && _selected.isNotEmpty ? 88 : 16,
                           addHomeIndicator: false,
                         ),
                         itemCount: saved.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        separatorBuilder: (_, __) => const SizedBox.shrink(),
                         itemBuilder: (context, i) {
                           final p = saved[i];
                           final checked = _selected.contains(p.id);

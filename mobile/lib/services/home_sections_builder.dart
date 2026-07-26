@@ -45,7 +45,7 @@ class HomeSectionsBuilder {
     final sections = <HomeFeedSection>[];
     var accent = 0;
 
-    final recommended = _ranked(pool, zones).take(12).toList();
+    final recommended = _ranked(pool, zones).take(40).toList();
     if (recommended.isNotEmpty) {
       sections.add(
         HomeFeedSection(
@@ -58,13 +58,31 @@ class HomeSectionsBuilder {
       );
     }
 
+    final now = DateTime.now();
+    final updatedToday = pool.where((l) {
+      final d = l.effectiveUpdatedAt;
+      return d.year == now.year && d.month == now.month && d.day == now.day;
+    }).toList()
+      ..sort((a, b) => b.effectiveUpdatedAt.compareTo(a.effectiveUpdatedAt));
+    if (updatedToday.isNotEmpty) {
+      sections.add(
+        HomeFeedSection(
+          id: 'updated_today',
+          titleTh: 'อัปเดตวันนี้',
+          titleEn: 'Updated today',
+          items: updatedToday.take(32).toList(),
+          accentIndex: accent++,
+        ),
+      );
+    }
+
     if (recentlyViewed != null && recentlyViewed.isNotEmpty) {
       sections.add(
         HomeFeedSection(
           id: 'recently_viewed',
           titleTh: 'ดูล่าสุด',
           titleEn: 'Recently viewed',
-          items: recentlyViewed.take(12).toList(),
+          items: recentlyViewed.take(40).toList(),
           accentIndex: accent++,
         ),
       );
@@ -76,7 +94,7 @@ class HomeSectionsBuilder {
           id: 'near_me',
           titleTh: 'ใกล้ฉัน',
           titleEn: 'Near you',
-          items: nearMe.take(12).toList(),
+          items: nearMe.take(40).toList(),
           accentIndex: accent++,
         ),
       );
@@ -88,20 +106,20 @@ class HomeSectionsBuilder {
           id: 'preferred_stock',
           titleTh: 'สต็อกที่เก็บไว้',
           titleEn: 'Preferred stock',
-          items: preferredStock.take(12).toList(),
+          items: preferredStock.take(40).toList(),
           accentIndex: accent++,
         ),
       );
     }
 
     final latest = List<ListingPublic>.from(pool)
-      ..sort((a, b) => b.listingCode.compareTo(a.listingCode));
+      ..sort((a, b) => b.effectiveUpdatedAt.compareTo(a.effectiveUpdatedAt));
     sections.add(
       HomeFeedSection(
         id: 'latest',
         titleTh: 'ประกาศอัปเดทล่าสุด',
         titleEn: 'Latest listings',
-        items: latest.take(12).toList(),
+        items: latest.take(40).toList(),
         accentIndex: accent++,
       ),
     );
@@ -117,7 +135,7 @@ class HomeSectionsBuilder {
             id: 'popular_area',
             titleTh: 'ยอดนิยมในพื้นที่คุณ',
             titleEn: 'Popular in your areas',
-            items: popular.take(12).toList(),
+            items: popular.take(40).toList(),
             accentIndex: accent++,
           ),
         );
@@ -125,7 +143,7 @@ class HomeSectionsBuilder {
     }
 
     if (isAgent) {
-      final co = pool.where((l) => l.coAgentEligible).take(10).toList();
+      final co = pool.where((l) => l.coAgentEligible).take(36).toList();
       if (co.isNotEmpty) {
         sections.add(
           HomeFeedSection(
@@ -147,7 +165,7 @@ class HomeSectionsBuilder {
             id: 'owner_stock_new',
             titleTh: 'สต็อก Owner ใหม่',
             titleEn: 'New owner stock',
-            items: ownerNew.take(10).toList(),
+            items: ownerNew.take(24).toList(),
             accentIndex: accent++,
           ),
         );
@@ -157,7 +175,8 @@ class HomeSectionsBuilder {
     final prices = pool.map((e) => e.priceNet).toList()..sort();
     if (prices.length >= 4) {
       final median = prices[prices.length ~/ 2];
-      final affordable = pool.where((l) => l.priceNet <= median * 1.05).take(10).toList();
+      final affordable =
+          pool.where((l) => l.priceNet <= median * 1.05).take(24).toList();
       if (affordable.isNotEmpty) {
         sections.add(
           HomeFeedSection(

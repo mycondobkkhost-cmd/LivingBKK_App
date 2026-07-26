@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../data/bangkok_project_meta.dart';
 import '../../data/bangkok_projects.dart';
 import '../../data/demo_listings_factory.dart';
+import '../../data/demo_media.dart';
 import '../../l10n/app_strings.dart';
 import '../../models/listing_public.dart';
 import '../../models/listing_transaction_types.dart';
@@ -333,7 +334,7 @@ class _ProjectHeroHeader extends StatelessWidget {
     final minSale =
         salePrices.isEmpty ? null : salePrices.reduce((a, b) => a < b ? a : b);
     final year = meta.yearBuilt + (isEnglish ? 0 : 543);
-    final imageUrl = 'https://picsum.photos/seed/${project.slug}/800/400';
+    final imageUrl = DemoMedia.photo(project.slug, width: 800, height: 400);
 
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
@@ -512,7 +513,7 @@ class _NearbyProjectRow extends StatelessWidget {
     final project = hit.project;
     final title = isEnglish ? project.nameEn : project.nameTh;
     final subtitle = project.bts ?? project.district;
-    final imageUrl = 'https://picsum.photos/seed/${project.slug}/120/120';
+    final imageUrl = DemoMedia.photo(project.slug, width: 120, height: 120);
 
     return InkWell(
       onTap: onTap,

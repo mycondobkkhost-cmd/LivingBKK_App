@@ -1,7 +1,7 @@
 # Phase 27: บริหารจัดการทรัพย์ให้เช่า + แชทกลุ่ม
 
-**Status:** Scaffold (Flutter demo + spec; DB ยังไม่ migrate)  
-**Brand:** PROPPITER
+**Status:** Phase 27b–27e (Flutter + migration; cron/push production ถัดไป)  
+**Brand:** RealXtate
 
 ---
 
@@ -114,9 +114,9 @@ rental_maintenance_tickets (
 | Step | รายการ |
 |------|--------|
 | **27a** ✅ | Spec + scaffold UI + demo lease + เมนูหลัก |
-| **27b** | DB migration + Storage bucket `rental-docs` |
-| **27c** | Payment policy UI + reminders + slips + แอดมินยืนยันรับเงิน ✅ · push demo (Web Notifications + FCM Edge `notify-rental-payment`) · cron ถัดไป |
-| **27d** | Maintenance workflow + admin SLA |
-| **27e** | สแกน PII ในกลุ่ม + audit |
+| **27b** | DB migration + Storage bucket `rental-docs` ✅ (maintenance table + bucket) |
+| **27c** | Payment policy UI + reminders + slips + แอดมินยืนยันรับเงิน ✅ · push (Web + FCM Edge) · cron → Phase 28 |
+| **27d** | Maintenance workflow + admin SLA ✅ |
+| **27e** | สแกน PII ในกลุ่ม + audit ✅ |
 
 ดูเพิ่ม: [phase-24-26-chat-hub-tags.md](phase-24-26-chat-hub-tags.md), [phase-23-admin-vault.md](phase-23-admin-vault.md)

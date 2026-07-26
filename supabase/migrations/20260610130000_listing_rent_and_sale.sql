@@ -84,7 +84,9 @@ SELECT
     (
       SELECT json_agg(li.public_url ORDER BY li.sort_order)
       FROM public.listing_images li
-      WHERE li.listing_id = l.id AND li.is_public = true
+      WHERE li.listing_id = l.id
+        AND li.public_url IS NOT NULL
+        AND li.moderation_status IN ('approved', 'pending')
     ),
     '[]'::json
   ) AS image_urls

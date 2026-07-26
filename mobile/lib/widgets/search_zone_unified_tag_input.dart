@@ -111,7 +111,7 @@ class _SearchZoneUnifiedTagInputState extends State<SearchZoneUnifiedTagInput> {
     final local = SearchZoneCatalog.instance.search(
       q,
       excludeIds: _tagExcludeIds,
-      limit: 15,
+      limit: 24,
     );
     setState(() {
       _suggestions = local;
@@ -122,7 +122,7 @@ class _SearchZoneUnifiedTagInputState extends State<SearchZoneUnifiedTagInput> {
       final merged = await SearchZoneCatalog.instance.searchWithProjects(
         q,
         excludeIds: _tagExcludeIds,
-        limit: 15,
+        limit: 24,
       );
       if (!mounted || gen != _searchGen) return;
       setState(() {
