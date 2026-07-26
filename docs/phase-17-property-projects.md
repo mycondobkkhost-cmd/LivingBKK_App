@@ -43,14 +43,15 @@ cd mobile && dart run tool/export_projects_sql.dart
 
 ---
 
-## Pantip catalog (2026-07)
+## สมุดโครงการมาสเตอร์ (2026-07)
 
-ขยายสมุดโครงการจาก Pantip hub (~2k) — ดู `docs/PANTIP-PROJECT-CATALOG.md`  
-ETL: `scripts/import-pantip-projects.py` → `data/pantip_import/` + migrations `20260726170*`
+**ชื่อยึด Property Hub · ทำเล/BTS จาก PH + LivingInsider**  
+ดู `docs/PROJECT-MASTER.md` และ `./scripts/build-project-master.sh`
+
+Pantip ไม่ใช่สมุดชื่อหลัก — ดู `docs/PANTIP-PROJECT-CATALOG.md`
 
 ## อนาคต
 
 - Admin CRUD โครงการในแอป
-- Geocode โครงการที่ `coords_source=transit_approx` / null
-- Import CSV / LI scrape pipeline (คนละ pipeline กับ Pantip catalog)
+- Geocode / เติมพิกัดจาก LivingInsider เมื่อ PH ว่าง
 - หน้า Project Hub แยก (ไม่ใช่แค่ list ห้องในโครงเดียวกัน)

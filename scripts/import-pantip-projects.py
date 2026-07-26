@@ -780,25 +780,46 @@ def write_sql(rows: list[dict[str, Any]], path: Path) -> None:
         "-- Does not redistribute LivingInsider HTML/cache.",
         "",
     ]
+    # Property Hub remains name master. Pantip may only add aliases / fill empty
+    # transit labels — never overwrite propertyhub names or building pins.
     conflict = """ON CONFLICT (slug) DO UPDATE SET
-  name_th = EXCLUDED.name_th,
-  name_en = EXCLUDED.name_en,
-  district = COALESCE(NULLIF(EXCLUDED.district, ''), public.property_projects.district),
-  bts_station = COALESCE(EXCLUDED.bts_station, public.property_projects.bts_station),
+  name_th = CASE
+    WHEN public.property_projects.source_platform = 'propertyhub'
+      THEN public.property_projects.name_th
+    ELSE COALESCE(public.property_projects.name_th, EXCLUDED.name_th)
+  END,
+  name_en = CASE
+    WHEN public.property_projects.source_platform = 'propertyhub'
+      THEN public.property_projects.name_en
+    ELSE COALESCE(public.property_projects.name_en, EXCLUDED.name_en)
+  END,
+  district = CASE
+    WHEN public.property_projects.source_platform = 'propertyhub'
+      THEN public.property_projects.district
+    ELSE COALESCE(NULLIF(public.property_projects.district, ''), EXCLUDED.district)
+  END,
+  bts_station = COALESCE(public.property_projects.bts_station, EXCLUDED.bts_station),
   nearby_transit = CASE
-    WHEN cardinality(EXCLUDED.nearby_transit) > 0 THEN EXCLUDED.nearby_transit
-    ELSE public.property_projects.nearby_transit
+    WHEN cardinality(public.property_projects.nearby_transit) > 0
+      THEN public.property_projects.nearby_transit
+    ELSE EXCLUDED.nearby_transit
   END,
-  aliases = CASE
-    WHEN cardinality(EXCLUDED.aliases) >= cardinality(public.property_projects.aliases)
-      THEN EXCLUDED.aliases
-    ELSE public.property_projects.aliases
-  END,
-  lat = COALESCE(public.property_projects.lat, EXCLUDED.lat),
-  lng = COALESCE(public.property_projects.lng, EXCLUDED.lng),
-  location = COALESCE(public.property_projects.location, EXCLUDED.location),
+  aliases = (
+    SELECT ARRAY(
+      SELECT DISTINCT trim(both FROM x)
+      FROM unnest(
+        COALESCE(public.property_projects.aliases, ARRAY[]::text[])
+        || COALESCE(EXCLUDED.aliases, ARRAY[]::text[])
+      ) AS x
+      WHERE length(trim(both FROM x)) > 0
+    )
+  ),
+  lat = public.property_projects.lat,
+  lng = public.property_projects.lng,
+  location = public.property_projects.location,
   geo_zone_id = COALESCE(public.property_projects.geo_zone_id, EXCLUDED.geo_zone_id),
   source_platform = CASE
+    WHEN public.property_projects.source_platform = 'propertyhub' THEN 'propertyhub'
     WHEN public.property_projects.source_platform IN ('manual', 'pantip_curated', '')
       THEN 'pantip_curated'
     ELSE public.property_projects.source_platform
@@ -849,7 +870,7 @@ INSERT INTO public.property_projects (
   '{sql_escape(str(r['source_external_id']))}',
   '{notes}',
   {gz_sql},
-  true
+  false
 )
 {conflict}
 """.strip()
