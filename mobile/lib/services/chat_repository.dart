@@ -993,7 +993,14 @@ class ChatRepository {
 
     var backendListingId = listingIdForBackend(listingId);
     backendListingId ??= await _resolveListingUuid(listingCode);
-    final isDiscovery = roomKind == 'property' && backendListingId == null;
+    final listingCodeNorm = listingCode?.trim().toUpperCase();
+    // DISCOVERY (or no code) is the general search room; unresolved listing
+    // codes must stay property_faq so they do not collide with discovery.
+    final isDiscovery = roomKind == 'property' &&
+        backendListingId == null &&
+        (listingCodeNorm == null ||
+            listingCodeNorm.isEmpty ||
+            listingCodeNorm == 'DISCOVERY');
 
     var query = client.from('chat_threads').select('*').eq('user_id', uid);
     if (roomKind == 'property' && backendListingId != null) {
@@ -1002,6 +1009,16 @@ class ChatRepository {
           .eq('room_kind', 'property');
     } else if (roomKind == 'property' && listingCode != null) {
       query = query.eq('listing_code', listingCode).eq('room_kind', 'property');
+    } else if (roomKind == 'property') {
+      query = query
+          .eq('room_kind', 'property')
+          .eq('category', 'discovery')
+          .isFilter('listing_id', null);
+    } else if (roomKind == 'staff_support') {
+      // demand_offer / customer_requirement also use room_kind staff_support
+      query = query
+          .eq('room_kind', 'staff_support')
+          .eq('category', 'staff_support');
     } else {
       query = query.eq('room_kind', roomKind);
     }
