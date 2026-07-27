@@ -24,7 +24,13 @@ export async function ensureChatThread(
     }
   }
   const threadId = body.thread_id as string | undefined;
-  const isDiscovery = roomKind === "property" && !listingId;
+  const listingCodeNorm = listingCode?.trim().toUpperCase() || undefined;
+  // DISCOVERY (or no code) is the general search room; unresolved listing
+  // codes must stay property_faq so they do not collide with discovery.
+  const isDiscovery =
+    roomKind === "property" &&
+    !listingId &&
+    (!listingCodeNorm || listingCodeNorm === "DISCOVERY");
 
   if (threadId) {
     const { data, error } = await db
@@ -51,8 +57,14 @@ export async function ensureChatThread(
     } else {
       existingQuery = existingQuery
         .is("listing_id", null)
-        .eq("room_kind", "property");
+        .eq("room_kind", "property")
+        .eq("category", "discovery");
     }
+  } else if (roomKind === "staff_support") {
+    // demand_offer / customer_requirement also use room_kind staff_support
+    existingQuery = existingQuery
+      .eq("room_kind", "staff_support")
+      .eq("category", "staff_support");
   } else {
     existingQuery = existingQuery.eq("room_kind", roomKind);
   }
