@@ -6,6 +6,7 @@ import '../models/listing_occupancy.dart';
 import '../models/listing_pet_policy.dart';
 import '../models/listing_viewing_access.dart';
 import '../models/offer_commission_scheme.dart';
+import '../utils/google_maps_share_url.dart';
 import 'auth_service.dart';
 import 'trial_listing_store.dart';
 import 'supabase_service.dart';
@@ -138,6 +139,17 @@ class ListingCreateRepository {
     if (input.lat != null && input.lng != null) {
       lat = input.lat!;
       lng = input.lng!;
+    } else if (input.locationLink != null &&
+        input.locationLink!.trim().isNotEmpty) {
+      // บ้าน/ที่ดินบังคับลิงก์ Maps — ต้องใช้พิกัดจากลิงก์ ไม่ใช่ GPS/Asoke
+      final hit = await GoogleMapsShareUrl.resolveAndParseCoords(
+        input.locationLink!,
+      );
+      if (hit == null) {
+        throw Exception('ไม่สามารถอ่านพิกัดจากลิงก์แผนที่ได้');
+      }
+      lat = hit.lat;
+      lng = hit.lng;
     } else {
       try {
         final pos = await Geolocator.getCurrentPosition();

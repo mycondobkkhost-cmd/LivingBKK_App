@@ -363,6 +363,37 @@ class ChatService extends ChangeNotifier {
     }
   }
 
+  /// ห้องจาก inbox preview มีแค่ข้อความปลอม `preview-*` — อย่าทับประวัติจริง
+  bool _hasPreviewOnlyMessages(ChatRoom room) {
+    if (room.messages.isEmpty) return true;
+    return room.messages.every((m) => m.id.startsWith('preview-'));
+  }
+
+  void _mergeAdminInboxRoom(ChatRoom incoming) {
+    AdminChatLabelService.instance.applyToRoom(incoming);
+    final existing = _rooms[incoming.id];
+    if (existing != null && !_hasPreviewOnlyMessages(existing)) {
+      existing.status = incoming.status;
+      existing.priority = incoming.priority;
+      existing.category = incoming.category;
+      existing.assignedAdminId = incoming.assignedAdminId;
+      existing.assignedAdminName = incoming.assignedAdminName;
+      existing.assignedAt = incoming.assignedAt;
+      existing.adminEscalated = incoming.adminEscalated;
+      existing.viewingSubmitted = incoming.viewingSubmitted;
+      existing.adminReplyDone = incoming.adminReplyDone;
+      existing.unclearStreak = incoming.unclearStreak;
+      existing.updatedAt = incoming.updatedAt;
+      if (incoming.adminDisplayName != null &&
+          incoming.adminDisplayName!.trim().isNotEmpty) {
+        existing.adminDisplayName = incoming.adminDisplayName;
+      }
+      AdminChatLabelService.instance.applyToRoom(existing);
+      return;
+    }
+    _rooms[incoming.id] = incoming;
+  }
+
   /// โหลด inbox ทีมงานจาก Supabase
   Future<void> refreshAdminInbox() async {
     if (_adminInboxBackendActive) {
@@ -371,8 +402,7 @@ class ChatService extends ChangeNotifier {
         final openAssigned = await _repo.fetchAdminOpenAssigned();
         final resolved = await _repo.fetchAdminResolved();
         for (final room in {...pending, ...openAssigned, ...resolved}) {
-          AdminChatLabelService.instance.applyToRoom(room);
-          _rooms[room.id] = room;
+          _mergeAdminInboxRoom(room);
         }
       } catch (e) {
         debugPrint('refreshAdminInbox: $e');
@@ -1442,9 +1472,11 @@ class ChatService extends ChangeNotifier {
       !room.adminReplyDone;
 
   Future<void> loadThreadIfMissing(String threadId) async {
-    if (_rooms.containsKey(threadId)) return;
+    final cached = _rooms[threadId];
+    if (cached != null && !_hasPreviewOnlyMessages(cached)) return;
     _ensureCastSimulation();
-    if (_rooms.containsKey(threadId)) return;
+    final afterCast = _rooms[threadId];
+    if (afterCast != null && !_hasPreviewOnlyMessages(afterCast)) return;
     if (threadId.startsWith('demo-') || threadId.startsWith('cast-chat-')) {
       return;
     }

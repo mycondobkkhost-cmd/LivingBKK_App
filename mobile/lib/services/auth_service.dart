@@ -127,9 +127,13 @@ class AuthService extends ChangeNotifier {
   }
 
   String get _oauthRedirect {
-    final base = Env.webBaseUrl;
-    if (base.isNotEmpty) return base;
-    if (kIsWeb) return Uri.base.origin;
+    // Native ต้องใช้ deep link ของแอป — อย่าส่งไป WEB_BASE_URL มิฉะนั้น
+    // OAuth จบที่เว็บแล้วแอปไม่ได้รับ session
+    if (kIsWeb) {
+      final base = Env.webBaseUrl;
+      if (base.isNotEmpty) return base;
+      return Uri.base.origin;
+    }
     return 'com.livingbkk.livingbkk://login-callback/';
   }
 
