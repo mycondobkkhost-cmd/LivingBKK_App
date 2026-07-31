@@ -286,6 +286,12 @@ class ChatService extends ChangeNotifier {
     if (!await _isMyThread(threadId)) return;
 
     final message = ChatMessage.fromJson(record);
+    // โน้ตภายในแอดมิน — เก็บใน cache แต่ไม่แจ้ง/ไม่นับ unread ให้ลูกค้า
+    if (message.isAdminInternal) {
+      await _mergeIncomingMessage(threadId, message);
+      notifyListeners();
+      return;
+    }
     final text = message.text.trim();
     final isAuto = _isAutoStaffAck(text) ||
         text.startsWith('⚠️') ||
@@ -352,6 +358,7 @@ class ChatService extends ChangeNotifier {
     if (_unreadByThread.containsKey(room.id)) return;
     for (var i = room.messages.length - 1; i >= 0; i--) {
       final m = room.messages[i];
+      if (m.isAdminInternal) continue;
       if (m.role == ChatMessageRole.adminNotice &&
           !_isAutoStaffAck(m.text) &&
           !m.text.startsWith('⚠️') &&
@@ -717,6 +724,7 @@ class ChatService extends ChangeNotifier {
     if (room.messages.isEmpty) return false;
     for (var i = room.messages.length - 1; i >= 0; i--) {
       final m = room.messages[i];
+      if (m.isAdminInternal) continue;
       if (m.role == ChatMessageRole.user) return true;
       if (m.role == ChatMessageRole.adminNotice &&
           !_isAutoStaffAck(m.text) &&
@@ -1355,6 +1363,7 @@ class ChatService extends ChangeNotifier {
           room.messages.add(message);
           room.updatedAt = message.createdAt;
           if (message.role == ChatMessageRole.adminNotice &&
+              !message.isAdminInternal &&
               !_isAutoStaffAck(message.text) &&
               !message.text.startsWith('⚠️') &&
               !_isViewingDetailNotice(message.text)) {

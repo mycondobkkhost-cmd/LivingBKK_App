@@ -20,6 +20,10 @@ class AuthService extends ChangeNotifier {
   SupabaseClient? get _client => SupabaseService.client;
 
   TrialPersona? _trial;
+  bool _passwordRecoveryPending = false;
+
+  /// ผู้ใช้เปิดลิงก์รีเซ็ตรหัสผ่านแล้ว — ต้องไปตั้งรหัสใหม่ก่อนเข้าแอป
+  bool get isPasswordRecoveryPending => _passwordRecoveryPending;
 
   Stream<AuthState> get authStateChanges {
     if (_client == null) {
@@ -60,6 +64,20 @@ class AuthService extends ChangeNotifier {
     final c = _client;
     if (c == null) return;
     c.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery) {
+        _passwordRecoveryPending = true;
+      }
+      // บางกรณีลิงก์รีเซ็ตมาเป็น signedIn พร้อม type=recovery ใน URL
+      if (kIsWeb && data.session != null) {
+        final frag = Uri.base.fragment;
+        if (frag.contains('type=recovery') ||
+            Uri.base.queryParameters['type'] == 'recovery') {
+          _passwordRecoveryPending = true;
+        }
+      }
+      if (data.event == AuthChangeEvent.signedOut) {
+        _passwordRecoveryPending = false;
+      }
       if (data.session != null) _trial = null;
       notifyListeners();
     });
@@ -131,6 +149,14 @@ class AuthService extends ChangeNotifier {
     if (base.isNotEmpty) return base;
     if (kIsWeb) return Uri.base.origin;
     return 'com.livingbkk.livingbkk://login-callback/';
+  }
+
+  /// ลิงก์ในอีเมลลืมรหัสผ่าน — ต้องพาไปหน้าตั้งรหัสใหม่
+  String get _passwordRecoveryRedirect {
+    final base = Env.webBaseUrl;
+    if (base.isNotEmpty) return '$base/reset-password';
+    if (kIsWeb) return '${Uri.base.origin}/reset-password';
+    return 'com.livingbkk.livingbkk://login-callback/reset-password';
   }
 
   Future<void> signInWithGoogle() async {
@@ -220,18 +246,35 @@ class AuthService extends ChangeNotifier {
     }
     await _client!.auth.resetPasswordForEmail(
       email.trim(),
-      redirectTo: _oauthRedirect,
+      redirectTo: _passwordRecoveryRedirect,
     );
+  }
+
+  /// ตั้งรหัสผ่านใหม่หลังเปิดลิงก์รีเซ็ตจากอีเมล
+  Future<void> updatePassword(String newPassword) async {
+    if (_client == null) {
+      throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
+    }
+    if (currentUser == null) {
+      throw Exception('ไม่มีเซสชันรีเซ็ตรหัสผ่าน — เปิดลิงก์จากอีเมลอีกครั้ง');
+    }
+    await _client!.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+    _passwordRecoveryPending = false;
+    notifyListeners();
   }
 
   Future<void> signOut() async {
     if (_trial != null) {
       _trial = null;
+      _passwordRecoveryPending = false;
       notifyListeners();
       return;
     }
     await NotificationService.instance.clearOnSignOut();
     await _client?.auth.signOut();
+    _passwordRecoveryPending = false;
     notifyListeners();
   }
 
