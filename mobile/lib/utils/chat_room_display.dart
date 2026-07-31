@@ -40,6 +40,7 @@ extension ChatRoomDisplay on ChatRoom {
     for (var i = messages.length - 1; i >= 0; i--) {
       final m = messages[i];
       if (m.role != ChatMessageRole.adminNotice) continue;
+      if (m.isAdminInternal) continue;
       if (m.text.startsWith('รับข้อความแล้ว') ||
           m.text.startsWith('Message received') ||
           m.text.startsWith('⚠️') ||
@@ -55,18 +56,21 @@ extension ChatRoomDisplay on ChatRoom {
   String inboxPreviewText(AppStrings s) {
     final team = lastTeamReply;
     if (team != null) {
-      final text = team.text.trim();
+      final text = team.displayText.trim();
       if (team.links.isNotEmpty) {
         return '${s.chatTeamLivingBkk}: ${team.links.first.label}';
       }
       return '${s.chatTeamLivingBkk}: $text';
     }
-    final last = lastMessage;
-    if (last == null) return s.chatEmptyHint;
-    if (last.role == ChatMessageRole.system) {
-      return last.text;
+    for (var i = messages.length - 1; i >= 0; i--) {
+      final last = messages[i];
+      if (last.isAdminInternal) continue;
+      if (last.role == ChatMessageRole.system) {
+        return last.text;
+      }
+      return last.displayText;
     }
-    return last.text;
+    return s.chatEmptyHint;
   }
 
   bool get hasTeamFormLink =>

@@ -236,6 +236,7 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
   bool _teamHasRepliedInChat(ChatRoom room) {
     return room.messages.any((m) {
       if (m.role != ChatMessageRole.adminNotice) return false;
+      if (m.isAdminInternal) return false;
       final t = m.text;
       if (t.startsWith('รับข้อความแล้ว') || t.startsWith('Message received')) {
         return false;

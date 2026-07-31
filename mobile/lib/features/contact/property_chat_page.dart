@@ -294,16 +294,24 @@ class _PropertyChatPageState extends State<PropertyChatPage> {
               ),
             ),
           Expanded(
-            child: ListView.builder(
-              controller: _scroll,
-              padding: const EdgeInsets.all(16),
-              itemCount: room.messages.length,
-              itemBuilder: (context, i) => _Bubble(
-                message: room.messages[i],
-                onLinkTap: _openLink,
-                onAskListing: _askListing,
-                onActionLinkTap: _handleActionLink,
-              ),
+            child: Builder(
+              builder: (context) {
+                // โน้ตภายในแอดมินต้องไม่โชว์ฝั่งลูกค้า
+                final visible = room.messages
+                    .where((m) => !m.isAdminInternal)
+                    .toList(growable: false);
+                return ListView.builder(
+                  controller: _scroll,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: visible.length,
+                  itemBuilder: (context, i) => _Bubble(
+                    message: visible[i],
+                    onLinkTap: _openLink,
+                    onAskListing: _askListing,
+                    onActionLinkTap: _handleActionLink,
+                  ),
+                );
+              },
             ),
           ),
           SafeArea(
