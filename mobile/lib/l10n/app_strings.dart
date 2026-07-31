@@ -1286,6 +1286,28 @@ class AppStrings {
         'กรุณากรอกอีเมลที่ใช้สมัคร',
         'Enter the email you registered with',
       );
+  String get resetPasswordTitle => t('ตั้งรหัสผ่านใหม่', 'Set a new password');
+  String get resetPasswordIntro => t(
+        'กรอกรหัสผ่านใหม่สำหรับบัญชีของคุณ',
+        'Enter a new password for your account',
+      );
+  String get resetPasswordSubmit => t('บันทึกรหัสผ่านใหม่', 'Save new password');
+  String get resetPasswordSuccess => t(
+        'ตั้งรหัสผ่านใหม่แล้ว — เข้าสู่ระบบได้ตามปกติ',
+        'Password updated — you can use the app normally',
+      );
+  String get resetPasswordTooShort => t(
+        'รหัสผ่านควรมีอย่างน้อย 6 ตัวอักษร',
+        'Password should be at least 6 characters',
+      );
+  String get resetPasswordConfirmHint => t(
+        'ยืนยันรหัสผ่านใหม่',
+        'Confirm new password',
+      );
+  String get resetPasswordMismatch => t(
+        'รหัสผ่านไม่ตรงกัน',
+        'Passwords do not match',
+      );
   String get oauthNotConfigured => t(
         'ยังไม่ได้ตั้งค่า Google/Facebook ใน Supabase',
         'Google/Facebook login is not configured in Supabase yet',

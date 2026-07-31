@@ -13,6 +13,7 @@ import '../features/admin/admin_nav_model.dart';
 import '../features/admin/admin_lead_detail_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/auth/signup_page.dart';
+import '../features/auth/reset_password_page.dart';
 import '../features/legal/legal_document_page.dart';
 import '../config/legal_config.dart';
 import '../features/board/demand_post_detail_page.dart';
@@ -102,6 +103,13 @@ class AppRouter {
         }
 
         if (signedIn) {
+          if (auth.isPasswordRecoveryPending) {
+            if (path == '/reset-password') return null;
+            return '/reset-password';
+          }
+          if (path == '/reset-password') {
+            return '/';
+          }
           if (path == '/login' || path == '/signup') {
             final redirect = state.uri.queryParameters['redirect'];
             if ((redirect == PostListingMenuConfig.createRoute ||
@@ -143,6 +151,7 @@ class AppRouter {
           return null;
         }
 
+        if (path == '/reset-password') return '/login';
         if (isAdminRoute(path)) return redirectLogin();
         if (path == '/login' || path == '/signup') return null;
         if (_isGuestBrowsablePath(path)) return null;
@@ -159,6 +168,10 @@ class AppRouter {
         GoRoute(
           path: '/signup',
           builder: (context, state) => SignUpPage(roleController: roleController),
+        ),
+        GoRoute(
+          path: '/reset-password',
+          builder: (context, state) => const ResetPasswordPage(),
         ),
         GoRoute(
           path: '/legal/:kind',
