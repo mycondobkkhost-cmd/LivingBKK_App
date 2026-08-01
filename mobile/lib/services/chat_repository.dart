@@ -551,6 +551,7 @@ class ChatRepository {
         'thread_id': room.id,
         'role': 'admin_notice',
         'text':
+            '${ChatMessage.adminInternalPrefix}'
             '⚠️ แจ้งทีมงาน: พบ 4 ตัวท้ายเบอร์ลูกค้าซ้ำในระบบ — รอตรวจสอบ',
       });
     }

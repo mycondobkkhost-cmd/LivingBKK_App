@@ -72,7 +72,8 @@ Deno.serve(async (req) => {
       {
         thread_id,
         role: "admin_notice",
-        text: "🔥 ลูกค้าสนใจจอง — ตอบทันที (ความสำคัญสูงสุด)",
+        // Prefixed so customer clients hide as staff-only (🔒[โน้ตแอดมิน])
+        text: "🔒[โน้ตแอดมิน] 🔥 ลูกค้าสนใจจอง — ตอบทันที (ความสำคัญสูงสุด)",
       },
     ];
 

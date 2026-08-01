@@ -72,7 +72,8 @@ Deno.serve(async (req) => {
       inserts.push({
         thread_id,
         role: "admin_notice",
-        text: "⚠️ แจ้งทีมงาน: พบ 4 ตัวท้ายเบอร์ลูกค้าซ้ำในระบบ — รอตรวจสอบ",
+        // Prefixed so customer clients hide as staff-only (🔒[โน้ตแอดมิน])
+        text: "🔒[โน้ตแอดมิน] ⚠️ แจ้งทีมงาน: พบ 4 ตัวท้ายเบอร์ลูกค้าซ้ำในระบบ — รอตรวจสอบ",
       });
     }
 

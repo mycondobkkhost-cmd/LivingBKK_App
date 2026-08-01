@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/chat_message.dart';
 import 'supabase_service.dart';
 
 /// In-app notifications via Supabase Realtime (no FCM required).
@@ -77,7 +78,9 @@ class RealtimeService {
       final record = payload.newRecord;
       final role = record['role']?.toString();
       if (role != 'admin_notice') return;
-      final preview = record['text']?.toString() ?? '';
+      final message = ChatMessage.fromJson(Map<String, dynamic>.from(record));
+      if (message.isStaffOnlyNotice) return;
+      final preview = message.text;
       final short = preview.length > 80 ? '${preview.substring(0, 80)}…' : preview;
       final threadId = record['thread_id']?.toString() ?? '';
       _controller.add('chat:$threadId:ข้อความจากทีม: $short');
