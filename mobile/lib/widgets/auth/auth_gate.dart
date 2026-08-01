@@ -11,11 +11,13 @@ abstract final class AuthGate {
   static Future<bool> requireRealAccount(
     BuildContext context, {
     String? redirectRoute,
+    String? message,
   }) async {
     if (canProceed) return true;
     await AuthRequiredDialog.show(
       context,
       redirectRoute: redirectRoute,
+      message: message,
     );
     return canProceed;
   }
@@ -24,8 +26,13 @@ abstract final class AuthGate {
     BuildContext context,
     VoidCallback action, {
     String? redirectRoute,
+    String? message,
   }) async {
-    if (!await requireRealAccount(context, redirectRoute: redirectRoute)) {
+    if (!await requireRealAccount(
+      context,
+      redirectRoute: redirectRoute,
+      message: message,
+    )) {
       return;
     }
     if (context.mounted) action();
