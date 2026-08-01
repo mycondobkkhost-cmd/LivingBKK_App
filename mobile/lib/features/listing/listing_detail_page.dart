@@ -20,6 +20,7 @@ import '../../theme/app_palette.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../../utils/listing_share_actions.dart';
+import '../../widgets/auth/auth_gate.dart';
 import '../../widgets/design_system/app_button.dart';
 import '../../widgets/listing_image_gallery.dart';
 import '../../widgets/listings_map.dart';
@@ -225,12 +226,20 @@ class _ListingDetailPageState extends State<ListingDetailPage> {
   }
 
   Future<void> _openBookProperty() async {
+    final s = AppStrings.of(context);
+    final listingPath = '/listing/${widget.listing.id}';
+    final allowed = await AuthGate.requireRealAccount(
+      context,
+      redirectRoute: listingPath,
+      message: s.authRequiredBeforeBooking,
+    );
+    if (!allowed || !mounted) return;
+
     ListingActivityService.instance.recordChatStart(
       widget.listing.id,
       district: widget.listing.district,
       listingType: widget.listing.listingType,
     );
-    final s = AppStrings.of(context);
     setState(() => _bookingBusy = true);
     try {
       final room = await ChatService.instance.recordBookingInterest(

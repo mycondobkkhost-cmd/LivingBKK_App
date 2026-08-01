@@ -47,11 +47,24 @@ import '../state/session_gate.dart';
 import '../state/theme_controller.dart';
 import '../state/user_role_controller.dart';
 import '../services/auth_service.dart';
+import '../services/pending_auth_redirect.dart';
 import '../utils/admin_routing.dart';
 import '../utils/web_browser_path.dart';
 
 class AppRouter {
   static final _rootKey = GlobalKey<NavigatorState>();
+
+  /// ปลายทางหลังล็อกอินสำหรับผู้ใช้ทั่วไป (กัน open redirect / เส้นทางแอดมิน)
+  static String? _safeConsumerRedirect(String? redirect) {
+    if (redirect == null || redirect.isEmpty) return null;
+    if (redirect.startsWith('//')) return null;
+    final uri = Uri.tryParse(redirect);
+    if (uri == null || uri.hasScheme) return null;
+    final path = uri.path.isNotEmpty ? uri.path : redirect.split('?').first;
+    if (!path.startsWith('/') || path.startsWith('//')) return null;
+    if (isAdminRoute(path)) return null;
+    return redirect;
+  }
 
   /// Guest may browse map, listings, projects, legal, and board posts (view only).
   static bool _isGuestBrowsablePath(String path) {
@@ -118,6 +131,11 @@ class AppRouter {
               return adminHomePath();
             }
             if (isStaff) return viewingStaffHomePath();
+            // OAuth / ล็อกอินโซเชียล: คืนปลายทางที่ค้างไว้ หรือ ?redirect=
+            final pending = PendingAuthRedirect.consume();
+            if (pending != null) return pending;
+            final consumerRedirect = _safeConsumerRedirect(redirect);
+            if (consumerRedirect != null) return consumerRedirect;
             return '/';
           }
           if (isAdmin && path == '/' && !isConsumerPreviewUri(state.uri)) {
@@ -125,6 +143,14 @@ class AppRouter {
           }
           if (isStaff && !isAdmin && path == '/' && !isConsumerPreviewUri(state.uri)) {
             return viewingStaffHomePath();
+          }
+          // กลับมาที่ `/` หลัง OAuth (redirectTo เป็น origin)
+          if (!isAdmin &&
+              !isStaff &&
+              path == '/' &&
+              PendingAuthRedirect.peek() != null) {
+            final pending = PendingAuthRedirect.consume();
+            if (pending != null) return pending;
           }
           if (isAdminRoute(path) && !canBackOffice) {
             return '/';

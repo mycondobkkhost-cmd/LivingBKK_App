@@ -286,6 +286,9 @@ class ChatService extends ChangeNotifier {
     if (!await _isMyThread(threadId)) return;
 
     final message = ChatMessage.fromJson(record);
+    // ข้อความเฉพาะทีมงาน — ไม่โชว์ ไม่นับ unread ไม่แจ้งเตือนลูกค้า
+    if (message.isStaffOnlyNotice) return;
+
     final text = message.text.trim();
     final isAuto = _isAutoStaffAck(text) ||
         text.startsWith('⚠️') ||
@@ -352,6 +355,7 @@ class ChatService extends ChangeNotifier {
     if (_unreadByThread.containsKey(room.id)) return;
     for (var i = room.messages.length - 1; i >= 0; i--) {
       final m = room.messages[i];
+      if (m.isStaffOnlyNotice) continue;
       if (m.role == ChatMessageRole.adminNotice &&
           !_isAutoStaffAck(m.text) &&
           !m.text.startsWith('⚠️') &&
@@ -1020,21 +1024,27 @@ class ChatService extends ChangeNotifier {
     required Map<String, String> leadSummary,
   }) async {
     final active = await ensurePersistedRoom(room);
+    var backendOk = false;
     if (_backendActive && active.isPersisted) {
       try {
         await _repo.recordViewing(active, leadSummary);
+        backendOk = true;
+        notifyListeners();
       } catch (e) {
         debugPrint('submitViewingWithTags backend: $e');
       }
     }
-    _memorySubmitViewingWithTags(
-      active,
-      viewingRequest: viewingRequest,
-      clientTag: clientTag,
-      presenterTag: presenterTag,
-      scheduleLabel: scheduleLabel,
-      leadSummary: leadSummary,
-    );
+    // สำเร็จจาก backend แล้ว — ห้ามต่อด้วย memory (จะข้อความซ้ำ)
+    if (!backendOk) {
+      _memorySubmitViewingWithTags(
+        active,
+        viewingRequest: viewingRequest,
+        clientTag: clientTag,
+        presenterTag: presenterTag,
+        scheduleLabel: scheduleLabel,
+        leadSummary: leadSummary,
+      );
+    }
     await _postHubViewingRecap(
       viewingRequest: viewingRequest,
       clientTag: clientTag,
@@ -1270,7 +1280,8 @@ class ChatService extends ChangeNotifier {
       ChatMessage(
         id: '${DateTime.now().microsecondsSinceEpoch}-admin',
         role: ChatMessageRole.adminNotice,
-        text: _copy.bookingInterestAdminAlert,
+        text:
+            '${ChatMessage.adminInternalPrefix}${_copy.bookingInterestAdminAlert}',
       ),
     ]);
     room.updatedAt = DateTime.now();
@@ -1929,7 +1940,8 @@ class ChatService extends ChangeNotifier {
       room.messages.add(ChatMessage(
         id: '${DateTime.now().microsecondsSinceEpoch}-dup',
         role: ChatMessageRole.adminNotice,
-        text: _copy.chatDuplicatePhoneAlert,
+        text:
+            '${ChatMessage.adminInternalPrefix}${_copy.chatDuplicatePhoneAlert}',
       ));
     }
     room.messages.add(ChatMessage(

@@ -166,6 +166,17 @@ class ChatMessage {
       role == ChatMessageRole.adminNotice &&
       text.startsWith(adminInternalPrefix);
 
+  /// ข้อความเฉพาะทีมงาน — ลูกค้าไม่ควรเห็น (โน้ตภายใน + แจ้งเตือน ops)
+  bool get isStaffOnlyNotice {
+    if (role != ChatMessageRole.adminNotice) return false;
+    if (isAdminInternal) return true;
+    final t = text.trim();
+    return t.startsWith('⚠️ แจ้งทีมงาน') ||
+        t.startsWith('⚠️ Team alert') ||
+        t.startsWith('🔥 ลูกค้าสนใจจอง') ||
+        t.startsWith('🔥 Customer wants to book');
+  }
+
   String get displayText =>
       isAdminInternal ? text.substring(adminInternalPrefix.length) : text;
 

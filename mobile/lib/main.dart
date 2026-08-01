@@ -27,6 +27,7 @@ import 'services/home_promo_service.dart';
 import 'services/platform_settings_service.dart';
 import 'services/user_profile_service.dart';
 import 'services/local_prefs_service.dart';
+import 'services/pending_auth_redirect.dart';
 import 'state/locale_controller.dart';
 import 'state/search_session_controller.dart';
 import 'state/session_gate.dart';
@@ -61,6 +62,7 @@ Future<void> main() async {
   await SearchPoiCatalog.load();
   await BrandService.instance.load();
   await LocalPrefsService.instance.init();
+  await PendingAuthRedirect.hydrate();
   await FavoritesService.instance.load();
   await DemandBoardFavoritesService.instance.load();
   await ListingActivityService.instance.load();

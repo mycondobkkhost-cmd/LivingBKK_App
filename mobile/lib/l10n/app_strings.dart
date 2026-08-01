@@ -34,6 +34,10 @@ class AppStrings {
         'กรุณาเข้าสู่ระบบหรือลงทะเบียนก่อนลงประกาศ',
         'Please log in or register before posting',
       );
+  String get authRequiredBeforeBooking => t(
+        'กรุณาเข้าสู่ระบบหรือลงทะเบียนก่อนแจ้งสนใจจอง',
+        'Please log in or register before sending booking interest',
+      );
   String get postDemandWantedButton =>
       t('ลงประกาศหาทรัพย์', 'Post property wanted');
   String get createListingLoginRequired => t(

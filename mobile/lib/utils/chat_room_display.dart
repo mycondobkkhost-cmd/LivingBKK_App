@@ -40,6 +40,7 @@ extension ChatRoomDisplay on ChatRoom {
     for (var i = messages.length - 1; i >= 0; i--) {
       final m = messages[i];
       if (m.role != ChatMessageRole.adminNotice) continue;
+      if (m.isStaffOnlyNotice) continue;
       if (m.text.startsWith('รับข้อความแล้ว') ||
           m.text.startsWith('Message received') ||
           m.text.startsWith('⚠️') ||
