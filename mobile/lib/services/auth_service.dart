@@ -9,6 +9,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/env.dart';
 import '../models/trial_persona.dart';
 import 'notification_service.dart';
+import 'pending_auth_redirect.dart';
 import 'supabase_service.dart';
 
 /// ล็อกอินจริง (Supabase) หรือบทบาททดลองใน memory (TRIAL_MODE)
@@ -127,9 +128,17 @@ class AuthService extends ChangeNotifier {
   }
 
   String get _oauthRedirect {
-    final base = Env.webBaseUrl;
-    if (base.isNotEmpty) return base;
-    if (kIsWeb) return Uri.base.origin;
+    final base = Env.webBaseUrl.isNotEmpty
+        ? Env.webBaseUrl
+        : (kIsWeb ? Uri.base.origin : '');
+    if (base.isNotEmpty) {
+      final pending = PendingAuthRedirect.peek();
+      if (pending != null && pending.isNotEmpty) {
+        final sep = base.endsWith('/') ? '' : '/';
+        return '$base${sep}login?redirect=${Uri.encodeComponent(pending)}';
+      }
+      return base;
+    }
     return 'com.livingbkk.livingbkk://login-callback/';
   }
 

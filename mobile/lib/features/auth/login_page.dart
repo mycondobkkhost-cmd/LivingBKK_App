@@ -9,6 +9,7 @@ import '../../l10n/app_strings.dart';
 import '../../models/app_perspective.dart';
 import '../../services/auth_service.dart';
 import '../../services/demo_cast_session.dart';
+import '../../services/pending_auth_redirect.dart';
 import '../../services/property_care_notification_service.dart';
 import '../../services/property_care_repository.dart';
 import '../../state/locale_controller.dart';
@@ -196,6 +197,7 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _oauth(Future<void> Function() action) async {
     await _oauthMaybeComplete(() async {
       await action();
+      // Web/Android OAuth เด้งออกนอกแอป — ปลายทางใช้ PendingAuthRedirect
       return false;
     });
   }
@@ -207,6 +209,7 @@ class _LoginPageState extends State<LoginPage> {
     }
     setState(() => _loading = true);
     try {
+      await PendingAuthRedirect.save(_redirectTarget);
       final completed = await action();
       if (completed && mounted) await _afterAuth();
     } catch (e) {
