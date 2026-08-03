@@ -62,12 +62,16 @@ Deno.serve(async (req) => {
 
     if (updErr) return jsonResponse({ error: updErr.message }, 400);
 
-    await db.from("admin_audit_log").insert({
-      actor_id: auth.userId,
-      action: "listing_import.approve",
-      entity_type: "listing_import",
-      entity_id: importId,
-    }).catch(() => {});
+    try {
+      await db.from("admin_audit_log").insert({
+        actor_id: auth.userId,
+        action: "listing_import.approve",
+        entity_type: "listing_import",
+        entity_id: importId,
+      });
+    } catch (_) {
+      // audit is best-effort
+    }
 
     const watermark = await watermarkListingImages(db, listingId);
 

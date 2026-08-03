@@ -60,7 +60,52 @@ class ChatService extends ChangeNotifier {
   /// เวลาที่แอดมินเปิดดูแชทล่าสุด (inbox preview อ่านแล้ว = เทา)
   final Map<String, DateTime> _adminReadAtByThread = {};
   RealtimeChannel? _customerInboxChannel;
+  String? _customerInboxUid;
   bool _castSimSeeded = false;
+  String? _boundAuthKey;
+  bool _authBound = false;
+
+  /// Clear in-memory rooms when the signed-in account changes — avoids leaking
+  /// the previous user's chat history on the same device.
+  void bindAuth() {
+    if (_authBound) return;
+    _authBound = true;
+    AuthService.instance.addListener(_onAuthChanged);
+    _onAuthChanged();
+  }
+
+  void _onAuthChanged() {
+    final auth = AuthService.instance;
+    final String? key;
+    if (auth.isRealSupabaseSession) {
+      key = 'user:${auth.currentUser?.id}';
+    } else if (auth.isTrialSignedIn) {
+      key = 'trial:${auth.trialRole}:${auth.trialDisplayName}';
+    } else {
+      key = null;
+    }
+    if (key == _boundAuthKey) return;
+    _boundAuthKey = key;
+    clearSession();
+  }
+
+  void clearSession() {
+    final channel = _customerInboxChannel;
+    _customerInboxChannel = null;
+    _customerInboxUid = null;
+    if (channel != null) {
+      try {
+        SupabaseService.client?.removeChannel(channel);
+      } catch (_) {}
+    }
+    _rooms.clear();
+    _myThreadIds.clear();
+    _unreadByThread.clear();
+    _adminReadAtByThread.clear();
+    _listingCache = null;
+    _castSimSeeded = false;
+    notifyListeners();
+  }
 
   int unreadForThread(String threadId) => _unreadByThread[threadId] ?? 0;
 
@@ -261,7 +306,16 @@ class ChatService extends ChangeNotifier {
 
     await refreshMyThreads();
 
-    if (_customerInboxChannel != null) return;
+    if (_customerInboxChannel != null && _customerInboxUid == uid) return;
+
+    final existing = _customerInboxChannel;
+    _customerInboxChannel = null;
+    _customerInboxUid = null;
+    if (existing != null) {
+      try {
+        await SupabaseService.client?.removeChannel(existing);
+      } catch (_) {}
+    }
 
     final channel = SupabaseService.client!.channel('customer-inbox-$uid');
     channel.onPostgresChanges(
@@ -276,6 +330,7 @@ class ChatService extends ChangeNotifier {
     );
     channel.subscribe();
     _customerInboxChannel = channel;
+    _customerInboxUid = uid;
   }
 
   Future<void> _onCustomerChatMessage(Map<String, dynamic> record) async {

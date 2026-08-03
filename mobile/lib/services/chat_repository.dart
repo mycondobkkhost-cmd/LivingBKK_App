@@ -739,23 +739,8 @@ class ChatRepository {
       } catch (_) {}
     }
 
-    if (code != null && code.isNotEmpty) {
-      try {
-        final rows = await client
-            .from('chat_threads')
-            .select('id')
-            .eq('listing_code', code)
-            .eq('viewing_submitted', true)
-            .order('last_message_at', ascending: false)
-            .limit(1);
-        if (rows is List && rows.isNotEmpty) {
-          final tid = rows.first['id']?.toString();
-          if (tid != null && tid.isNotEmpty) {
-            return fetchThreadById(tid);
-          }
-        }
-      } catch (_) {}
-    }
+    // Do not fall back to "latest viewing thread for listing_code" — that can
+    // post follow-ups into another customer's chat on the same property.
 
     return null;
   }

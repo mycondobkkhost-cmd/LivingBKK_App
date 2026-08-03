@@ -39,13 +39,17 @@ Deno.serve(async (req) => {
 
     const result = await watermarkListingImages(db, listingId);
 
-    await db.from("admin_audit_log").insert({
-      actor_id: auth.userId,
-      action: "listing.watermark_images",
-      entity_type: "listing",
-      entity_id: listingId,
-      metadata: result,
-    }).catch(() => {});
+    try {
+      await db.from("admin_audit_log").insert({
+        actor_id: auth.userId,
+        action: "listing.watermark_images",
+        entity_type: "listing",
+        entity_id: listingId,
+        metadata: result,
+      });
+    } catch (_) {
+      // audit is best-effort
+    }
 
     return jsonResponse({ ok: true, listing_id: listingId, ...result });
   } catch (e) {

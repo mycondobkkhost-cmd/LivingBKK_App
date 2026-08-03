@@ -38,6 +38,16 @@ function extractViewingIntent(messages: Array<{ text?: string }>): DraftPatch {
   return patch;
 }
 
+function coordsFromLocation(loc: unknown): { lat: number; lng: number } | null {
+  if (!loc || typeof loc !== "object") return null;
+  const coords = (loc as { coordinates?: unknown }).coordinates;
+  if (!Array.isArray(coords) || coords.length < 2) return null;
+  const lng = Number(coords[0]);
+  const lat = Number(coords[1]);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return { lat, lng };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -97,10 +107,11 @@ Deno.serve(async (req) => {
     const listingId = (lead?.listing_id ?? appointment?.listing_id ?? thread
       ?.listing_id) as string | undefined;
     if (listingId) {
-      const { data } = await db.from("listings").select(
-        "id, listing_code, title, owner_id, lat, lng, project_name",
+      // listings has PostGIS location_public — not lat/lng columns.
+      const { data, error } = await db.from("listings").select(
+        "id, listing_code, title, owner_id, project_name, location_public",
       ).eq("id", listingId).maybeSingle();
-      listing = data;
+      if (!error) listing = data;
     }
 
     const messages: Array<{ text?: string }> = [];
@@ -116,8 +127,8 @@ Deno.serve(async (req) => {
       "ลูกค้า") as string;
     const listingCode = (listing?.listing_code ?? appointment?.listing_code ??
       "") as string;
-    const project = (listing?.project_name ?? listing?.title ?? listingCode) as
-      | string;
+    const project = (listing?.project_name ?? listing?.title ?? "") as string;
+    const listingCoords = coordsFromLocation(listing?.location_public);
 
     const aiDraft: DraftPatch = {
       event_type: "viewing",
@@ -126,9 +137,9 @@ Deno.serve(async (req) => {
       listing_id: listingId ?? null,
       listing_code: listingCode || null,
       lead_id: resolvedLeadId ?? null,
-      location_label: project || null,
-      lat: listing?.lat ?? appointment?.lat ?? null,
-      lng: listing?.lng ?? appointment?.lng ?? null,
+      location_label: project || listingCode || null,
+      lat: listingCoords?.lat ?? appointment?.lat ?? null,
+      lng: listingCoords?.lng ?? appointment?.lng ?? null,
       owner_user_id: listing?.owner_id ?? null,
       seeker_user_id: thread?.user_id ?? null,
       ...extractViewingIntent(messages),
