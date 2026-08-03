@@ -216,11 +216,14 @@ class ListingCreateRepository {
           ? 'TikTok: ${input.tiktokUrl!.trim()}'
           : '$desc\nTikTok: ${input.tiktokUrl!.trim()}';
     }
-    payload['description_public'] = _withCommissionBlock(
-      _withLocalizationBlock(
-        payload['description_public'] as String? ?? '',
-        input,
-      ),
+    // Keep commission / policy / LINE metadata off the public description.
+    // Store it only on description_owner (admin/backoffice); pin a clean
+    // description_display so listings_public never falls through to it.
+    final publicDesc = payload['description_public'] as String? ?? '';
+    payload['description_public'] = publicDesc;
+    payload['description_display'] = publicDesc;
+    payload['description_owner'] = _withCommissionBlock(
+      _withLocalizationBlock(publicDesc, input),
       input,
     );
 

@@ -18,12 +18,17 @@ export type NotifyPayload = {
 };
 
 /** POST censored event to Make.com (no phone). */
-export async function postMakeComWebhook(payload: NotifyPayload): Promise<void> {
+export async function postMakeComWebhook(
+  payload: NotifyPayload,
+): Promise<{ ok: boolean; detail?: string }> {
   const url = Deno.env.get("MAKECOM_WEBHOOK_URL");
-  if (!url) return;
+  if (!url) {
+    // No webhook configured — treat as skipped success so local/dev still works.
+    return { ok: true, detail: "webhook_not_configured" };
+  }
 
   try {
-    await fetch(url, {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -32,8 +37,12 @@ export async function postMakeComWebhook(payload: NotifyPayload): Promise<void> 
         at: new Date().toISOString(),
       }),
     });
-  } catch (_) {
-    // non-fatal
+    if (!res.ok) {
+      return { ok: false, detail: `webhook_http_${res.status}` };
+    }
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, detail: String(e) };
   }
 }
 

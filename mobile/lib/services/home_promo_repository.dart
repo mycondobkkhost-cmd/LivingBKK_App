@@ -98,12 +98,19 @@ class HomePromoRepository {
 
   Future<void> swapSortOrder(HomePromoBannerRow a, HomePromoBannerRow b) async {
     if (!_ready) return;
-    await SupabaseService.client!.from('home_promo_banners').update({
-      'sort_order': b.sortOrder,
+    final client = SupabaseService.client!;
+    // Unique index on active sort_order — park A inactive first so B can take
+    // A's order without colliding.
+    await client.from('home_promo_banners').update({
+      'is_active': false,
     }).eq('id', a.id);
-    await SupabaseService.client!.from('home_promo_banners').update({
+    await client.from('home_promo_banners').update({
       'sort_order': a.sortOrder,
     }).eq('id', b.id);
+    await client.from('home_promo_banners').update({
+      'sort_order': b.sortOrder,
+      'is_active': a.isActive,
+    }).eq('id', a.id);
   }
 
   Future<({String url, String path})> uploadImage({

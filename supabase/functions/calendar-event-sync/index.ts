@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { requireAdmin } from "../_shared/admin_auth.ts";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
 import { postMakeComWebhook } from "../_shared/notify.ts";
 
@@ -12,6 +13,9 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const auth = await requireAdmin(req);
+    if (auth instanceof Response) return auth;
+
     const body = await req.json();
     const calendar_event_id = body.calendar_event_id as string | undefined;
     if (!calendar_event_id) {
@@ -36,7 +40,7 @@ Deno.serve(async (req) => {
     const externalId = (ev.external_event_id as string | null) ??
       `proppiter-${ev.id}`;
 
-    await postMakeComWebhook({
+    const synced = await postMakeComWebhook({
       event: "calendar_event_sync",
       calendar_event_id: ev.id as string,
       appointment_id: ev.appointment_id as string | undefined,
@@ -51,6 +55,13 @@ Deno.serve(async (req) => {
       start_at: ev.start_at as string,
       end_at: ev.end_at as string,
     });
+
+    if (!synced.ok) {
+      return jsonResponse({
+        error: "external_calendar_sync_failed",
+        detail: synced.detail ?? "Make.com webhook failed",
+      }, 502);
+    }
 
     const { error: updErr } = await supabase
       .from("calendar_events")
@@ -67,6 +78,7 @@ Deno.serve(async (req) => {
       event_id: calendar_event_id,
       action: "external_sync",
       actor_kind: "system",
+      actor_id: auth.userId,
       payload: { external_event_id: externalId, provider: "make" },
     });
 
@@ -80,8 +92,12 @@ Deno.serve(async (req) => {
   }
 });
 
-function formatSlot(start: string, end: string): string {
-  const s = start.includes("T") ? start.split("T")[1].slice(0, 5) : start;
-  const e = end.includes("T") ? end.split("T")[1].slice(0, 5) : end;
-  return `${s}-${e}`;
+function formatSlot(startAt: string, endAt: string): string {
+  const s = new Date(startAt);
+  const e = new Date(endAt);
+  const fmt = (d: Date) =>
+    `${String(d.getHours()).padStart(2, "0")}:${
+      String(d.getMinutes()).padStart(2, "0")
+    }`;
+  return `${fmt(s)}-${fmt(e)}`;
 }

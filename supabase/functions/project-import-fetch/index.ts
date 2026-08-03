@@ -105,12 +105,16 @@ Deno.serve(async (req) => {
       project = data;
     }
 
-    await db.from("admin_audit_log").insert({
-      actor_id: auth.userId,
-      action: existing?.id ? "project.import_update" : "project.import_create",
-      entity_type: "property_project",
-      entity_id: project.id,
-    }).catch(() => {});
+    try {
+      await db.from("admin_audit_log").insert({
+        actor_id: auth.userId,
+        action: existing?.id ? "project.import_update" : "project.import_create",
+        entity_type: "property_project",
+        entity_id: project.id,
+      });
+    } catch (_) {
+      // audit is best-effort
+    }
 
     return jsonResponse({
       project,

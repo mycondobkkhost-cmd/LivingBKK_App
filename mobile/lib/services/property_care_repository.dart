@@ -480,7 +480,7 @@ class PropertyCareRepository extends ChangeNotifier {
       return titleChanged;
     }
 
-    await SupabaseService.client!
+    final updated = await SupabaseService.client!
         .from('listings')
         .update({
           ...fields,
@@ -488,7 +488,13 @@ class PropertyCareRepository extends ChangeNotifier {
         })
         .eq('id', listingId)
         .eq('inventory_id', id)
-        .eq('listing_code', listingCode);
+        .eq('listing_code', listingCode)
+        .select('id');
+    if (updated is! List || updated.isEmpty) {
+      throw Exception(
+        'บันทึกประกาศไม่สำเร็จ — ไม่มีสิทธิ์ดูแลทรัพย์นี้หรือไม่พบประกาศ',
+      );
+    }
 
     await completeListingOwnerData(
       inventoryId: id,

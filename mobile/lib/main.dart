@@ -13,6 +13,7 @@ import 'data/hub_demo_seed.dart';
 import 'data/search_poi_catalog.dart';
 import 'services/app_lifecycle_analytics.dart';
 import 'services/brand_service.dart';
+import 'services/chat_service.dart';
 import 'services/error_reporting_service.dart';
 import 'services/auth_service.dart';
 import 'services/in_app_notification_hub.dart';
@@ -55,6 +56,7 @@ Future<void> main() async {
   await SupabaseService.initialize();
   AuthService.instance.bindAuthListener();
   UserProfileService.instance.bindAuth();
+  ChatService.instance.bindAuth();
   await ProjectCatalog.instance.load();
   await SearchDisplayCatalog.instance.load();
   await SearchZoneCatalog.instance.load();
