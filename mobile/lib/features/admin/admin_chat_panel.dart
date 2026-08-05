@@ -340,12 +340,19 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
         : s.t('ชุดทรัพย์ที่แนะนำ', 'Recommended listings');
     try {
       await _chat.sendAdminReply(room, text, links: links);
+      if (!mounted) return;
       _input.clear();
       _scrollToBottom();
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      final claimed = e.toString().contains('มีคนรับงาน') ||
+          e.toString().contains('claimed');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.adminClaimedByOther)),
+        SnackBar(
+          content: Text(
+            claimed ? s.adminClaimedByOther : s.requirementSubmitFailed,
+          ),
+        ),
       );
     }
   }
@@ -368,14 +375,21 @@ class _AdminChatPanelState extends State<AdminChatPanel> {
       }
       return;
     }
-    _input.clear();
     try {
       await _chat.sendAdminReply(room, text);
-      _scrollToBottom();
-    } catch (_) {
       if (!mounted) return;
+      _input.clear();
+      _scrollToBottom();
+    } catch (e) {
+      if (!mounted) return;
+      final claimed = e.toString().contains('มีคนรับงาน') ||
+          e.toString().contains('claimed');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(s.adminClaimedByOther)),
+        SnackBar(
+          content: Text(
+            claimed ? s.adminClaimedByOther : s.requirementSubmitFailed,
+          ),
+        ),
       );
     }
   }
