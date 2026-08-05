@@ -85,11 +85,12 @@ Deno.serve(async (req) => {
 
     const userId = existing.user_id as string | undefined;
     const code = (existing.listing_code as string) || "RealXtate";
+    const preview = (text && text.trim()) || (hasLinks ? "ส่งไฟล์แนบ" : " ");
     await sendFcmToUser(
       db,
       userId,
       "RealXtate — มีข้อความใหม่",
-      `${code}: ${text.slice(0, 120)}`,
+      `${code}: ${preview.slice(0, 120)}`,
       { type: "chat_reply", thread_id },
     );
 

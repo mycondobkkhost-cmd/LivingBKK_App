@@ -197,7 +197,10 @@ class ChatRepository {
 
       final msg = data['message'];
       if (msg is Map) {
-        room.messages.add(ChatMessage.fromJson(Map<String, dynamic>.from(msg)));
+        _appendAdminMessageIfNew(
+          room,
+          ChatMessage.fromJson(Map<String, dynamic>.from(msg)),
+        );
       }
       final thread = data['thread'];
       if (thread is Map) {
@@ -205,7 +208,9 @@ class ChatRepository {
       }
       room.adminReplyDone = resolve;
       room.updatedAt = DateTime.now();
-    } catch (_) {
+    } catch (e) {
+      // Never bypass claim lock via direct insert when edge returns 409.
+      if (_isAdminReplyClaimConflict(e)) rethrow;
       await _sendAdminReplyDirect(
         room,
         text,
@@ -213,6 +218,29 @@ class ChatRepository {
         links: links,
       );
     }
+  }
+
+  bool _isAdminReplyClaimConflict(Object e) {
+    final raw = e.toString();
+    if (raw.contains('มีคนรับงาน') || raw.contains('claimed_by_other')) {
+      return true;
+    }
+    // FunctionException status is not always in toString — check details map.
+    try {
+      final details = (e as dynamic).details;
+      final status = (e as dynamic).status;
+      if (status == 409) return true;
+      if (details is Map && details['error'] != null) {
+        final err = details['error'].toString();
+        if (err.contains('มีคนรับงาน') || err.contains('claimed')) return true;
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  void _appendAdminMessageIfNew(ChatRoom room, ChatMessage message) {
+    if (room.messages.any((m) => m.id == message.id)) return;
+    room.messages.add(message);
   }
 
   Future<void> _sendAdminReplyDirect(
@@ -234,7 +262,10 @@ class ChatRepository {
         })
         .select('*')
         .single();
-    room.messages.add(ChatMessage.fromJson(Map<String, dynamic>.from(row)));
+    _appendAdminMessageIfNew(
+      room,
+      ChatMessage.fromJson(Map<String, dynamic>.from(row)),
+    );
     final patch = <String, dynamic>{
       'last_message_at': DateTime.now().toUtc().toIso8601String(),
       if (resolve) ...{

@@ -335,6 +335,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
 
   Future<void> _pickImages() async {
     final files = await _storage.pickImages();
+    if (!mounted) return;
     setState(() => _images = files);
   }
 

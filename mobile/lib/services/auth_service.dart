@@ -138,10 +138,13 @@ class AuthService extends ChangeNotifier {
       throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
     }
     _trial = null;
-    await _client!.auth.signInWithOAuth(
+    final launched = await _client!.auth.signInWithOAuth(
       OAuthProvider.google,
       redirectTo: _oauthRedirect,
     );
+    if (!launched) {
+      throw Exception('ไม่สามารถเปิดหน้าล็อกอิน Google ได้');
+    }
   }
 
   Future<void> signInWithFacebook() async {
@@ -149,10 +152,13 @@ class AuthService extends ChangeNotifier {
       throw Exception('ตั้งค่า Supabase ใน assets/env ก่อน');
     }
     _trial = null;
-    await _client!.auth.signInWithOAuth(
+    final launched = await _client!.auth.signInWithOAuth(
       OAuthProvider.facebook,
       redirectTo: _oauthRedirect,
     );
+    if (!launched) {
+      throw Exception('ไม่สามารถเปิดหน้าล็อกอิน Facebook ได้');
+    }
   }
 
   static bool get _isNativeIos =>
@@ -207,10 +213,13 @@ class AuthService extends ChangeNotifier {
       return true;
     }
 
-    await _client!.auth.signInWithOAuth(
+    final launched = await _client!.auth.signInWithOAuth(
       OAuthProvider.apple,
       redirectTo: _oauthRedirect,
     );
+    if (!launched) {
+      throw Exception('ไม่สามารถเปิดหน้าล็อกอิน Apple ได้');
+    }
     return false;
   }
 
