@@ -851,7 +851,8 @@ class ChatService extends ChangeNotifier {
         notifyListeners();
         return room;
       } catch (e) {
-        debugPrint('openDiscoveryRoom backend fallback: $e');
+        debugPrint('openDiscoveryRoom backend failed: $e');
+        rethrow;
       }
     }
     return _memoryOpenDiscoveryRoom();
@@ -909,7 +910,8 @@ class ChatService extends ChangeNotifier {
         notifyListeners();
         return room;
       } catch (e) {
-        debugPrint('openRoom backend fallback: $e');
+        debugPrint('openRoom backend failed: $e');
+        rethrow;
       }
     }
 
@@ -946,12 +948,16 @@ class ChatService extends ChangeNotifier {
         active = persisted;
       } catch (e) {
         debugPrint('sendUserMessage persist: $e');
+        rethrow;
       }
     }
     if (_backendActive && active.isPersisted) {
       await _repo.sendUserMessage(active, text);
       notifyListeners();
       return;
+    }
+    if (_backendActive) {
+      throw StateError('chat thread not persisted');
     }
     await _memorySendUserMessage(active, text);
   }
@@ -979,6 +985,7 @@ class ChatService extends ChangeNotifier {
         active = persisted;
       } catch (e) {
         debugPrint('ensurePersistedRoom: $e');
+        rethrow;
       }
     }
     return active;
@@ -1238,8 +1245,13 @@ class ChatService extends ChangeNotifier {
         _queueOpenRoom(room);
         return room;
       } catch (e) {
-        debugPrint('recordBookingInterest backend fallback: $e');
+        debugPrint('recordBookingInterest backend failed: $e');
+        rethrow;
       }
+    }
+
+    if (_backendActive) {
+      throw StateError('booking interest requires persisted chat thread');
     }
 
     _memoryRecordBookingInterest(room, summary);

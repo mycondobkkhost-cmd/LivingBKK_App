@@ -20,14 +20,12 @@ class DemandRepository {
           .select()
           .order('created_at', ascending: false);
 
-      final posts = (data as List)
+      return (data as List)
           .map((e) => DemandPost.fromJson(e as Map<String, dynamic>))
           .toList();
-
-      if (posts.isEmpty) return DemandPost.demo();
-      return posts;
     } catch (_) {
-      return DemandPost.demo();
+      // Backend จริงต้องไม่หลอกด้วยโพสต์ demo — คืนว่างให้ UI แสดง empty/error
+      return const [];
     }
   }
 
