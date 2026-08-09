@@ -78,6 +78,19 @@ Future<String?> showAdminChatRenameSheet(
   if (result == null || !context.mounted) return null;
 
   final name = result.isEmpty ? null : result;
-  await ChatService.instance.setAdminDisplayName(room, name);
+  try {
+    await ChatService.instance.setAdminDisplayName(room, name);
+  } catch (_) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            s.t('บันทึกชื่อแชทไม่สำเร็จ — ลองอีกครั้ง', 'Could not save chat name — try again'),
+          ),
+        ),
+      );
+    }
+    return null;
+  }
   return name;
 }

@@ -80,6 +80,20 @@ Future<void> main() async {
   await themeController.load();
   await adminViewportController.load();
   await sessionGate.load();
+  // โหลดสิทธิ์แอดมิน/ทีมงานก่อนสร้าง router — กัน deep link /admin* หลุดตอน cold start
+  if (AuthService.instance.isSignedIn) {
+    try {
+      final access = await AuthService.instance.fetchProfileAccess();
+      roleController.setPlatformAdmin(access.role == 'admin');
+      roleController.setViewingStaff(
+        value: access.role == 'viewing_staff',
+        slug: access.staffSlug,
+        userId: AuthService.instance.effectiveUserId,
+      );
+    } catch (e) {
+      debugPrint('Back-office role hydrate: $e');
+    }
+  }
   InAppNotificationHub.instance.dismissBanner();
   DemoListingsFactory.invalidateCache();
   if (Env.trialMode) HubDemoSeed.ensure();

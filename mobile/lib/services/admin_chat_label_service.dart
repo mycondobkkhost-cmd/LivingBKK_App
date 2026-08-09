@@ -49,13 +49,9 @@ class AdminChatLabelService extends ChangeNotifier {
     await LocalPrefsService.instance.setJsonMap(_prefsKey, _labels);
     notifyListeners();
 
-    try {
-      await ChatRepository().updateAdminDisplayName(
-        roomId,
-        trimmed?.isEmpty ?? true ? null : trimmed,
-      );
-    } catch (e) {
-      debugPrint('AdminChatLabelService sync: $e');
-    }
+    await ChatRepository().updateAdminDisplayName(
+      roomId,
+      trimmed?.isEmpty ?? true ? null : trimmed,
+    );
   }
 }

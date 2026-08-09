@@ -53,6 +53,17 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "admin_delete_blocked" }, 403);
   }
 
+  const { error: prepError } = await service.rpc("prepare_account_deletion", {
+    p_user_id: userId,
+  });
+  if (prepError) {
+    console.error("delete-account prepare", prepError);
+    return jsonResponse(
+      { error: "delete_prepare_failed", detail: prepError.message },
+      500,
+    );
+  }
+
   const { error: deleteError } = await service.auth.admin.deleteUser(userId);
   if (deleteError) {
     console.error("delete-account", deleteError);

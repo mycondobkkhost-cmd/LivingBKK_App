@@ -1,10 +1,14 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { requireInvokerAuth } from "../_shared/invoke_auth.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
+
+  const auth = await requireInvokerAuth(req);
+  if (auth !== true) return auth;
 
   try {
     const { listing_id, perceptual_hash } = await req.json();
