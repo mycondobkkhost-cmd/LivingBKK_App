@@ -1354,19 +1354,8 @@ class ChatService extends ChangeNotifier {
         if (!room.messages.any((m) => m.id == message.id)) {
           room.messages.add(message);
           room.updatedAt = message.createdAt;
-          if (message.role == ChatMessageRole.adminNotice &&
-              !_isAutoStaffAck(message.text) &&
-              !message.text.startsWith('⚠️') &&
-              !_isViewingDetailNotice(message.text)) {
-            bumpUnread(room.id);
-            final preview = message.text.length > 80
-                ? '${message.text.substring(0, 80)}…'
-                : message.text;
-            InAppNotificationHub.instance.show(
-              'ข้อความจากทีม: $preview',
-              threadId: room.id,
-            );
-          }
+          // ไม่ bumpUnread / notify ที่นี่ — inbox realtime (_onCustomerChatMessage)
+          // รับผิดชอบแล้ว กันข้อความเดียวขึ้นสองครั้งตอนเปิดห้องแชท
           onUpdate();
           notifyListeners();
         }

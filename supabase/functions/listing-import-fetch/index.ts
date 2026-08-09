@@ -63,13 +63,16 @@ async function uploadListingImages(
     const { data: pub } = db.storage.from("listing-images").getPublicUrl(path);
     const publicUrl = pub.publicUrl;
 
-    await db.from("listing_images").insert({
+    const { error: imgErr } = await db.from("listing_images").insert({
       listing_id: listingId,
       storage_path: path,
       public_url: publicUrl,
       sort_order: uploaded,
       moderation_status: "approved",
     });
+    if (imgErr) {
+      throw new Error(`listing_images_insert_failed: ${imgErr.message}`);
+    }
     uploaded++;
   }
   return uploaded;
@@ -356,8 +359,20 @@ Deno.serve(async (req) => {
       let listingId = importRow.listing_id as string | null;
 
       if (listingId) {
-        await db.from("listing_images").delete().eq("listing_id", listingId);
-        await db.from("listings").update(listingPayload).eq("id", listingId);
+        const { error: delImgErr } = await db
+          .from("listing_images")
+          .delete()
+          .eq("listing_id", listingId);
+        if (delImgErr) {
+          throw new Error(`listing_images_delete_failed: ${delImgErr.message}`);
+        }
+        const { error: updListErr } = await db
+          .from("listings")
+          .update(listingPayload)
+          .eq("id", listingId);
+        if (updListErr) {
+          throw new Error(`listings_update_failed: ${updListErr.message}`);
+        }
       } else {
         const { data: listing, error: listErr } = await db
           .from("listings")

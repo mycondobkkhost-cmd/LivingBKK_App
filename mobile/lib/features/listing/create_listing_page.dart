@@ -851,7 +851,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
 
   Future<void> _submit({required bool publish}) async {
     final s = AppStrings.of(context);
-    if (!_validateStep(s)) return;
+    // บันทึกร่างไม่ใช้ validator ขั้นปัจจุบัน — กันพังจาก _commissionScheme! / ราคา / นโยบายก่อนถึงขั้นสุดท้าย
+    if (publish) {
+      if (!_validateStep(s)) return;
+    }
 
     if (!await AuthGate.requireRealAccount(
       context,
@@ -887,17 +890,29 @@ class _CreateListingPageState extends State<CreateListingPage> {
         final project = _selectedProject;
         final coType =
             _isAgentPoster ? 'co_agent_50_50' : 'owner_direct';
-        final scheme = _commissionScheme!;
+        _syncCommissionScheme();
+        final schemeOptions = OfferCommissionScheme.optionsForListing(
+          listingType: _listingType,
+          isAgentPoster: _isAgentPoster,
+        );
+        final scheme = _commissionScheme ??
+            (schemeOptions.isNotEmpty
+                ? schemeOptions.first
+                : OfferCommissionScheme.custom);
         final commissionNote = OfferCommissionScheme.requiresNote(scheme)
             ? _commissionOther.text.trim()
             : null;
         final listedPrice = _isDualListing
             ? _rentPriceForSubmit()
             : _listedPriceForSubmit();
-        if (listedPrice == null || listedPrice <= 0) {
+        // ร่างอนุญาต placeholder ราคา — คอลัมน์ price_net บังคับ > 0
+        final priceNet = (listedPrice != null && listedPrice > 0)
+            ? listedPrice
+            : (publish ? null : 1.0);
+        if (priceNet == null || priceNet <= 0) {
           throw Exception(s.titlePriceRequired);
         }
-        if (_isDualListing) {
+        if (_isDualListing && publish) {
           final sale = _salePriceForSubmit();
           if (sale == null || sale <= 0) {
             throw Exception(s.createListingSalePriceLabel);
@@ -908,12 +923,16 @@ class _CreateListingPageState extends State<CreateListingPage> {
             ? double.tryParse(_brokerCommissionPct.text.replaceAll(',', ''))
             : null;
 
+        final draftTitle = _title.text.trim().isNotEmpty
+            ? _title.text.trim()
+            : s.t('ฉบับร่าง (ยังไม่มีหัวข้อ)', 'Draft (untitled)');
+
         final id = await _createRepo.createDraft(
           ListingCreateInput(
-            title: _title.text.trim(),
+            title: draftTitle,
             listingType: _listingType,
             propertyType: _propertyTypeDb,
-            priceNet: listedPrice,
+            priceNet: priceNet,
             priceSaleNet: _isDualListing ? _salePriceForSubmit() : null,
             district: _districtForSubmit(),
             posterRole: _posterRole,

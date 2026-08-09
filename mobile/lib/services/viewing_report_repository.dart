@@ -19,16 +19,14 @@ class ViewingReportRepository {
   }
 
   Future<void> save(ViewingReport report) async {
+    if (Env.isConfigured && SupabaseService.isReady) {
+      await SupabaseService.client!.from('viewing_reports').upsert(report.toJson());
+    }
+
     final local = await _loadLocal();
     local.removeWhere((r) => r.appointmentId == report.appointmentId);
     local.insert(0, report);
     await _saveLocal(local);
-
-    if (Env.isConfigured && SupabaseService.isReady) {
-      try {
-        await SupabaseService.client!.from('viewing_reports').upsert(report.toJson());
-      } catch (_) {}
-    }
   }
 
   static bool _isDemoAppointmentId(String id) => id.startsWith('demo-appt');
