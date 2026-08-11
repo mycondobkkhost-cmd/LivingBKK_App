@@ -24,6 +24,8 @@ class ListingCreateInput {
     this.bedrooms,
     this.bathrooms,
     this.floorRange,
+    this.unitNumber,
+    this.exactFloor,
     this.coAgentListingType,
     this.monthlyRentNet,
     this.promoPriceNet,
@@ -77,6 +79,9 @@ class ListingCreateInput {
   final int? bedrooms;
   final int? bathrooms;
   final String? floorRange;
+  /// Private unit identity for RXT inventory matching (not public copy).
+  final String? unitNumber;
+  final int? exactFloor;
   final String? coAgentListingType;
   final double? monthlyRentNet;
   final double? promoPriceNet;
@@ -169,6 +174,9 @@ class ListingCreateRepository {
       'bedrooms': input.bedrooms,
       'bathrooms': input.bathrooms,
       'floor_range': input.floorRange,
+      if (input.unitNumber != null && input.unitNumber!.trim().isNotEmpty)
+        'unit_number': input.unitNumber!.trim(),
+      if (input.exactFloor != null) 'exact_floor': input.exactFloor,
       'co_agent_listing_type': input.coAgentListingType,
       'owner_co_agent_opt_in': input.acceptCoAgent,
       'co_agent_eligible': input.acceptCoAgent,
