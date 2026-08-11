@@ -333,6 +333,13 @@ class _CreateListingPageState extends State<CreateListingPage> {
     return custom.isEmpty ? 'กรุงเทพฯ' : custom;
   }
 
+  /// Parse private exact_floor from the public floor label (e.g. "12", "ชั้น 12A").
+  static int? _parseExactFloor(String raw) {
+    final m = RegExp(r'\d{1,3}').firstMatch(raw.trim());
+    if (m == null) return null;
+    return int.tryParse(m.group(0)!);
+  }
+
   Future<void> _pickImages() async {
     final files = await _storage.pickImages();
     setState(() => _images = files);
@@ -872,10 +879,7 @@ class _CreateListingPageState extends State<CreateListingPage> {
         if (tagsBlock.isNotEmpty) {
           description = description.isEmpty ? tagsBlock : '$description\n$tagsBlock';
         }
-        if (_propertyCode.text.trim().isNotEmpty) {
-          description =
-              '${description.isEmpty ? '' : '$description\n'}${s.t('รหัสทรัพย์', 'Property ID')}: ${_propertyCode.text.trim()}';
-        }
+        // รหัสทรัพย์/ชั้นเก็บใน unit_number + exact_floor (ส่วนตัว) — ไม่ใส่ในข้อความสาธารณะ
         description =
             '${description.isEmpty ? '' : '$description\n'}${s.offerContactNameField}: ${_contactName.text.trim()}';
         description = '$description\n${s.offerContactPhoneField}: ${_contactPhone.text.trim()}';
@@ -922,6 +926,10 @@ class _CreateListingPageState extends State<CreateListingPage> {
             bedrooms: int.tryParse(_bedrooms.text),
             bathrooms: int.tryParse(_bathrooms.text),
             floorRange: _floor.text.trim().isEmpty ? null : _floor.text.trim(),
+            unitNumber: _propertyCode.text.trim().isEmpty
+                ? null
+                : _propertyCode.text.trim(),
+            exactFloor: _parseExactFloor(_floor.text),
             coAgentListingType: coType,
             promoPriceNet: _rentPromoEnabled && _hasRentComponent
                 ? double.tryParse(_rentPromo.text.replaceAll(',', ''))

@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: insErr?.message ?? "Create listing failed" }, 400);
     }
 
-    await db
+    const { error: linkErr } = await db
       .from("demand_offers")
       .update({
         listing_id: listing.id,
@@ -93,6 +93,14 @@ Deno.serve(async (req) => {
         capacity_verified_at: new Date().toISOString(),
       })
       .eq("id", offerId);
+
+    if (linkErr) {
+      await db.from("listings").delete().eq("id", listing.id);
+      return jsonResponse(
+        { error: linkErr.message ?? "Link offer to listing failed" },
+        500,
+      );
+    }
 
     return jsonResponse({
       listing,

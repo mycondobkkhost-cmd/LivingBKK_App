@@ -186,6 +186,13 @@ class PropertyCareOwnerDataInput {
         (descriptionEn != null &&
             ListingContactGuard.containsLeak(descriptionEn!));
     final titleTrim = title.trim();
+    final floorTrim = floorRange?.trim();
+    final exactFloor = () {
+      if (floorTrim == null || floorTrim.isEmpty) return null;
+      final m = RegExp(r'\d{1,3}').firstMatch(floorTrim);
+      if (m == null) return null;
+      return int.tryParse(m.group(0)!);
+    }();
 
     return {
       'listing_type': listingType,
@@ -215,8 +222,8 @@ class PropertyCareOwnerDataInput {
       if (bedrooms != null) 'bedrooms': bedrooms,
       if (bathrooms != null) 'bathrooms': bathrooms,
       if (areaSqm != null) 'area_sqm': areaSqm,
-      if (floorRange != null && floorRange!.trim().isNotEmpty)
-        'floor_range': floorRange!.trim(),
+      if (floorTrim != null && floorTrim.isNotEmpty) 'floor_range': floorTrim,
+      if (exactFloor != null) 'exact_floor': exactFloor,
       'viewing_access': viewingAccess.toJson(),
       ...petPolicy.toDbFields(),
       ...occupancy.toDbFields(
