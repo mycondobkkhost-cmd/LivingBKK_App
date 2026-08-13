@@ -25,6 +25,43 @@ class PropertyCareRepository extends ChangeNotifier {
   static const _prefsKey = 'property_care_demo_rights_v1';
   static bool _hydrated = false;
 
+  /// คอลัมน์ที่มีจริงบน `listings` — กันอัปเดตพังจากฟิลด์ฟอร์มที่ยังไม่มีใน DB
+  static const _supabaseListingWriteKeys = {
+    'listing_type',
+    'property_type',
+    'title',
+    'title_owner',
+    'title_display',
+    'description_public',
+    'description_owner',
+    'description_display',
+    'price_net',
+    'price_sale_net',
+    'price_internal',
+    'price_sale_promo_net',
+    'bedrooms',
+    'bathrooms',
+    'area_sqm',
+    'floor_range',
+    'unit_number',
+    'exact_floor',
+    'viewing_access',
+    'pet_policy',
+    'pet_allowed',
+    'occupancy_status',
+    'viewing_allowed_during',
+    'available_from',
+    'available_again',
+    'contract_occupied_until',
+    'investor_category',
+    'monthly_rent_for_yield',
+    'yield_percent',
+    'display_contact_clean',
+    'display_moderation_flags',
+    'status',
+    'owner_data_status',
+  };
+
   static List<PropertyCareRight> _seedRights() => [
         PropertyCareRight(
           id: 'demo-care-1',
@@ -325,7 +362,9 @@ class PropertyCareRepository extends ChangeNotifier {
     try {
       final rows = await SupabaseService.client!
           .from('property_care_rights')
-          .select('*, property_inventory(inventory_code, canonical_title, district, member_count)')
+          .select(
+            '*, property_inventory(inventory_code, project_name, district, member_count)',
+          )
           .eq('user_id', uid)
           .inFilter('status', ['active', 'pending_claim'])
           .order('granted_at', ascending: false);
@@ -347,7 +386,14 @@ class PropertyCareRepository extends ChangeNotifier {
       final invId = r.inventoryId ??
           AdminDemoData.inventoryIdForCode(r.inventoryCode);
       if (invId == null) continue;
-      out.add(await _summaryFor(r, inventoryId: invId));
+      try {
+        out.add(await _summaryFor(r, inventoryId: invId));
+      } catch (_) {
+        out.add(PropertyCareSummary(
+          right: r,
+          inventoryCode: r.inventoryCode,
+        ));
+      }
     }
     return out;
   }
@@ -426,16 +472,26 @@ class PropertyCareRepository extends ChangeNotifier {
     final rows = await SupabaseService.client!
         .from('listings')
         .select(
-          'id, listing_code, title, status, listing_type, price_net, '
-          'last_bump_at, published_at, expires_at, available_again, '
-          'closed_at, closed_reason, reuse_blocked, owner_data_status, viewing_access',
+          'id, listing_code, title, title_owner, title_display, '
+          'description_public, description_owner, description_display, '
+          'status, listing_type, property_type, price_net, price_sale_net, '
+          'price_internal, price_sale_promo_net, bedrooms, bathrooms, '
+          'area_sqm, floor_range, occupancy_status, viewing_allowed_during, '
+          'available_from, available_again, monthly_rent_for_yield, '
+          'pet_policy, pet_allowed, viewing_access, owner_data_status, '
+          'last_bump_at, published_at, expires_at, closed_at, closed_reason, '
+          'reuse_blocked',
         )
         .eq('inventory_id', invId)
         .neq('status', 'hidden')
         .order('updated_at', ascending: false);
-    return (rows as List)
-        .map((r) => Map<String, dynamic>.from(r as Map))
-        .toList();
+    return (rows as List).map((r) {
+      final m = Map<String, dynamic>.from(r as Map);
+      final status = m['owner_data_status']?.toString();
+      m['owner_data_pending'] = status == 'pending';
+      m['owner_data_complete'] = status == 'complete';
+      return m;
+    }).toList();
   }
 
   Future<bool> submitListingOwnerData({
@@ -480,10 +536,12 @@ class PropertyCareRepository extends ChangeNotifier {
       return titleChanged;
     }
 
+    final allowed = Map<String, dynamic>.from(fields)
+      ..removeWhere((key, _) => !_supabaseListingWriteKeys.contains(key));
     await SupabaseService.client!
         .from('listings')
         .update({
-          ...fields,
+          ...allowed,
           'updated_at': DateTime.now().toUtc().toIso8601String(),
         })
         .eq('id', listingId)
@@ -575,25 +633,33 @@ class PropertyCareRepository extends ChangeNotifier {
 
     final inv = await SupabaseService.client!
         .from('property_inventory')
-        .select('inventory_code, canonical_title, district, member_count, primary_listing_code')
+        .select('inventory_code, project_name, district, member_count')
         .eq('id', invId)
         .maybeSingle();
 
-    final pendingRows = await SupabaseService.client!
+    final listingRows = await SupabaseService.client!
         .from('listings')
-        .select('id')
+        .select('listing_code, owner_data_status, status')
         .eq('inventory_id', invId)
-        .eq('owner_data_status', 'pending')
         .eq('status', 'published');
+    final listings = (listingRows as List)
+        .map((r) => Map<String, dynamic>.from(r as Map))
+        .toList();
+    final pending = listings
+        .where((r) => r['owner_data_status']?.toString() == 'pending')
+        .length;
+    final primaryCode = listings.isEmpty
+        ? null
+        : listings.first['listing_code']?.toString();
 
     return PropertyCareSummary(
       right: right,
       inventoryCode: inv?['inventory_code']?.toString() ?? right.inventoryCode,
-      canonicalTitle: inv?['canonical_title']?.toString(),
+      canonicalTitle: inv?['project_name']?.toString(),
       district: inv?['district']?.toString(),
       memberCount: (inv?['member_count'] as num?)?.toInt(),
-      pendingDataCount: (pendingRows as List).length,
-      primaryListingCode: inv?['primary_listing_code']?.toString(),
+      pendingDataCount: pending,
+      primaryListingCode: primaryCode,
     );
   }
 
