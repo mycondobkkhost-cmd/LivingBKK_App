@@ -107,10 +107,12 @@ class ListingRepository {
       final db = PropertyCatalog.dbValueForSlug(f!.propertyType!) ?? f.propertyType!;
       query = query.eq('property_type', db);
     }
-    if (f?.minPrice != null) {
+    // แท็บขายมี rent_and_sale ที่ price_net = ค่าเช่า — กรองราคาที่เซิร์ฟเวอร์จะตัดประกาศขายทิ้ง
+    final saleBrowse = effectiveType == ListingTransactionTypes.sale;
+    if (!saleBrowse && f?.minPrice != null) {
       query = query.gte('price_net', f!.minPrice!);
     }
-    if (f?.maxPrice != null) {
+    if (!saleBrowse && f?.maxPrice != null) {
       query = query.lte('price_net', f!.maxPrice!);
     }
     if (f?.bedrooms != null) {
