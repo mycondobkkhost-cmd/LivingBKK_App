@@ -46,6 +46,8 @@ class ListingCreateInput {
     this.btsStation,
     this.acceptCoAgent = true,
     this.petPolicy = const ListingPetPolicyInput(),
+    this.contactName,
+    this.contactPhone,
     this.lineId,
     this.listingLanguages = const ['th'],
     this.titleEn,
@@ -100,6 +102,10 @@ class ListingCreateInput {
   final String? btsStation;
   final bool acceptCoAgent;
   final ListingPetPolicyInput petPolicy;
+  /// ชื่อผู้ติดต่อ — เก็บชั้นเจ้าของ ไม่ขึ้นหน้าบ้าน
+  final String? contactName;
+  /// เบอร์ผู้ติดต่อ — เก็บชั้นเจ้าของ / โปรไฟล์ ไม่ขึ้นหน้าบ้าน
+  final String? contactPhone;
   final String? lineId;
   final List<String> listingLanguages;
   final String? titleEn;
@@ -224,13 +230,37 @@ class ListingCreateRepository {
       input,
     );
 
+    final publicDesc = payload['description_public'] as String? ?? '';
+    payload['description_display'] = publicDesc;
+    payload['title_display'] = input.title;
+    payload['title_owner'] = input.title;
+    payload['description_owner'] = _withOwnerPrivateBlock(publicDesc, input);
+
     final row = await SupabaseService.client!
         .from('listings')
         .insert(payload)
         .select('id')
         .single();
 
-    return row['id'] as String;
+    final listingId = row['id'] as String;
+    await _syncProfileContact(uid, input);
+    return listingId;
+  }
+
+  Future<void> _syncProfileContact(String uid, ListingCreateInput input) async {
+    final patch = <String, dynamic>{
+      if (input.contactPhone != null && input.contactPhone!.trim().isNotEmpty)
+        'phone': input.contactPhone!.trim(),
+      if (input.lineId != null && input.lineId!.trim().isNotEmpty)
+        'line_id': input.lineId!.trim(),
+    };
+    if (patch.isEmpty) return;
+    try {
+      await SupabaseService.client!
+          .from('profiles')
+          .update(patch)
+          .eq('id', uid);
+    } catch (_) {}
   }
 
   /// ส่งให้หลังบ้านตรวจ — ยังไม่ขึ้นประกาศสาธารณะ
@@ -280,8 +310,6 @@ String _withLocalizationBlock(String desc, ListingCreateInput input) {
     ],
     if (input.agentExclusive) 'agent_exclusive: true',
     'listing_langs: ${input.listingLanguages.join(',')}',
-    if (input.lineId != null && input.lineId!.trim().isNotEmpty)
-      'poster_line_id: ${input.lineId!.trim()}',
     if (input.titleEn != null && input.titleEn!.trim().isNotEmpty)
       'title_en: ${input.titleEn!.trim()}',
     if (input.descriptionEn != null && input.descriptionEn!.trim().isNotEmpty)
@@ -320,6 +348,21 @@ String _withCommissionBlock(String desc, ListingCreateInput input) {
     if (OfferCommissionScheme.isDualListing(input.listingType))
       'lease_months: ${input.leaseMonths}',
   ];
+  final block = lines.join('\n');
+  return desc.isEmpty ? block : '$desc\n$block';
+}
+
+/// เบอร์/ไลน์/ชื่อผู้ติดต่อ — ชั้นเจ้าของและแอดมินเท่านั้น ไม่ขึ้นหน้าบ้าน
+String _withOwnerPrivateBlock(String desc, ListingCreateInput input) {
+  final lines = <String>[
+    if (input.contactName != null && input.contactName!.trim().isNotEmpty)
+      'contact_name: ${input.contactName!.trim()}',
+    if (input.contactPhone != null && input.contactPhone!.trim().isNotEmpty)
+      'contact_phone: ${input.contactPhone!.trim()}',
+    if (input.lineId != null && input.lineId!.trim().isNotEmpty)
+      'poster_line_id: ${input.lineId!.trim()}',
+  ];
+  if (lines.isEmpty) return desc;
   final block = lines.join('\n');
   return desc.isEmpty ? block : '$desc\n$block';
 }

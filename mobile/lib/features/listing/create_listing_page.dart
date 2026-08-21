@@ -876,12 +876,16 @@ class _CreateListingPageState extends State<CreateListingPage> {
           description =
               '${description.isEmpty ? '' : '$description\n'}${s.t('รหัสทรัพย์', 'Property ID')}: ${_propertyCode.text.trim()}';
         }
-        description =
-            '${description.isEmpty ? '' : '$description\n'}${s.offerContactNameField}: ${_contactName.text.trim()}';
-        description = '$description\n${s.offerContactPhoneField}: ${_contactPhone.text.trim()}';
-        if (_lineId.text.trim().isNotEmpty) {
-          description =
-              '$description\n${s.createListingLineIdLabel.replaceAll(' (ถ้ามี)', '').replaceAll(' (optional)', '')}: ${_lineId.text.trim()}';
+
+        if (publish) {
+          final mod = await _moderation.checkText('${_title.text} $description');
+          if (!mod.allowed) {
+            throw Exception(mod.message ??
+                s.t(
+                  'พบข้อมูลติดต่อหรือลิงก์นอกระบบ — แก้ก่อนส่ง',
+                  'Contact or external links detected — fix before submit',
+                ));
+          }
         }
 
         final project = _selectedProject;
@@ -978,6 +982,12 @@ class _CreateListingPageState extends State<CreateListingPage> {
                 _tenantRent.text.replaceAll(',', ''),
               ),
             ),
+            contactName: _contactName.text.trim().isEmpty
+                ? null
+                : _contactName.text.trim(),
+            contactPhone: _contactPhone.text.trim().isEmpty
+                ? null
+                : _contactPhone.text.trim(),
           ),
         );
 
@@ -986,14 +996,6 @@ class _CreateListingPageState extends State<CreateListingPage> {
         }
 
         if (publish) {
-          final mod = await _moderation.checkText('${_title.text} $description');
-          if (!mod.allowed) {
-            throw Exception(mod.message ??
-                s.t(
-                  'พบข้อมูลติดต่อหรือลิงก์นอกระบบ — แก้ก่อนส่ง',
-                  'Contact or external links detected — fix before submit',
-                ));
-          }
           await _createRepo.submitForReview(id);
           if (mounted) {
             await PropertyCareNotificationService.instance.sync(
