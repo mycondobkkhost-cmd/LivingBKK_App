@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/app_strings.dart';
+import '../../models/listing_transaction_types.dart';
 import '../../theme/app_theme.dart';
 
 /// เหตุผลปิดประกาศแบบถาวร
@@ -53,7 +54,8 @@ class _CloseRentBodyState extends State<_CloseRentBody> {
   String _permanentReason = CloseRentPermanentReason.sold;
   DateTime? _availableAgain;
 
-  bool get _isRent => widget.listingType == 'rent';
+  bool get _isRent =>
+      ListingTransactionTypes.hasRentComponent(widget.listingType);
 
   bool get _canConfirm {
     if (!_isRent) return _permanentReason.isNotEmpty;

@@ -4,6 +4,7 @@ import '../config/code_glossary.dart';
 import '../features/listing/close_listing_sheet.dart';
 import '../features/listing/property_care_owner_data_sheet.dart';
 import '../l10n/app_strings.dart';
+import '../models/listing_transaction_types.dart';
 import '../models/property_care_summary.dart';
 import '../services/listing_owner_repository.dart';
 import '../services/property_care_repository.dart';
@@ -93,8 +94,9 @@ class _PropertyCareSummaryCardState extends State<PropertyCareSummaryCard> {
     final type = row['listing_type']?.toString() ?? 'sale';
     final id = row['id'] as String;
 
-    if (type == 'rent') {
-      final result = await showCloseListingRentSheet(context);
+    if (ListingTransactionTypes.hasRentComponent(type)) {
+      final result =
+          await showCloseListingRentSheet(context, listingType: type);
       if (result == null || !mounted) return;
       await _ownerRepo.closeRent(
         listingId: id,

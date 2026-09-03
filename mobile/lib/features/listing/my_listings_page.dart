@@ -15,6 +15,7 @@ import '../../state/session_gate.dart';
 import '../../state/user_role_controller.dart';
 import '../../services/listing_activity_service.dart';
 import '../../services/listing_availability_reminder_service.dart';
+import '../../models/listing_transaction_types.dart';
 import '../../services/listing_owner_repository.dart';
 import '../../services/notification_center_repository.dart';
 import 'listing_availability_follow_up_sheet.dart';
@@ -226,8 +227,8 @@ class _MyListingsPageState extends State<MyListingsPage> {
     final type = row['listing_type']?.toString() ?? 'sale';
     final id = row['id'] as String;
 
-    if (type == 'rent') {
-      final result = await showCloseListingRentSheet(context);
+    if (ListingTransactionTypes.hasRentComponent(type)) {
+      final result = await showCloseListingRentSheet(context, listingType: type);
       if (result == null || !mounted) return;
       await _repo.closeRent(
         listingId: id,
