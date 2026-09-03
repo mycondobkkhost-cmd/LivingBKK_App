@@ -22,6 +22,16 @@ void main() {
     );
   });
 
+  test('เช่า+ขายใช้ flow ปิดฝั่งเช่า (มีวันว่างอีกครั้ง)', () {
+    expect(ListingTransactionTypes.hasRentComponent('rent'), isTrue);
+    expect(ListingTransactionTypes.hasRentComponent('rent_and_sale'), isTrue);
+    expect(ListingTransactionTypes.hasRentComponent('sale'), isFalse);
+    expect(
+      ListingTransactionTypes.hasRentComponent('sale_installment'),
+      isFalse,
+    );
+  });
+
   test('createFormOrder มีเช่า+ขาย', () {
     expect(
       ListingTransactionTypes.createFormOrder,
