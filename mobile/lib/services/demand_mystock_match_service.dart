@@ -1,6 +1,7 @@
 import '../data/property_catalog.dart';
 import '../models/demand_post.dart';
 import '../models/listing_public.dart';
+import '../models/listing_transaction_types.dart';
 import '../utils/geo_zone_match.dart';
 
 /// จับคู่ประกาศบอร์ดกับ MyStock (ประกาศของผู้ใช้)
@@ -94,13 +95,11 @@ class DemandMyStockMatchService {
   }
 
   bool _transactionMatches(DemandPost post, ListingPublic listing) {
-    final want = post.transactionType;
-    final have = listing.listingType;
-    if (want == have) return true;
-    if (want == 'sale' && (have == 'sale' || have == 'sale_installment')) {
-      return true;
-    }
-    return false;
+    return ListingTransactionTypes.matchesBrowseFilter(
+          post.transactionType,
+          listing.listingType,
+        ) ||
+        post.transactionType == listing.listingType;
   }
 
   bool _propertyMatches(String postType, String listingType) {

@@ -3,7 +3,9 @@ import 'package:intl/intl.dart';
 
 import '../models/demand_offer_acceptance.dart';
 import '../models/listing_public.dart';
+import '../models/listing_transaction_types.dart';
 import '../models/search_filters.dart';
+import '../utils/listing_price_helpers.dart';
 import '../models/viewing_report.dart';
 import '../state/locale_controller.dart';
 import '../theme/living_bkk_brand.dart';
@@ -5816,15 +5818,23 @@ class AppStrings {
       );
 
   String priceLabelChat(ListingPublic l) {
-    if (l.listingType == 'rent') {
-      final k = (l.priceNet / 1000).toStringAsFixed(0);
+    final rentSide = ListingTransactionTypes.hasRentComponent(l.listingType) &&
+        !ListingTransactionTypes.isSaleFamily(l.listingType);
+    final amount = ListingPriceHelpers.effectivePrice(
+      l,
+      browseFilter: rentSide
+          ? ListingTransactionTypes.rent
+          : ListingTransactionTypes.sale,
+    );
+    if (rentSide) {
+      final k = (amount / 1000).toStringAsFixed(0);
       return isEnglish ? '$k,000/mo' : '$k,000/เดือน';
     }
-    if (l.priceNet >= 1000000) {
-      final m = (l.priceNet / 1000000).toStringAsFixed(1);
+    if (amount >= 1000000) {
+      final m = (amount / 1000000).toStringAsFixed(1);
       return isEnglish ? '$m M THB' : '$m ล้าน';
     }
-    return isEnglish ? '${l.priceNet.toInt()} THB' : '${l.priceNet.toInt()} บาท';
+    return isEnglish ? '${amount.toInt()} THB' : '${amount.toInt()} บาท';
   }
 
   String leadStatusLabel(String status) {

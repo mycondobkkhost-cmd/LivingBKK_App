@@ -5,6 +5,7 @@ import '../l10n/app_strings.dart';
 import '../utils/geo_zone_match.dart';
 import '../utils/localized_content.dart';
 import '../models/listing_public.dart';
+import '../models/listing_transaction_types.dart';
 import '../models/search_filters.dart';
 import '../models/search_suggestion.dart';
 import 'listing_repository.dart';
@@ -186,9 +187,10 @@ class SearchService {
     var sale = 0;
     for (final l in all) {
       if (!_listingInZones(l, zones)) continue;
-      if (l.listingType == 'rent') {
+      if (ListingTransactionTypes.hasRentComponent(l.listingType)) {
         rent++;
-      } else {
+      }
+      if (ListingTransactionTypes.hasSaleComponent(l.listingType)) {
         sale++;
       }
     }
@@ -206,9 +208,10 @@ class SearchService {
       final match = (slug != null && slug.isNotEmpty && l.projectSlug == slug) ||
           (name != null && name.isNotEmpty && l.projectName == name);
       if (!match) continue;
-      if (l.listingType == 'rent') {
+      if (ListingTransactionTypes.hasRentComponent(l.listingType)) {
         rent++;
-      } else {
+      }
+      if (ListingTransactionTypes.hasSaleComponent(l.listingType)) {
         sale++;
       }
     }
@@ -255,9 +258,10 @@ class SearchService {
     var rent = 0;
     var sale = 0;
     for (final l in units) {
-      if (l.listingType == 'rent') {
+      if (ListingTransactionTypes.hasRentComponent(l.listingType)) {
         rent++;
-      } else {
+      }
+      if (ListingTransactionTypes.hasSaleComponent(l.listingType)) {
         sale++;
       }
     }

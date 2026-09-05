@@ -16,6 +16,7 @@ import '../../theme/li_layout.dart';
 import '../../utils/localized_content.dart';
 import '../../utils/listing_browse_sorter.dart';
 import '../../utils/listing_navigation.dart';
+import '../../utils/listing_price_helpers.dart';
 import '../../utils/nearby_projects.dart';
 import '../../widgets/listing_grid.dart';
 import '../../utils/page_safe_insets.dart';
@@ -80,7 +81,10 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   List<ListingPublic> get _visible {
     var list = List<ListingPublic>.from(_units);
     if (_tx == _ProjectTx.rent) {
-      list = list.where((l) => l.listingType == 'rent').toList();
+      list = list
+          .where((l) =>
+              ListingTransactionTypes.matchesBrowseFilter('rent', l.listingType))
+          .toList();
     } else if (_tx == _ProjectTx.sale) {
       list = list
           .where((l) => ListingTransactionTypes.matchesBrowseFilter('sale', l.listingType))
@@ -318,15 +322,28 @@ class _ProjectHeroHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final rentPrices = units
-        .where((u) => u.listingType == 'rent')
-        .map((u) => u.priceNet)
+        .where(
+          (u) =>
+              ListingTransactionTypes.matchesBrowseFilter('rent', u.listingType),
+        )
+        .map(
+          (u) => ListingPriceHelpers.effectivePrice(
+            u,
+            browseFilter: ListingTransactionTypes.rent,
+          ),
+        )
         .toList();
     final salePrices = units
         .where(
           (u) =>
               ListingTransactionTypes.matchesBrowseFilter('sale', u.listingType),
         )
-        .map((u) => u.priceNet)
+        .map(
+          (u) => ListingPriceHelpers.effectivePrice(
+            u,
+            browseFilter: ListingTransactionTypes.sale,
+          ),
+        )
         .toList();
     final minRent =
         rentPrices.isEmpty ? null : rentPrices.reduce((a, b) => a < b ? a : b);

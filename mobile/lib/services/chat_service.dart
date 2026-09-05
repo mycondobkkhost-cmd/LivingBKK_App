@@ -9,7 +9,9 @@ import '../models/chat_message.dart';
 import '../models/chat_room.dart';
 import '../models/customer_requirement.dart';
 import '../models/listing_public.dart';
+import '../models/listing_transaction_types.dart';
 import '../models/profile_tag.dart';
+import '../utils/listing_price_helpers.dart';
 import 'admin_chat_label_service.dart';
 import '../models/viewing_request.dart';
 import '../state/locale_controller.dart';
@@ -2104,25 +2106,26 @@ class ChatService extends ChangeNotifier {
         : true;
     final budget = _extractBudget(q);
 
+    final filter = rent
+        ? ListingTransactionTypes.rent
+        : ListingTransactionTypes.sale;
+    bool matchesIntent(ListingPublic l) =>
+        ListingTransactionTypes.matchesBrowseFilter(filter, l.listingType);
+    double priceForIntent(ListingPublic l) =>
+        ListingPriceHelpers.effectivePrice(l, browseFilter: filter);
+
     var matched = listings.where((l) {
-      if (rent && l.listingType != 'rent') return false;
-      if (!rent &&
-          l.listingType != 'sale' &&
-          l.listingType != 'sale_installment') {
-        return false;
-      }
-      if (budget != null && l.priceNet > budget * 1.15) return false;
+      if (!matchesIntent(l)) return false;
+      if (budget != null && priceForIntent(l) > budget * 1.15) return false;
       return _textMatchesListing(q, l);
     }).toList();
 
     if (matched.isEmpty && budget != null) {
       matched = listings
-          .where((l) => rent
-              ? l.listingType == 'rent'
-              : l.listingType == 'sale' || l.listingType == 'sale_installment')
-          .where((l) => l.priceNet <= budget * 1.2)
+          .where(matchesIntent)
+          .where((l) => priceForIntent(l) <= budget * 1.2)
           .toList()
-        ..sort((a, b) => a.priceNet.compareTo(b.priceNet));
+        ..sort((a, b) => priceForIntent(a).compareTo(priceForIntent(b)));
     }
 
     matched = matched.take(3).toList();
