@@ -263,7 +263,7 @@ export type ListingRow = {
 };
 
 function priceLabel(l: ListingRow): string {
-  if (l.listing_type === "rent") {
+  if (l.listing_type === "rent" || l.listing_type === "rent_and_sale") {
     return `${Math.round(l.price_net / 1000)},000/เดือน`;
   }
   if (l.price_net >= 1_000_000) {

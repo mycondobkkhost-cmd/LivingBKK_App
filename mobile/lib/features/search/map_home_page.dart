@@ -393,6 +393,7 @@ class _MapHomePageState extends State<MapHomePage> {
                     radiusKm: _filters.radiusKm,
                     pinPlacementMode: _pinPlacementMode,
                     onPinPlaced: _onPinPlaced,
+                    browseFilter: _filters.listingType,
                     onListingTap: (l) => setState(() => _selectedId = l.id),
                   ),
           ),

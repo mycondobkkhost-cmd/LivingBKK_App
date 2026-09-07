@@ -15,7 +15,8 @@ class ListingAvailabilityReminderService extends ChangeNotifier {
 
   int? daysUntilAvailable(Map<String, dynamic> row) {
     if (row['status']?.toString() != 'archived') return null;
-    if (row['listing_type']?.toString() != 'rent') return null;
+    final type = row['listing_type']?.toString();
+    if (type != 'rent' && type != 'rent_and_sale') return null;
     final raw = row['available_again']?.toString();
     if (raw == null || raw.isEmpty) return null;
     final again = DateTime.tryParse(raw);

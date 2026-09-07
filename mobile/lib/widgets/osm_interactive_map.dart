@@ -7,6 +7,7 @@ import '../l10n/app_strings.dart';
 import '../models/appointment.dart';
 import '../models/listing_public.dart';
 import '../theme/app_theme.dart';
+import '../utils/listing_price_helpers.dart';
 import '../utils/map_cluster_helper.dart';
 import 'map_price_marker.dart';
 
@@ -26,12 +27,14 @@ class OsmListingsMap extends StatefulWidget {
     this.radiusKm,
     this.pinPlacementMode = false,
     this.onPinPlaced,
+    this.browseFilter,
   });
 
   final List<ListingPublic> listings;
   final String? selectedId;
   final void Function(ListingPublic listing)? onListingTap;
   final bool showPriceOnMarker;
+  final String? browseFilter;
   final bool fullBleed;
   final bool focusUserOnStart;
   final double fabBottomPadding;
@@ -183,8 +186,14 @@ class _OsmListingsMapState extends State<OsmListingsMap> {
       final selected = l.id == widget.selectedId;
       final label = widget.showPriceOnMarker
           ? MapPriceMarker.labelFor(
-              l.priceNet,
-              isRent: l.listingType == 'rent',
+              ListingPriceHelpers.effectivePrice(
+                l,
+                browseFilter: widget.browseFilter,
+              ),
+              isRent: ListingPriceHelpers.showPerMonth(
+                l,
+                browseFilter: widget.browseFilter,
+              ),
               isEnglish: AppStrings.of(context).isEnglish,
             )
           : l.title;

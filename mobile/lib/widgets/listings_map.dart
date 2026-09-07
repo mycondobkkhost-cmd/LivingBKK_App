@@ -6,6 +6,7 @@ import '../config/env.dart';
 import '../l10n/app_strings.dart';
 import '../models/listing_public.dart';
 import '../theme/app_theme.dart';
+import '../utils/listing_price_helpers.dart';
 import '../utils/map_cluster_helper.dart';
 import 'map_price_marker.dart';
 import 'osm_interactive_map.dart';
@@ -28,12 +29,15 @@ class ListingsMap extends StatefulWidget {
     this.radiusKm,
     this.pinPlacementMode = false,
     this.onPinPlaced,
+    this.browseFilter,
   });
 
   final List<ListingPublic> listings;
   final String? selectedId;
   final void Function(ListingPublic listing)? onListingTap;
   final bool showPriceOnMarker;
+  /// แท็บเช่า/ซื้อ — ประกาศเช่า+ขายใช้ราคาฝั่งนั้นบนหมุด
+  final String? browseFilter;
   /// เต็มจอ — ไม่มุมโค้ง (หน้าแผนที่เต็ม)
   final bool fullBleed;
   /// เปิดแผนที่แล้วเลื่อนไปตำแหน่งผู้ใช้ (Near By)
@@ -70,7 +74,8 @@ class _ListingsMapState extends State<ListingsMap> {
         oldWidget.selectedId != widget.selectedId ||
         oldWidget.showPriceOnMarker != widget.showPriceOnMarker ||
         oldWidget.pinLatitude != widget.pinLatitude ||
-        oldWidget.pinLongitude != widget.pinLongitude) {
+        oldWidget.pinLongitude != widget.pinLongitude ||
+        oldWidget.browseFilter != widget.browseFilter) {
       _rebuildMarkers();
     }
     if (oldWidget.listings != widget.listings) {
@@ -114,8 +119,14 @@ class _ListingsMapState extends State<ListingsMap> {
       BitmapDescriptor icon;
       if (showPriceOnMarker) {
         icon = await MapPriceMarker.iconFor(
-          l.priceNet,
-          isRent: l.listingType == 'rent',
+          ListingPriceHelpers.effectivePrice(
+            l,
+            browseFilter: widget.browseFilter,
+          ),
+          isRent: ListingPriceHelpers.showPerMonth(
+            l,
+            browseFilter: widget.browseFilter,
+          ),
           selected: isSelected,
           isEnglish: s.isEnglish,
         );
@@ -140,8 +151,14 @@ class _ListingsMapState extends State<ListingsMap> {
           infoWindow: InfoWindow(
             title: showPriceOnMarker
                 ? MapPriceMarker.labelFor(
-                    l.priceNet,
-                    isRent: l.listingType == 'rent',
+                    ListingPriceHelpers.effectivePrice(
+                      l,
+                      browseFilter: widget.browseFilter,
+                    ),
+                    isRent: ListingPriceHelpers.showPerMonth(
+                      l,
+                      browseFilter: widget.browseFilter,
+                    ),
                     isEnglish: s.isEnglish,
                   )
                 : l.title,
@@ -286,6 +303,7 @@ class _ListingsMapState extends State<ListingsMap> {
         radiusKm: widget.radiusKm,
         pinPlacementMode: widget.pinPlacementMode,
         onPinPlaced: widget.onPinPlaced,
+        browseFilter: widget.browseFilter,
       );
     }
 
