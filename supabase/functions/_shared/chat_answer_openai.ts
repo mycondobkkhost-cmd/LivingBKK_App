@@ -18,6 +18,7 @@ export type ListingDetail = {
   district: string | null;
   subdistrict?: string | null;
   description_public?: string | null;
+  price_sale_net?: number | null;
   pet_allowed?: boolean | null;
   furnished?: boolean | null;
   bedrooms?: number | null;
@@ -75,14 +76,31 @@ Return ONLY JSON:
 When should_answer=true, answer_text must be a complete helpful reply.
 When needs_admin=true, answer_text may be a brief acknowledgment that staff will follow up.`;
 
+function listingTypeLabel(type: string): string {
+  if (type === "rent") return "เช่า";
+  if (type === "rent_and_sale") return "เช่า+ขาย";
+  if (type === "sale_installment") return "ขายฝาก";
+  return "ขาย";
+}
+
 function formatPrice(l: ListingDetail | ListingRow): string {
-  if (l.listing_type === "rent") {
-    return `${Math.round(l.price_net).toLocaleString("th-TH")} บาท/เดือน (Net)`;
+  const monthly = `${Math.round(l.price_net).toLocaleString("th-TH")} บาท/เดือน (Net)`;
+  if (l.listing_type === "rent") return monthly;
+  if (l.listing_type === "rent_and_sale") {
+    const saleNet = (l as ListingDetail).price_sale_net;
+    if (saleNet != null && saleNet > 0) {
+      const sale = saleNet >= 1_000_000
+        ? `${(saleNet / 1_000_000).toFixed(2)} ล้านบาท (Net)`
+        : `${Math.round(saleNet).toLocaleString("th-TH")} บาท (Net)`;
+      return `เช่า ${monthly.replace(" (Net)", "")} · ขาย ${sale}`;
+    }
+    return monthly;
   }
-  if (l.price_net >= 1_000_000) {
-    return `${(l.price_net / 1_000_000).toFixed(2)} ล้านบาท (Net)`;
+  const amount = l.price_net;
+  if (amount >= 1_000_000) {
+    return `${(amount / 1_000_000).toFixed(2)} ล้านบาท (Net)`;
   }
-  return `${Math.round(l.price_net).toLocaleString("th-TH")} บาท (Net)`;
+  return `${Math.round(amount).toLocaleString("th-TH")} บาท (Net)`;
 }
 
 function listingBlock(l: ListingDetail): string {
@@ -90,7 +108,7 @@ function listingBlock(l: ListingDetail): string {
     `รหัส: ${l.listing_code}`,
     `ชื่อ: ${l.title}`,
     `โครงการ: ${l.project_name ?? "-"}`,
-    `ประเภท: ${l.property_type} · ${l.listing_type === "rent" ? "เช่า" : "ขาย"}`,
+    `ประเภท: ${l.property_type} · ${listingTypeLabel(l.listing_type)}`,
     `ราคา Net: ${formatPrice(l)}`,
     `ทำเล: ${[l.district, l.subdistrict].filter(Boolean).join(" / ") || "-"}`,
   ];

@@ -89,14 +89,19 @@ async function loadCurrentListing(
   listingId: string | null,
 ): Promise<ListingDetail | null> {
   if (!listingId) return null;
-  const { data } = await db
+  const { data, error } = await db
     .from("listings_public")
     .select(
-      "id, listing_code, title, project_name, listing_type, price_net, property_type, district, subdistrict, description_public, pet_allowed, furnished, bedrooms, bathrooms, area_sqm, floor_range, max_distance_bts_km",
+      "id, listing_code, title, project_name, listing_type, price_net, property_type, district, subdistrict, description, pet_allowed, furnished, bedrooms, bathrooms, area_sqm, floor_range, max_distance_bts_km",
     )
     .eq("id", listingId)
     .maybeSingle();
-  return (data as ListingDetail | null) ?? null;
+  if (error || !data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    ...(data as ListingDetail),
+    description_public: (row.description as string | null | undefined) ?? null,
+  };
 }
 
 async function notifyEscalation(thread: ThreadRow, reason: string, preview?: string) {

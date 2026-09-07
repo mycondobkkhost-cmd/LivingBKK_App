@@ -5,6 +5,7 @@ import '../data/bangkok_projects.dart';
 import '../l10n/app_strings.dart';
 import '../models/demand_post.dart';
 import '../models/listing_public.dart';
+import '../models/listing_transaction_types.dart';
 import 'transit_proximity.dart';
 
 /// ชื่อโครงการแบบสองภาษา — เช่น ทรู ทองหล่อ (THRU Thonglor)
@@ -81,10 +82,18 @@ extension ListingPublicL10n on ListingPublic {
     if (project != null && project.isNotEmpty && bedrooms != null) {
       if (isEnglish) {
         final bed = bedrooms == 0 ? 'Studio' : '$bedrooms bed';
-        return listingType == 'rent' ? bed : 'For sale · $bed';
+        if (ListingTransactionTypes.isRentAndSale(listingType)) {
+          return 'Rent & sale · $bed';
+        }
+        return ListingTransactionTypes.isRent(listingType)
+            ? bed
+            : 'For sale · $bed';
       }
       final bed = bedrooms == 0 ? 'สตูดิโอ' : '$bedrooms นอน';
-      return listingType == 'rent' ? bed : 'ขาย $bed';
+      if (ListingTransactionTypes.isRentAndSale(listingType)) {
+        return 'เช่า+ขาย $bed';
+      }
+      return ListingTransactionTypes.isRent(listingType) ? bed : 'ขาย $bed';
     }
     return _compactCardHeadingFromTitle(isEnglish, project);
   }

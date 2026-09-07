@@ -208,6 +208,7 @@ class _MapSearchPageState extends State<MapSearchPage> {
                         radiusKm: filters.radiusKm,
                         pinPlacementMode: _pinPlacementMode,
                         onPinPlaced: _onPinPlaced,
+                        browseFilter: filters.listingType,
                         onListingTap: (l) => setState(() => _selectedId = l.id),
                       ),
               ),

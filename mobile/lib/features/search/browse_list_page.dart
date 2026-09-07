@@ -999,6 +999,7 @@ class _BrowseMapPinPageState extends State<_BrowseMapPinPage> {
               radiusKm: _filters.radiusKm,
               pinPlacementMode: _pinPlacementMode,
               onPinPlaced: _onPinPlaced,
+              browseFilter: _filters.listingType,
             ),
           ),
           Material(
