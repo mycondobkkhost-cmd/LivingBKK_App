@@ -1,5 +1,6 @@
 import '../data/property_catalog.dart';
 import '../models/listing_public.dart';
+import '../models/listing_transaction_types.dart';
 import '../models/search_filters.dart';
 import 'listing_activity_service.dart';
 import 'preferred_stock_service.dart';
@@ -33,7 +34,10 @@ class HomeSectionsBuilder {
     final type = sessionFilters.listingType;
     final categoryDb = PropertyCatalog.dbValueForSlug(categorySlug);
     var pool = all.where((l) {
-      if (type != null && l.listingType != type) return false;
+      if (type != null &&
+          !ListingTransactionTypes.matchesBrowseFilter(type, l.listingType)) {
+        return false;
+      }
       if (categoryDb != null && l.propertyType != categoryDb) return false;
       if (isAgent && !l.coAgentEligible) return false;
       return true;
