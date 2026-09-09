@@ -107,12 +107,7 @@ class ListingRepository {
       final db = PropertyCatalog.dbValueForSlug(f!.propertyType!) ?? f.propertyType!;
       query = query.eq('property_type', db);
     }
-    if (f?.minPrice != null) {
-      query = query.gte('price_net', f!.minPrice!);
-    }
-    if (f?.maxPrice != null) {
-      query = query.lte('price_net', f!.maxPrice!);
-    }
+    // price_net ของ rent_and_sale คือราคาเช่า — กรองงบแท็บซื้อฝั่งไคลเอนต์
     if (f?.bedrooms != null) {
       query = query.eq('bedrooms', f!.bedrooms!);
     }
@@ -139,6 +134,7 @@ class ListingRepository {
 
     list = _applyClientOnlyFilters(list, f);
     list = MetroRegion.filterListings(list);
+    list = _applyPriceFilters(list, f, effectiveType);
 
     if (list.isEmpty) {
       lastFetchUsedDemo = true;
@@ -178,20 +174,7 @@ class ListingRepository {
           .where((l) => l.propertyType == db || l.propertyType == f.propertyType)
           .toList();
     }
-    if (f?.minPrice != null) {
-      list = list
-          .where((l) =>
-              ListingPriceHelpers.effectivePrice(l, browseFilter: effectiveType) >=
-              f!.minPrice!)
-          .toList();
-    }
-    if (f?.maxPrice != null) {
-      list = list
-          .where((l) =>
-              ListingPriceHelpers.effectivePrice(l, browseFilter: effectiveType) <=
-              f!.maxPrice!)
-          .toList();
-    }
+    list = _applyPriceFilters(list, f, effectiveType);
     if (f?.bedrooms != null) {
       list = list.where((l) => (l.bedrooms ?? 0) == f!.bedrooms).toList();
     }
@@ -215,6 +198,23 @@ class ListingRepository {
           .toList();
     }
     return MetroRegion.filterListings(_applyClientOnlyFilters(list, f));
+  }
+
+  List<ListingPublic> _applyPriceFilters(
+    List<ListingPublic> list,
+    SearchFilters? f,
+    String? effectiveType,
+  ) {
+    if (f?.minPrice == null && f?.maxPrice == null) return list;
+    return list.where((l) {
+      final p = ListingPriceHelpers.effectivePrice(
+        l,
+        browseFilter: effectiveType,
+      );
+      if (f!.minPrice != null && p < f.minPrice!) return false;
+      if (f.maxPrice != null && p > f.maxPrice!) return false;
+      return true;
+    }).toList();
   }
 
   List<ListingPublic> _applyClientOnlyFilters(
