@@ -1,7 +1,9 @@
 import '../models/customer_requirement.dart';
 import '../models/listing_public.dart';
+import '../models/listing_transaction_types.dart';
 import '../data/property_catalog.dart';
 import '../utils/geo_zone_match.dart';
+import '../utils/listing_price_helpers.dart';
 
 /// Looking to Match — จับคู่ความต้องการกับประกาศในระบบ
 class RequirementMatchService {
@@ -30,11 +32,10 @@ class RequirementMatchService {
     var s = 0;
 
     final wantType = req.isSale ? 'sale' : 'rent';
-    if (l.listingType == wantType) {
-      s += 25;
-    } else {
+    if (!ListingTransactionTypes.matchesBrowseFilter(wantType, l.listingType)) {
       return 0;
     }
+    s += 25;
 
     if (req.propertyTypes.isNotEmpty) {
       final dbValues = req.propertyTypes
@@ -59,9 +60,13 @@ class RequirementMatchService {
     if (req.maxPriceNet != null) {
       final minP = req.minPriceNet ?? 0;
       final maxP = req.maxPriceNet!;
-      if (l.priceNet >= minP && l.priceNet <= maxP) {
+      final price = ListingPriceHelpers.effectivePrice(
+        l,
+        browseFilter: wantType,
+      );
+      if (price >= minP && price <= maxP) {
         s += 20;
-      } else if (l.priceNet <= maxP * 1.08) {
+      } else if (price <= maxP * 1.08) {
         s += 8;
       } else {
         s -= 10;
